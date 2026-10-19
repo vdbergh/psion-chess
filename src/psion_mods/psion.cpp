@@ -661,7 +661,7 @@ namespace psion {
 
     // Time between the engine being told to move and its move being
     // detected (key delays plus STABLE_MS).
-    const unsigned int MOVE_LATENCY_MS=400;
+    const unsigned int MOVE_LATENCY_MS=250;
     // Pause after a key action before the screen is consulted again.
     const unsigned int ACTION_GAP_MS=300;
     const unsigned int MOVE_TIMEOUT_MS=5000;
@@ -675,7 +675,8 @@ namespace psion {
 	bool has_target;              // a position has been given
 	bool unsupported;             // ... but we cannot set it up
 	std::vector<std::string> target;
-	bool new_game;                // ucinewgame: press '$' first
+	bool new_game;                // ucinewgame: press '$' before setting
+				      // up the next position
 	bool readyok_pending;
 	bool go_pending;
 	SearchState search;
@@ -903,13 +904,6 @@ namespace psion {
 		}
 		return;
 	    }
-	    if(uci.new_game){
-		uci.new_game=false;
-		if(!moves.empty()){
-		    press(KBD_leftshift,KBD_4);   // '$': new game
-		    return;
-		}
-	    }
 	    switch(PlanSync(moves,uci.target)){
 	    case SYNC_SEND_MOVE:
 		SendUciMove(uci.target[moves.size()]);
@@ -929,7 +923,6 @@ namespace psion {
 	    }
 	    return;
 	}
-	uci.new_game=false;
 	if(uci.readyok_pending){
 	    uci.readyok_pending=false;
 	    uci_send("readyok\n");
