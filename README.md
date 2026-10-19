@@ -18,6 +18,13 @@ for where to download it.
     make check      # unit tests (a second)
     make integration  # UCI tests against ./psion (about a minute)
 
+### Prebuilt executable
+
+Every push is built by GitHub Actions. The package
+`psion-chess-linux-x86_64` (on the run's page under *Actions*, *Artifacts*)
+contains a statically linked executable that runs on any x86-64 Linux.
+Unpack it and add Psion's files to its `data/` directory.
+
 ## Running
 
 Use `./psion` as the engine command in your GUI. Psion's files are read from

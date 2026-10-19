@@ -6,11 +6,13 @@
 
 CXX ?= g++
 # The DOSBox sources predate C++11, and its 64-bit recompiler needs a
-# non-PIE executable.
+# non-PIE executable. These flags are kept even when CXXFLAGS etc. are
+# given on the command line, e.g. "make LDFLAGS=-static" for an executable
+# that runs on any x86-64 Linux.
 CXXFLAGS ?= -g -O2
-CXXFLAGS += -std=gnu++98 -mno-ms-bitfields
-CPPFLAGS += -DHAVE_CONFIG_H -I. -Iinclude
-LDFLAGS += -no-pie
+override CXXFLAGS += -std=gnu++98 -mno-ms-bitfields
+override CPPFLAGS += -DHAVE_CONFIG_H -I. -Iinclude
+override LDFLAGS += -no-pie
 
 SRCS := src/dosbox.cpp $(wildcard src/*/*.cpp)
 OBJS := $(SRCS:%.cpp=build/%.o)

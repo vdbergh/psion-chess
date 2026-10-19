@@ -1,0 +1,38 @@
+# Builds the engine, runs the unit tests and uploads a ready-to-use
+# package. The UCI integration tests need Psion Chess itself, which is not
+# part of the repository, so they are not run here.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Statically linked, so that the executable runs on any x86-64 Linux.
+      - name: Build
+        run: make -j"$(nproc)" LDFLAGS=-static
+
+      - name: Unit tests
+        run: make check
+
+      # A tarball keeps the executable bit, which artifact zips lose.
+      - name: Package
+        run: |
+          name=psion-chess-linux-x86_64
+          mkdir -p "$name/data"
+          cp psion README.md COPYING AUTHORS "$name/"
+          strip "$name/psion"
+          cp data/README.md "$name/data/"
+          tar czf "$name.tar.gz" "$name"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: psion-chess-linux-x86_64
+          path: psion-chess-linux-x86_64.tar.gz
