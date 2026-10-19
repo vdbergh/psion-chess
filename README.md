@@ -20,10 +20,16 @@ for where to download it.
 
 ### Prebuilt executable
 
-Every push is built by GitHub Actions. The package
-`psion-chess-linux-x86_64` (on the run's page under *Actions*, *Artifacts*)
-contains a statically linked executable that runs on any x86-64 Linux.
-Unpack it and add Psion's files to its `data/` directory.
+Released versions can be downloaded from the repository's *Releases*
+page. In addition, every push is built by GitHub Actions: the package
+`psion-chess-linux-x86_64` is on the run's page under *Actions*,
+*Artifacts* (for 90 days, and only when logged in to GitHub).
+
+The package contains a statically linked executable that runs on any
+x86-64 Linux. Unpack it and add Psion's files to its `data/` directory.
+
+To make a release, push a version tag, e.g.
+`git tag v1.0 && git push origin v1.0`.
 
 ## Running
 
