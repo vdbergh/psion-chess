@@ -16,25 +16,47 @@ for where to download it.
 
     make            # builds ./psion
     make check      # unit tests (a second)
-    make integration  # UCI tests against ./psion (about a minute)
+    make integration  # UCI tests against ./psion (about two minutes)
 
-### Prebuilt executable
+### Windows
+
+The Windows version is cross-compiled on Linux with MinGW-w64 (package
+`g++-mingw-w64-i686` on Debian/Ubuntu). It is a 32-bit executable, which
+also runs on 64-bit Windows: the 64-bit recompiler of this DOSBox version
+only supports the Linux calling convention.
+
+    make windows                       # builds ./psion.exe
+    make check TARGET=windows          # unit tests, under Wine
+    make integration TARGET=windows    # UCI tests, under Wine
+
+The tests need Wine with 32-bit support (`wine32:i386`). If Wine was
+installed without it at first, its existing prefix (`~/.wine`) cannot run
+32-bit programs; use a new one, e.g. `export WINEPREFIX=~/.wine32`.
+
+### Prebuilt executables
 
 Released versions can be downloaded from the repository's *Releases*
-page. In addition, every push is built by GitHub Actions: the package
-`psion-chess-linux-x86_64` is on the run's page under *Actions*,
-*Artifacts* (for 90 days, and only when logged in to GitHub).
+page. In addition, every push is built by GitHub Actions: the packages are
+on the run's page under *Actions*, *Artifacts* (for 90 days, and only when
+logged in to GitHub).
 
-The package contains a statically linked executable that runs on any
-x86-64 Linux. Unpack it and add Psion's files to its `data/` directory.
+- `psion-chess-linux-x86_64`: a statically linked executable that runs on
+  any x86-64 Linux.
+- `psion-chess-windows-x86`: `psion.exe` for Windows. The integration tests
+  pass with it under Wine; on Windows itself, GitHub Actions only checks
+  that it starts (Psion's files are not available there).
+
+Unpack the package and add Psion's files to its `data/` directory.
 
 To make a release, push a version tag, e.g.
 `git tag v1.0 && git push origin v1.0`.
 
 ## Running
 
-Use `./psion` as the engine command in your GUI. Psion's files are read from
-`data/` next to the executable; set `PSION_DIR` to use another directory.
+Use `./psion` (`psion.exe` on Windows) as the engine command in your GUI.
+Psion's files are read from `data/` next to the executable; set `PSION_DIR`
+to use another directory. Without them the engine reports where it looked
+and exits.
 
     $ ./psion
     uci

@@ -1,11 +1,16 @@
 """UCI integration tests: drive the real program through the protocol.
 
-usage: PSION_DIR=<data dir> python3 -I uci_test.py PATH_TO_PSION
+usage: python3 -I uci_test.py ENGINE_COMMAND
+
+ENGINE_COMMAND is the program, optionally with a wrapper, e.g.
+"wine ../psion.exe". Set PSION_DIR if Psion's files are not in "data"
+next to the program.
 
 Engine diagnostics (stderr) are written to uci_test.log.
 """
 import os
 import queue
+import shlex
 import subprocess
 import sys
 import threading
@@ -19,18 +24,24 @@ LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uci_test.log')
 class Engine:
     def __init__(self):
         self.log = open(LOG, 'a')
-        self.proc = subprocess.Popen([PSION], stdin=subprocess.PIPE,
+        # Binary, so that "\r\n" line ends stay visible (see _read).
+        self.proc = subprocess.Popen(shlex.split(PSION), stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, stderr=self.log,
-                                     text=True, bufsize=1)
+                                     bufsize=0)
         self.lines = queue.Queue()
         threading.Thread(target=self._read, daemon=True).start()
 
     def _read(self):
-        for line in self.proc.stdout:
+        for raw in self.proc.stdout:
+            line = raw.decode('utf-8', 'replace')
+            # Lines must end in "\n" only: "\r\n" breaks GUIs that run
+            # the Windows engine under Wine.
+            if line.endswith('\r\n'):
+                line = 'LINE ENDS IN CR: ' + line
             self.lines.put(line.strip())
 
     def send(self, line):
-        self.proc.stdin.write(line + '\n')
+        self.proc.stdin.write((line + '\n').encode())
         self.proc.stdin.flush()
 
     def expect(self, prefix, timeout):

@@ -5,7 +5,9 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <errno.h>
+#ifndef _WIN32
 #include <sys/time.h>
+#endif
 #include <time.h>
 #include "queue"
 #include <vector>
@@ -22,11 +24,18 @@
 #include "mem.h"
 #include "regs.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#include <mmsystem.h>
+#include <fcntl.h>
+#include <io.h>
+#endif
+
 unsigned int GetTicks(){
     static bool firsttime=true;
+#ifndef _WIN32
     double static msec_first;
     double msec;
-#ifndef _WIN32
     struct timeval tv;
     gettimeofday(&tv, NULL);
     msec=tv.tv_sec*1000+(tv.tv_usec+500)/1000.0;
@@ -36,7 +45,16 @@ unsigned int GetTicks(){
     }
     return (unsigned int)(msec-msec_first);
 #else
-    return GetTickCount();
+    // GetTickCount() is too coarse (10-16 ms) for the timing here.
+    static LARGE_INTEGER frequency,first;
+    LARGE_INTEGER now;
+    if(firsttime){
+	QueryPerformanceFrequency(&frequency);
+	QueryPerformanceCounter(&first);
+	firsttime=false;
+    }
+    QueryPerformanceCounter(&now);
+    return (unsigned int)((now.QuadPart-first.QuadPart)*1000/frequency.QuadPart);
 #endif	
 }
 
@@ -278,25 +296,54 @@ namespace psion {
     static std::string data_dir(){
 	const char *env=getenv("PSION_DIR");
 	char exe[4096];
-	ssize_t n;
 	if(env){
 	    return env;
 	}
-	n=readlink("/proc/self/exe",exe,sizeof(exe)-1);
+#ifdef _WIN32
+	DWORD n=GetModuleFileNameA(NULL,exe,sizeof(exe));
+	if(n==0 || n>=sizeof(exe)){
+	    return "data";
+	}
+	std::string path(exe,n);
+	return path.substr(0,path.find_last_of("\\/"))+"\\data";
+#else
+	ssize_t n=readlink("/proc/self/exe",exe,sizeof(exe)-1);
 	if(n<=0){
 	    return "data";
 	}
 	exe[n]=0;
 	std::string path(exe);
 	return path.substr(0,path.rfind('/'))+"/data";
+#endif
+    }
+
+    // Whether dir contains Chess.exe (in any case on Linux).
+    static bool has_psion_files(const std::string &dir){
+	static const char *names[]={"Chess.exe","CHESS.EXE","chess.exe"};
+	size_t i;
+	for(i=0;i<sizeof(names)/sizeof(names[0]);i++){
+	    FILE *f=fopen((dir+"/"+names[i]).c_str(),"rb");
+	    if(f){
+		fclose(f);
+		return true;
+	    }
+	}
+	return false;
     }
 
     bool Psion_Init(DOS_Shell *d){
 	char input_line[CMD_MAXLINE] = {0};
 	char args[1];
+	std::string dir=data_dir();
+	if(!has_psion_files(dir)){
+	    fprintf(stderr,"Psion Chess (Chess.exe etc.) not found in %s.\n"
+		    "See data/README.md for where to get it, or set PSION_DIR.\n",
+		    dir.c_str());
+	    exit(1);
+	}
 	init_ocr();
 	args[0]='0';
-	snprintf(input_line,CMD_MAXLINE,"MOUNT C \"%s\"",data_dir().c_str());
+	snprintf(input_line,CMD_MAXLINE,"MOUNT C \"%s\"",dir.c_str());
 	d->DoCommand(input_line);
 	strcpy(input_line,"C:");
 	d->DoCommand(input_line);
@@ -311,62 +358,97 @@ namespace psion {
 	return true;
     }
     
+    static void start_input();
+
     void IO_Init(){
 	setvbuf(stdin,NULL,_IONBF,0);
 	setvbuf(stdout,NULL,_IONBF,0); 
+#ifdef _WIN32
+	timeBeginPeriod(1);  // makes Sleep() precise to 1 ms
+	// Lines end in "\n", not "\r\n": GUIs on Windows accept that, and
+	// GUIs elsewhere (e.g. running the engine under Wine) need it.
+	_setmode(_fileno(stdout),_O_BINARY);
+#endif
+	start_input();
+    }
+
+#ifdef _WIN32
+    // On Windows a thread reads stdin, so that the emulator never blocks
+    // on input. (Checking a pipe for input without reading from it, as
+    // the POSIX code below does, is unreliable there, e.g. under Wine.)
+    static CRITICAL_SECTION input_lock;
+    static std::queue<std::string> input_lines;
+    static bool input_eof=false;
+
+    static DWORD WINAPI input_thread(LPVOID){
+	char line[65536];
+	while(fgets(line,sizeof(line),stdin)){
+	    EnterCriticalSection(&input_lock);
+	    input_lines.push(line);
+	    LeaveCriticalSection(&input_lock);
+	}
+	EnterCriticalSection(&input_lock);
+	input_eof=true;
+	LeaveCriticalSection(&input_lock);
+	return 0;
+    }
+
+    static void start_input(){
+	InitializeCriticalSection(&input_lock);
+	CreateThread(NULL,0,input_thread,NULL,0,NULL);
+    }
+
+    // Returns true and a line of input if one is available; sets eof at
+    // the end of the input.
+    static bool read_input_line(std::string &line, bool &eof){
+	bool ok=false;
+	EnterCriticalSection(&input_lock);
+	if(!input_lines.empty()){
+	    line=input_lines.front();
+	    input_lines.pop();
+	    ok=true;
+	}
+	eof=!ok && input_eof;
+	LeaveCriticalSection(&input_lock);
+	return ok;
+    }
+#else
+    static void start_input(){
     }
 
     /* Taken from fruit 2.1 source code */
-     bool input_available() {
-	
-#if defined(_WIN32) || defined(_WIN64)
-	
-	static bool init = false, is_pipe;
-	static HANDLE stdin_h;
-	DWORD val, error;
-	if (stdin->_cnt > 0) return true; // HACK: assumes FILE internals
-	if (!init) {
-	    init = true;
-	    stdin_h = GetStdHandle(STD_INPUT_HANDLE);
-	    is_pipe = !GetConsoleMode(stdin_h,&val); // HACK: assumes pipe on failure
-	    if (!is_pipe) {
-		SetConsoleMode(stdin_h,val&~(ENABLE_MOUSE_INPUT|ENABLE_WINDOW_INPUT));
-		FlushConsoleInputBuffer(stdin_h); // no idea if we can lose data doing this
-	    }
-	}
-	if (is_pipe) {
-	    if (!PeekNamedPipe(stdin_h,NULL,0,NULL,&val,NULL)) {
-		return true; // HACK: assumes EOF on failure
-	    }
-	    return val > 0; // != 0???
-	} else {
-	    GetNumberOfConsoleInputEvents(stdin_h,&val);
-	    return val > 1; // no idea why 1
-	}
-	
-	return false;
-
-#else // assume POSIX
-	
+    static bool input_available(){
 	int val;
 	fd_set set[1];
 	struct timeval time_val[1];
-	
+
 	FD_ZERO(set);
 	FD_SET(STDIN_FILENO,set);
-	
+
 	time_val->tv_sec = 0;
 	time_val->tv_usec = 0;
-	
+
 	val = select(STDIN_FILENO+1,set,NULL,NULL,time_val);
-	if (val == -1 && errno != EINTR) {
-	    //      my_fatal("input_available(): select(): %s\n",strerror(errno));
-	}
-	
 	return val > 0;
-	
-#endif
     }
+
+    // Returns true and a line of input if one is available; sets eof at
+    // the end of the input.
+    static bool read_input_line(std::string &line, bool &eof){
+	char buf[65536];
+	eof=false;
+	if(!input_available()){
+	    return false;
+	}
+	if(fgets(buf,sizeof(buf),stdin)){
+	    line=buf;
+	    return true;
+	}
+	eof=feof(stdin)!=0;
+	return false;
+    }
+#endif
+
     static bool illegal_move_seen=false;
 
     // Debug mode: stay in 2-player mode and read moves for both sides
@@ -1011,20 +1093,19 @@ namespace psion {
     }
 
     void ProcessConsole(){
-	char line[65536];
+	std::string line;
+	bool eof=false;
 	// In the interactive mode, moves are only read on the user's turn.
-	if(input_available() && (uci_mode || !game_state.thinking)){
-	    if(fgets(line,sizeof(line),stdin)){
-		std::string move(line);
-		move.erase(move.find_last_not_of(" \r\n")+1);
-		if(uci_mode || strncmp(line,"uci",3)==0){
-		    UciCommand(line);
-		}else if(IsMoveString(move)){
-		    SendUciMove(move);
-		}
-	    }else if(feof(stdin) && uci_mode){
-		exit(0);
+	if((uci_mode || !game_state.thinking) && read_input_line(line,eof)){
+	    std::string move(line);
+	    move.erase(move.find_last_not_of(" \r\n")+1);
+	    if(uci_mode || line.compare(0,3,"uci")==0){
+		UciCommand(line.c_str());
+	    }else if(IsMoveString(move)){
+		SendUciMove(move);
 	    }
+	}else if(eof && uci_mode){
+	    exit(0);
 	}
 	CheckGameState();
 	SendPromotion();

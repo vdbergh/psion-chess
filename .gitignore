@@ -1,5 +1,7 @@
 build/
+build-windows/
 /psion
+/psion.exe
 # Psion Chess itself is not distributed, see data/README.md
 data/*
 !data/README.md

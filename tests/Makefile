@@ -1,23 +1,36 @@
 # Tests for the Psion adapter.
 #
 #   make check        unit tests of the chess and UCI logic (fast)
-#   make integration  UCI tests against the real program (about a minute)
+#   make integration  UCI tests against the real program (about two minutes)
+#
+# With TARGET=windows, the tests are built for Windows and run under Wine.
 
-CXX ?= g++
+TARGET ?= linux
 CXXFLAGS ?= -g -O2 -Wall
 SRC = ../src/psion_mods
-PSION ?= ../psion
+
+ifeq ($(TARGET),windows)
+CXX = i686-w64-mingw32-g++
+TEST_CHESS = test_chess.exe
+RUN = wine
+PSION ?= wine $(abspath ../psion.exe)
+override LDFLAGS += -static
+else
+TEST_CHESS = test_chess
+RUN =
+PSION ?= $(abspath ../psion)
+endif
 
 .PHONY: check integration clean
 
-check: test_chess
-	./test_chess
+check: $(TEST_CHESS)
+	$(RUN) ./$(TEST_CHESS)
 
-test_chess: test_chess.cpp $(SRC)/chess.cpp $(SRC)/chess.h
-	$(CXX) $(CXXFLAGS) -I$(SRC) -o $@ test_chess.cpp $(SRC)/chess.cpp
+$(TEST_CHESS): test_chess.cpp $(SRC)/chess.cpp $(SRC)/chess.h
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -I$(SRC) -o $@ test_chess.cpp $(SRC)/chess.cpp
 
 integration:
-	python3 -I uci_test.py $(abspath $(PSION))
+	python3 -I uci_test.py "$(PSION)"
 
 clean:
-	rm -f test_chess uci_test.log
+	rm -f test_chess test_chess.exe uci_test.log

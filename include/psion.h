@@ -36,7 +36,6 @@ namespace psion {
 
     bool Psion_Init(DOS_Shell *d);
     void IO_Init();
-    bool input_available();
     void ocr(char txt_buf[TEXT_HEIGHT][TEXT_WIDTH],unsigned char* buf);
     void print_pixels(unsigned char * buf, int hoffset);
     void print_txt(char txt_buf[TEXT_HEIGHT][TEXT_WIDTH]);

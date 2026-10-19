@@ -1,6 +1,6 @@
-# Builds the engine, runs the unit tests and uploads a ready-to-use
-# package. The UCI integration tests need Psion Chess itself, which is not
-# part of the repository, so they are not run here.
+# Builds the engine for Linux and Windows, runs the unit tests and uploads
+# ready-to-use packages. The UCI integration tests need Psion Chess itself,
+# which is not part of the repository, so they are not run here.
 
 name: CI
 
@@ -37,10 +37,70 @@ jobs:
           name: psion-chess-linux-x86_64
           path: psion-chess-linux-x86_64.tar.gz
 
-  # For version tags (v1.0, ...): publish the package as a GitHub Release.
+  # Cross-compiled with MinGW-w64: a 32-bit executable, which also runs on
+  # 64-bit Windows.
+  build-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MinGW-w64
+        run: sudo apt-get update && sudo apt-get install -y g++-mingw-w64-i686
+
+      - name: Build
+        run: |
+          make -j"$(nproc)" windows
+          make -C tests test_chess.exe TARGET=windows
+
+      - name: Package
+        run: |
+          name=psion-chess-windows-x86
+          mkdir -p "$name/data"
+          cp psion.exe README.md COPYING AUTHORS "$name/"
+          i686-w64-mingw32-strip "$name/psion.exe"
+          cp data/README.md "$name/data/"
+          zip -r "$name.zip" "$name"
+          mkdir windows-tests
+          cp -r "$name" tests/test_chess.exe windows-tests/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: psion-chess-windows-x86
+          path: psion-chess-windows-x86.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-tests
+          path: windows-tests
+
+  # Runs the Windows build on Windows: the unit tests, and a start-up check
+  # (without Psion's files the engine must report them missing).
+  test-windows:
+    needs: build-windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-tests
+
+      - name: Unit tests
+        run: ./test_chess.exe
+
+      - name: Start-up check
+        run: |
+          status=0
+          echo uci | ./psion-chess-windows-x86/psion.exe 2> stderr.txt || status=$?
+          cat stderr.txt
+          test "$status" -eq 1
+          grep -q "Psion Chess (Chess.exe etc.) not found" stderr.txt
+
+  # For version tags (v1.0, ...): publish the packages as a GitHub Release.
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, build-windows, test-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -49,12 +109,18 @@ jobs:
         with:
           name: psion-chess-linux-x86_64
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: psion-chess-windows-x86
+
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          asset="psion-chess-$GITHUB_REF_NAME-linux-x86_64.tar.gz"
-          mv psion-chess-linux-x86_64.tar.gz "$asset"
-          gh release create "$GITHUB_REF_NAME" "$asset" \
+          linux="psion-chess-$GITHUB_REF_NAME-linux-x86_64.tar.gz"
+          windows="psion-chess-$GITHUB_REF_NAME-windows-x86.zip"
+          mv psion-chess-linux-x86_64.tar.gz "$linux"
+          mv psion-chess-windows-x86.zip "$windows"
+          gh release create "$GITHUB_REF_NAME" "$linux" "$windows" \
             --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" \
             --generate-notes
