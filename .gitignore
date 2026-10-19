@@ -1,0 +1,5 @@
+build/
+/psion
+# Psion Chess itself is not distributed, see data/README.md
+data/*
+!data/README.md
