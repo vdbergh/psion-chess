@@ -55,6 +55,9 @@ Diagnostics go to stderr.
   controls leave little time for thinking.
 - After `ucinewgame`, or when the GUI's move list diverges by more than four
   plies, the game is replayed from the start (about 0.7 s per ply).
+- Psion applies its own draw rules and may announce a draw (e.g. by
+  repetition) that the GUI does not see. Psion then stops accepting moves,
+  so if the GUI continues the game, it is replayed in a new game.
 
 ## How it works
 
@@ -70,8 +73,8 @@ Diagnostics go to stderr.
 
 ### Psion's memory
 
-These offsets are relative to Psion's data segment, which the adapter finds
-by scanning memory for a plausible board:
+These offsets are relative to Psion's data segment, which the adapter
+locates once at start-up by scanning memory for the start position:
 
 | Offset | Contents |
 |---|---|
@@ -86,7 +89,8 @@ known in advance (seen: `10` and `20`); the adapter learns them from the
 piece it typed at the promotion prompt or from the screen.
 
 The adapter accepts a memory state once it has been unchanged for 200 ms
-and derives each move from the change of the board.
+and derives each move from the change of the board. Reads that fail are
+ignored: Psion flashes the kings when it announces a draw or mate.
 
 ### Controlling Psion
 

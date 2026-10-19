@@ -426,33 +426,45 @@ namespace psion {
 	return true;
     }
 
+    // Psion's data segment is located once, while Psion shows the start
+    // position (it always does when the adapter starts it), and is never
+    // changed after that: memory holds other board-like data that a later
+    // search could mistake for the game.
+    static bool is_initial_state(unsigned int segment, PsionState &state){
+	return read_state_at(segment,state) && IsStartPosition(state.board) &&
+	    state.ply==0;
+    }
+
     bool ReadGameState(PsionState &state){
 	static unsigned int segment=0;
 	unsigned int s;
-	if(segment && read_state_at(segment,state)){
-	    return true;
+	if(segment){
+	    return read_state_at(segment,state);
 	}
 	// DS is normally Psion's data segment when the screen is updated.
 	s=SegValue(ds);
-	if(s && read_state_at(s,state)){
+	if(s && is_initial_state(s,state)){
 	    segment=s;
-	    return true;
-	}
-	// The full scan is expensive, so do not repeat it too often.
-	static unsigned int last_scan=0;
-	static bool scanned=false;
-	if(scanned && GetTicks()-last_scan<500){
-	    return false;
-	}
-	scanned=true;
-	last_scan=GetTicks();
-	for(s=1;s<0xA000;s++){
-	    if(read_state_at(s,state)){
-		segment=s;
-		return true;
+	}else{
+	    // The full scan is expensive, so do not repeat it too often.
+	    static unsigned int last_scan=0;
+	    static bool scanned=false;
+	    if(scanned && GetTicks()-last_scan<500){
+		return false;
+	    }
+	    scanned=true;
+	    last_scan=GetTicks();
+	    for(s=1;s<0xA000 && !segment;s++){
+		if(is_initial_state(s,state)){
+		    segment=s;
+		}
+	    }
+	    if(!segment){
+		return false;
 	    }
 	}
-	return false;
+	say("Psion's data segment is %04X\n",segment);
+	return true;
     }
 
     // A memory state is accepted once it has been unchanged for this long;
@@ -522,7 +534,9 @@ namespace psion {
 	static unsigned int pending_since=0;
 	PsionState cur;
 	if(!ReadGameState(cur)){
-	    have_pending=false;
+	    // Psion flashes the kings to announce a draw or mate, which makes
+	    // every other read fail. So ignore failed reads: the state read in
+	    // between still has to stay unchanged for STABLE_MS.
 	    return false;
 	}
 	if(!have_pending || !same_state(cur,pending)){
@@ -652,6 +666,8 @@ namespace psion {
     const unsigned int ACTION_GAP_MS=300;
     const unsigned int MOVE_TIMEOUT_MS=5000;
     const int MAX_RETRIES=3;
+    const int MAX_TWO_PLAYER_PRESSES=5;
+    const unsigned int SYNC_TIMEOUT_MS=20000;
 
     enum SearchState {SEARCH_NONE, SEARCH_RUNNING, SEARCH_HOLDING};
 
@@ -676,6 +692,9 @@ namespace psion {
 	unsigned int inflight_since;
 	int retries;
 	bool level_set;
+	int two_player_presses;       // '2' pressed without effect
+	size_t sync_progress_size;    // moves played when last checked
+	unsigned int sync_progress_ticks;
     } uci;
 
     static void uci_send(const char *format, ...){
@@ -744,6 +763,8 @@ namespace psion {
 
     static void UciPosition(const std::vector<std::string> &tokens){
 	PositionRequest req=ParsePosition(tokens);
+	uci.sync_progress_size=game_state.moves.size();
+	uci.sync_progress_ticks=GetTicks();
 	uci.has_target=true;
 	uci.unsupported=!req.supported;
 	uci.target=req.moves;
@@ -837,10 +858,36 @@ namespace psion {
 	    return;
 	}
 	if(!uci_synced()){
-	    if(!two_player_mode()){
-		press(KBD_2);
+	    // Give up if setting up the position makes no progress, rather
+	    // than leave the GUI waiting for readyok.
+	    if(moves.size()!=uci.sync_progress_size){
+		uci.sync_progress_size=moves.size();
+		uci.sync_progress_ticks=now;
+	    }else if(now-uci.sync_progress_ticks>SYNC_TIMEOUT_MS){
+		uci_send("info string Cannot set up the position\n");
+		uci.unsupported=true;
 		return;
 	    }
+	    if(uci.new_game){
+		uci.new_game=false;
+		if(!moves.empty()){
+		    press(KBD_leftshift,KBD_4);   // '$': new game
+		    return;
+		}
+	    }
+	    if(!two_player_mode()){
+		// Once Psion considers the game over (e.g. it announced a
+		// draw) it ignores '2'; only a new game helps then.
+		if(++uci.two_player_presses>MAX_TWO_PLAYER_PRESSES){
+		    say("Psion does not switch to 2-player mode, starting a new game\n");
+		    uci.two_player_presses=0;
+		    press(KBD_leftshift,KBD_4);
+		}else{
+		    press(KBD_2);
+		}
+		return;
+	    }
+	    uci.two_player_presses=0;
 	    if(uci.inflight){
 		if(moves.size()!=uci.inflight_size){
 		    uci.inflight=false;

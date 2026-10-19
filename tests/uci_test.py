@@ -235,6 +235,21 @@ class UciTest(unittest.TestCase):
             'h7g8n', 'f6g8', 'a2a4', 'b7b5', 'a4b5', 'a7a6', 'b5a6', 'c8b7',
             'a6a7', 'b7c6', 'a7b8q'], timeout=60)
 
+    def test_draw_claim(self):
+        # Psion announces a draw (by its own repetition rule) when it plays
+        # b2a1 here, flashing the kings; it then ignores '2' until a new
+        # game is started. Found in a fastchess match.
+        moves = (
+        'g1f3 d7d5 c2c4 c7c6 b2b3 g8f6 c1b2 c8f5 g2g3 e7e6 f1g2 h7h6 e1g1 '
+        'f8d6 f3d4 f5e4 d2d3 e4g2 g1g2 b8d7 b1d2 d8c7 c4d5 e6d5 d1c2 a8c8 '
+        'd4f5 e8g8 a1c1 d6b4 d2f3 f8e8 e2e3 c6c5 a2a3 b4a5 b3b4 a5b6 b4c5 '
+        'b6c5 d3d4 c5d6 c2b3 c7b8 b3b5 d7b6 f5d6 b8d6 c1c8 e8c8 f3e5 c8c2 '
+        'f1c1 d6c7 c1c2 c7c2 b2a1 c2e4 g2g1 e4c2 g1g2 c2c1 a1b2 c1c2').split()
+        self.search(moves, 'go wtime 35891 btime 34794 winc 1000 binc 1000',
+                    timeout=120)
+        self.engine.send('ucinewgame')
+        self.search(['c2c4'], timeout=30)
+
     def test_self_play(self):
         moves = []
         self.engine.send('ucinewgame')
