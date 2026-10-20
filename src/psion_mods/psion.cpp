@@ -72,14 +72,43 @@ void Delay(int msec){
 namespace psion {
 
     static bool uci_mode=false;
+    static bool verbose=false;
 
-    // Diagnostics go to stdout in the interactive modes and to stderr in
-    // UCI mode, where stdout is reserved for the protocol.
+    void SetVerbose(bool on){
+	verbose=on;
+    }
+
+    bool Verbose(){
+	return verbose;
+    }
+
+    // Writes complete lines only, each with a single write, so that a GUI
+    // that merges stderr with stdout never splits a line of either.
+    void WriteLines(FILE *out, std::string &pending, const char *text){
+	pending+=text;
+	size_t end=pending.rfind('\n');
+	if(end==std::string::npos){
+	    return;
+	}
+	fwrite(pending.data(),1,end+1,out);
+	fflush(out);
+	pending.erase(0,end+1);
+    }
+
+    // Diagnostics go to stdout in the interactive modes. In UCI mode,
+    // where stdout is reserved for the protocol, they go to stderr, and
+    // only with --verbose (or "debug on").
     static void say(const char *format, ...){
+	static std::string pending;
+	if(uci_mode && !verbose){
+	    return;
+	}
+	char buf[4096];
 	va_list args;
 	va_start(args,format);
-	vfprintf(uci_mode?stderr:stdout,format,args);
+	vsnprintf(buf,sizeof(buf),format,args);
 	va_end(args);
+	WriteLines(uci_mode?stderr:stdout,pending,buf);
     }
 
     bool validate_move(std::string move){
@@ -368,6 +397,7 @@ namespace psion {
 	// Lines end in "\n", not "\r\n": GUIs on Windows accept that, and
 	// GUIs elsewhere (e.g. running the engine under Wine) need it.
 	_setmode(_fileno(stdout),_O_BINARY);
+	_setmode(_fileno(stderr),_O_BINARY);
 #endif
 	start_input();
     }
@@ -380,12 +410,71 @@ namespace psion {
     static std::queue<std::string> input_lines;
     static bool input_eof=false;
 
+    static void add_input_line(const std::string &line){
+	EnterCriticalSection(&input_lock);
+	input_lines.push(line);
+	LeaveCriticalSection(&input_lock);
+    }
+
+    // A console echoes what is typed relative to where the cursor was when
+    // the read started, so output written while a read is pending (always,
+    // with this thread) would make the echo jump back. Hence a console is
+    // read key by key, and the thread echoes the keys itself.
+    static void read_console(HANDLE in){
+	HANDLE out=CreateFileA("CONOUT$",GENERIC_READ|GENERIC_WRITE,
+			       FILE_SHARE_READ|FILE_SHARE_WRITE,NULL,
+			       OPEN_EXISTING,0,NULL);
+	std::string line;
+	for(;;){
+	    INPUT_RECORD event;
+	    DWORD n;
+	    if(!ReadConsoleInputA(in,&event,1,&n)){
+		return;
+	    }
+	    if(n==0 || event.EventType!=KEY_EVENT ||
+	       !event.Event.KeyEvent.bKeyDown){
+		continue;
+	    }
+	    char c=event.Event.KeyEvent.uChar.AsciiChar;
+	    const char *echo=NULL;
+	    std::string typed;
+	    if(event.Event.KeyEvent.wVirtualKeyCode==VK_RETURN ||
+	       c=='\r' || c=='\n'){
+		add_input_line(line+"\n");
+		line.clear();
+		echo="\r\n";
+	    }else if(c=='\b' || c==127){
+		if(line.empty()){
+		    continue;
+		}
+		line.erase(line.size()-1);
+		echo="\b \b";
+	    }else if(c==26){  // Ctrl-Z: end of input
+		return;
+	    }else if((unsigned char)c>=32){
+		line+=c;
+		typed=std::string(1,c);
+		echo=typed.c_str();
+	    }else{
+		continue;
+	    }
+	    if(out!=INVALID_HANDLE_VALUE){
+		DWORD written;
+		WriteConsoleA(out,echo,strlen(echo),&written,NULL);
+	    }
+	}
+    }
+
     static DWORD WINAPI input_thread(LPVOID){
-	char line[65536];
-	while(fgets(line,sizeof(line),stdin)){
-	    EnterCriticalSection(&input_lock);
-	    input_lines.push(line);
-	    LeaveCriticalSection(&input_lock);
+	HANDLE in=GetStdHandle(STD_INPUT_HANDLE);
+	DWORD mode;
+	if(GetConsoleMode(in,&mode)){
+	    read_console(in);
+	}else{
+	    char line[65536];
+	    while(fgets(line,sizeof(line),stdin)){
+		add_input_line(line);
+	    }
 	}
 	EnterCriticalSection(&input_lock);
 	input_eof=true;
@@ -893,6 +982,10 @@ namespace psion {
 		press(KBD_m);
 		uci.movenow_sent=true;
 		uci.movenow_ticks=GetTicks();
+	    }
+	}else if(cmd=="debug"){
+	    if(tokens.size()>1){
+		verbose=tokens[1]=="on";
 	    }
 	}else if(cmd=="quit"){
 	    exit(0);

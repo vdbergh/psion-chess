@@ -1,7 +1,9 @@
 #ifndef PSION_H
 #define PSION_H
 
+#include <cstdio>
 #include <queue>
+#include <string>
 
 #include "shell.h"
 #include "keyboard.h"
@@ -33,6 +35,12 @@ namespace psion {
 
     void ProcessConsole();
     void ProcessScreen(unsigned char pixels[SCREEN_BPP*SCREEN_WIDTH*SCREEN_HEIGHT]);
+
+    // Diagnostics on stderr in UCI mode (--verbose, or "debug on").
+    void SetVerbose(bool on);
+    bool Verbose();
+    // Appends text to pending and writes the complete lines in it to out.
+    void WriteLines(FILE *out, std::string &pending, const char *text);
 
     bool Psion_Init(DOS_Shell *d);
     void IO_Init();

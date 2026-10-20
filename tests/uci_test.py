@@ -6,7 +6,8 @@ ENGINE_COMMAND is the program, optionally with a wrapper, e.g.
 "wine ../psion.exe". Set PSION_DIR if Psion's files are not in "data"
 next to the program.
 
-Engine diagnostics (stderr) are written to uci_test.log.
+The engine runs with --verbose; its diagnostics (stderr) are written to
+uci_test.log.
 """
 import os
 import queue
@@ -22,12 +23,13 @@ LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uci_test.log')
 
 
 class Engine:
-    def __init__(self):
+    def __init__(self, args=('--verbose',), stderr=None):
         self.log = open(LOG, 'a')
         # Binary, so that "\r\n" line ends stay visible (see _read).
-        self.proc = subprocess.Popen(shlex.split(PSION), stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE, stderr=self.log,
-                                     bufsize=0)
+        self.proc = subprocess.Popen(shlex.split(PSION) + list(args),
+                                     stdin=subprocess.PIPE,
+                                     stdout=subprocess.PIPE,
+                                     stderr=stderr or self.log, bufsize=0)
         self.lines = queue.Queue()
         threading.Thread(target=self._read, daemon=True).start()
 
@@ -277,6 +279,28 @@ class QuitTest(unittest.TestCase):
         e.send('quit')
         self.assertEqual(e.proc.wait(10), 0)
         e.close()
+
+    def test_quiet(self):
+        """Without --verbose nothing but UCI is written, until "debug on"."""
+        e = Engine(args=(), stderr=subprocess.PIPE)
+        e.send('uci')
+        e.expect('uciok', 10)
+        e.send('position startpos moves e2e4')
+        e.send('go movetime 300')
+        bestmove(e, 15)
+        e.send('debug on')
+        e.send('position startpos moves e2e4 e7e5')
+        e.send('go movetime 300')
+        bestmove(e, 15)
+        e.send('quit')
+        self.assertEqual(e.proc.wait(10), 0)
+        err = e.proc.stderr.read().decode('utf-8', 'replace')
+        e.proc.stderr.close()
+        e.close()
+        # Only the second search was reported: not the first move.
+        self.assertNotIn('Ply 1,', err)
+        self.assertIn('e2e4 e7e5', err)
+        self.assertNotIn('DOSBox', err)
 
 
 if __name__ == '__main__':

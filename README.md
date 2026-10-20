@@ -69,13 +69,15 @@ and exits.
     go movetime 2000
     bestmove c7c5
 
-Diagnostics go to stderr.
+Only UCI output is written by default. With `--verbose` (or `-v`), or
+after the UCI command `debug on`, the engine also writes diagnostics to
+stderr: the moves and board after each move, start-up messages, etc.
 
 ### Supported UCI commands
 
 `uci`, `isready`, `ucinewgame`, `position startpos [moves ...]`, `go`
 (`wtime`, `btime`, `winc`, `binc`, `movestogo`, `movetime`, `infinite`),
-`stop` and `quit`.
+`stop`, `debug on|off` and `quit`.
 
 ### Limitations
 
@@ -140,7 +142,7 @@ ignored: Psion flashes the kings when it announces a draw or mate.
 ## Other modes and tools
 
 Without the `uci` command the program reads moves like `e2e4` from stdin,
-and Psion replies to them. Environment variables for experiments:
+and Psion replies to them; diagnostics then go to stdout. Environment variables for experiments:
 
 | Variable | Effect |
 |---|---|

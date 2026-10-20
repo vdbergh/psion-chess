@@ -139,13 +139,18 @@ void GFX_Events() {
 }
 
 void GFX_ShowMsg(char const* format,...) {
+	// DOSBox's messages are diagnostics too: only with --verbose.
+	static std::string pending;
+	if(!psion::Verbose()){
+	    return;
+	}
 	char buf[512];
 	va_list msg;
 	va_start(msg,format);
-	vsprintf(buf,format,msg);
-        strcat(buf,"\n");
+	vsnprintf(buf,sizeof(buf)-1,format,msg);
 	va_end(msg);
-	fprintf(stderr,"%s",buf); //Else buf is parsed again.
+	strcat(buf,"\n");
+	psion::WriteLines(stderr,pending,buf);
 }
 
 void restart_program(std::vector<std::string> & parameters) {
@@ -154,6 +159,9 @@ void restart_program(std::vector<std::string> & parameters) {
 //extern void UI_Init(void);
 int main(int argc, char* argv[]) {
     CommandLine com_line(argc,argv);
+    if(com_line.FindExist("--verbose",true) || com_line.FindExist("-v",true)){
+	psion::SetVerbose(true);
+    }
     Config myconf(&com_line);
     control=&myconf;
     DOSBOX_Init();
