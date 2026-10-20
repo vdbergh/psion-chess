@@ -51,6 +51,24 @@ namespace psion {
     };
     PositionRequest ParsePosition(const std::vector<std::string> &tokens);
 
+    // Psion's analysis display (bottom row, in analysis mode): a score in
+    // pawns from the side to move's point of view, then the principal
+    // variation, e.g. "-00.4 E2-E4 D7-D5 B1-C3 D5xE4". A mate is shown as
+    // 99.9 (or -99.9 when the side to move is mated).
+    struct Analysis {
+	bool mate;
+	int score;        // centipawns, or moves to mate (< 0: being mated)
+	std::vector<std::string> pv;   // UCI notation
+	bool complete;    // all of the line was understood
+    };
+    // white: the side to move. False if the row is not an analysis line.
+    bool ParseAnalysis(const std::string &row, bool white, Analysis &a);
+
+    // Plays pv on board (white to move) to check it. Psion does not show
+    // the piece promoted to; 'q' is added then. False if a move is not
+    // by a piece of the side to move or captures one of its own pieces.
+    bool CheckPv(const Board board, bool white, std::vector<std::string> &pv);
+
     enum SyncAction {
 	SYNC_DONE,         // game equals target
 	SYNC_SEND_MOVE,    // enter target[game.size()]

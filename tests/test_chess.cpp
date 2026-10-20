@@ -501,6 +501,107 @@ static void test_plan_sync(){
     CHECK_EQ(PlanSync(long_game,split("d2d4 d7d5")),SYNC_NEW_GAME);
 }
 
+// Parses an analysis row, "" if it is not one; else "cp|mate N pv...",
+// with "?" at the end if the line was not completely understood.
+static std::string analysis(const char *row, bool white){
+    Analysis a;
+    if(!ParseAnalysis(row,white,a)){
+	return "";
+    }
+    char buf[32];
+    snprintf(buf,sizeof(buf),"%s %d",a.mate?"mate":"cp",a.score);
+    std::string r=buf;
+    for(size_t i=0;i<a.pv.size();i++){
+	r+=" "+a.pv[i];
+    }
+    return a.complete?r:r+" ?";
+}
+
+static void test_parse_analysis(){
+    // as shown by Psion (rows are padded to 80 columns)
+    CHECK_EQ(analysis("-00.4 E2-E4 D7-D5 B1-C3 G8-F6 C3xD5 F6xE4 D5-C3 D8-D4"
+		      "                         ",true),
+	     "cp -40 e2e4 d7d5 b1c3 g8f6 c3d5 f6e4 d5c3 d8d4");
+    CHECK_EQ(analysis(" 00.1 E2-E4 D7-D5",true),"cp 10 e2e4 d7d5");
+    CHECK_EQ(analysis("-00.0 E2-E4",true),"cp 0 e2e4");
+    CHECK_EQ(analysis(" 23.0 E7xC5 G8-F7 C7-C8",true),"cp 2300 e7c5 g8f7 c7c8");
+    // castling is shown as a king move; other notations are accepted too
+    CHECK_EQ(analysis(" 00.4 G6-H5 C8-D7 E1-G1",false),
+	     "cp 40 g6h5 c8d7 e1g1");
+    CHECK_EQ(analysis(" 00.4 O-O E8-G8 O-O-O",true),
+	     "cp 40 e1g1 e8g8 e1c1");
+    CHECK_EQ(analysis(" 00.4 A7-A8Q B2xA1=N C7-C8(R)",true),
+	     "cp 40 a7a8q b2a1n c7c8r");
+    CHECK_EQ(analysis(" 00.4 E2-E4+ D7-D5#",true),"cp 40 e2e4 d7d5");
+    // mates: the length of the line gives the number of moves
+    CHECK_EQ(analysis(" 99.9 C4xF7 E8-E7 C3-D5",true),"mate 2 c4f7 e8e7 c3d5");
+    CHECK_EQ(analysis(" 99.9 H5xF7",true),"mate 1 h5f7");
+    CHECK_EQ(analysis("-99.9 E8-E7 C3-D5",false),"mate -1 e8e7 c3d5");
+    CHECK_EQ(analysis("-99.9 G7-G6 H5xF7 E8-E7 F7-F6",false),
+	     "mate -2 g7g6 h5f7 e8e7 f7f6");
+    // a row Psion was redrawing: blanks in place of changed characters
+    CHECK_EQ(analysis(" 12.  C6-C7 D4- 5 C7-C8",true),"");
+    CHECK_EQ(analysis(" 12.4 C6-C7 D4- 5 C7-C8",true),"cp 1240 c6c7 ?");
+    // not analysis
+    CHECK_EQ(analysis("",true),"");
+    CHECK_EQ(analysis("                    ",true),"");
+    CHECK_EQ(analysis("PROMOTE TO Q,R,B,N ?",true),"");
+    CHECK_EQ(analysis("ILLEGAL MOVE",true),"");
+    CHECK_EQ(analysis(" 00.4",true),"");
+    CHECK_EQ(analysis(" 00.4 HELLO",true),"");
+    CHECK_EQ(analysis("1.5 E2-E4",true),"cp 150 e2e4");
+    CHECK_EQ(analysis("-.5 E2-E4",true),"");
+}
+
+// Checks a line from a diagram; the line as completed, "" if rejected.
+static std::string check_pv(const char *diagram, bool white, const char *line){
+    Board b;
+    make_board(b,diagram);
+    std::vector<std::string> pv=split(line);
+    if(!CheckPv(b,white,pv)){
+	return "";
+    }
+    std::string r;
+    for(size_t i=0;i<pv.size();i++){
+	r+=(i?" ":"")+pv[i];
+    }
+    return r;
+}
+
+static void test_check_pv(){
+    const char *start=
+	"rnbqkbnr" "pppppppp" "........" "........"
+	"........" "........" "PPPPPPPP" "RNBQKBNR";
+    CHECK_EQ(check_pv(start,true,"e2e4 e7e5 g1f3"),"e2e4 e7e5 g1f3");
+    // the wrong side, an empty square, a capture of an own piece
+    CHECK_EQ(check_pv(start,false,"e2e4"),"");
+    CHECK_EQ(check_pv(start,true,"e2e4 e2e3"),"");
+    CHECK_EQ(check_pv(start,true,"e3e4"),"");
+    CHECK_EQ(check_pv(start,true,"d1d2"),"");
+    // a move missing from the line: the sides no longer alternate
+    CHECK_EQ(check_pv(start,true,"e2e4 g1f3"),"");
+    // castling moves the rook, which can then move
+    const char *castle=
+	"r...k..r" "pppppppp" "........" "........"
+	"........" "........" "PPPPPPPP" "R...K..R";
+    CHECK_EQ(check_pv(castle,true,"e1g1 e8c8 f1f2"),"");
+    CHECK_EQ(check_pv(castle,true,"e1g1 e8c8 f1e1 d8d1"),
+	     "e1g1 e8c8 f1e1 d8d1");
+    // en passant removes the pawn taken
+    const char *ep=
+	"....k..." "...p...." "........" "....P..."
+	"........" "........" "........" "....K...";
+    CHECK_EQ(check_pv(ep,false,"d7d5 e5d6 e8d8 d5d4"),"");
+    CHECK_EQ(check_pv(ep,false,"d7d5 e5d6 e8d8 d6d7"),"d7d5 e5d6 e8d8 d6d7");
+    // promotions without a piece become queens; the queen can move on
+    const char *promo=
+	"....k..." "..P....." "........" "........"
+	"........" "........" "......p." "....K...";
+    CHECK_EQ(check_pv(promo,true,"c7c8 g2g1 c8c1 g1e3"),
+	     "c7c8q g2g1q c8c1 g1e3");
+    CHECK_EQ(check_pv(promo,true,"c7c8n e8d8 c8b6"),"c7c8n e8d8 c8b6");
+}
+
 int main(){
     test_decode_square();
     test_learn_square_code();
@@ -517,6 +618,8 @@ int main(){
     test_think_time();
     test_parse_position();
     test_plan_sync();
+    test_parse_analysis();
+    test_check_pv();
     printf("%d checks, %d failures\n",checks,failures);
     return failures?1:0;
 }

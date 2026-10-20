@@ -197,12 +197,53 @@ class UciTest(unittest.TestCase):
         moves = ['a2a4', 'h7h5', 'h2h4', 'a7a5']
         e.send('position startpos moves ' + ' '.join(moves))
         e.send('go infinite')
-        self.assertEqual(e.silent(3), [])
+        self.assertEqual([l for l in e.silent(3) if not l.startswith('info ')],
+                         [])
         e.send('isready')       # must be answered during a search
         e.expect('readyok', 1)
         e.send('stop')
         move = bestmove(e, 2)
         self.assertTrue(Board(moves).plausible(move), move)
+
+    def test_info(self):
+        """Psion's analysis display is reported as info lines."""
+        e = self.engine
+        moves = ['g2g4', 'a7a6', 'h2h4', 'h7h6']    # out of Psion's book
+        e.send('position startpos moves ' + ' '.join(moves))
+        e.send('go movetime 3000')
+        line, before = e.expect('bestmove', 15)
+        infos = [l.split() for l in before if l.startswith('info ')]
+        self.assertTrue(infos, before)
+        # The last pv starts with the move played: if Psion did not
+        # display its line, "info pv MOVE" says so much.
+        self.assertEqual(infos[-1][infos[-1].index('pv') + 1],
+                         line.split()[1], infos)
+        if infos[-1][:2] == ['info', 'pv']:
+            self.assertEqual(len(infos[-1]), 3, infos)
+            infos.pop()
+        self.assertTrue(infos, before)
+        for info in infos:
+            self.assertEqual(info[:2], ['info', 'time'], info)
+            self.assertEqual(info[3], 'score', info)
+            self.assertIn(info[4], ('cp', 'mate'), info)
+            int(info[5])
+            self.assertEqual(info[6], 'pv', info)
+            pv = info[7:]
+            self.assertTrue(pv, info)
+            self.assertTrue(Board(moves).plausible(pv[0]), info)
+        self.assertTrue(Board(moves).plausible(line.split()[1]), line)
+
+    def test_info_mate(self):
+        e = self.engine
+        # Legal's mate: 1. Bxf7+ Ke7 2. Nd5#
+        moves = ['e2e4', 'e7e5', 'g1f3', 'd7d6', 'f1c4', 'c8g4', 'b1c3',
+                 'g7g6', 'f3e5', 'g4d1']
+        e.send('position startpos moves ' + ' '.join(moves))
+        e.send('go movetime 2000')
+        line, before = e.expect('bestmove', 30)
+        self.assertEqual(line, 'bestmove c4f7')
+        self.assertIn('score mate 2 pv c4f7 e8e7 c3d5',
+                      ' '.join(l for l in before if l.startswith('info ')))
 
     def test_locked_pawn_ending(self):
         """Psion used to hang here (at level Infinite): only the kings can

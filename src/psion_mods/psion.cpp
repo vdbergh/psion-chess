@@ -790,6 +790,19 @@ namespace psion {
 	return screen_rows[22].compare(0,8,"LEVEL E ")==0;
     }
 
+    // In analysis mode Psion shows its score and principal variation on
+    // the bottom row while it thinks.
+    static bool analysis_on(){
+	return screen_rows[22].find("ANALYSIS ON")!=std::string::npos;
+    }
+
+    // The bottom row as last drawn (screen_rows keeps old contents), and
+    // since when. It is used once it has not changed for a while: when
+    // Psion redraws it, the characters that change are erased first.
+    static std::string analysis_row;
+    static unsigned int analysis_row_since;
+    const unsigned int ANALYSIS_STABLE_MS=50;
+
     // The piece to promote to, typed once Psion asks for it. Typed any
     // earlier, the letter would be taken as a command (Q is QUIT).
     static char pending_promotion=0;
@@ -868,6 +881,7 @@ namespace psion {
 	bool stop_received;
 	unsigned int think_ms;        // 0: until "stop"
 	unsigned int search_start;    // when "go" was received
+	unsigned int thinking_start;  // when Psion started to think
 	bool movenow_sent;
 	unsigned int movenow_ticks;
 	std::string held_move;        // found before "stop" in infinite mode
@@ -878,7 +892,10 @@ namespace psion {
 	int retries;
 	bool level_set;
 	int two_player_presses;       // '2' pressed without effect
+	int analysis_presses;         // 'a' pressed without effect
 	int easy_presses;             // 'e' pressed without effect
+	std::string last_analysis;    // analysis row last seen
+	std::string info_move;        // first move of the last info pv
 	size_t sync_progress_size;    // moves played when last checked
 	unsigned int sync_progress_ticks;
     } uci;
@@ -909,6 +926,11 @@ namespace psion {
     static void finish_search(const std::string &move){
 	uci.search=SEARCH_NONE;
 	game_state.thinking=false;
+	// Stopped by MOVE-NOW, Psion plays the best move found so far, which
+	// it may not have displayed yet: then the last pv is not the move.
+	if(!uci.info_move.empty() && move!=uci.info_move && move!="0000"){
+	    uci_send("info pv %s\n",move.c_str());
+	}
 	uci_send("bestmove %s\n",move.c_str());
     }
 
@@ -1038,6 +1060,52 @@ namespace psion {
 	return false;
     }
 
+    // Switches analysis mode on (for info lines). Returns true once that
+    // is done, or when it does not work: the engine plays without.
+    const int MAX_ANALYSIS_PRESSES=4;
+    static bool analysis_check(){
+	if(analysis_on()){
+	    uci.analysis_presses=0;
+	    return true;
+	}
+	if(uci.analysis_presses>=MAX_ANALYSIS_PRESSES){
+	    return true;
+	}
+	uci.analysis_presses++;
+	press(KBD_a);
+	return false;
+    }
+
+    // Sends an info line for each new line on Psion's analysis display
+    // during a search.
+    static void UciAnalysis(){
+	if(uci.search!=SEARCH_RUNNING || analysis_row==uci.last_analysis ||
+	   GetTicks()-analysis_row_since<ANALYSIS_STABLE_MS){
+	    return;
+	}
+	uci.last_analysis=analysis_row;
+	bool white=white_to_move();
+	Analysis a;
+	if(!ParseAnalysis(analysis_row,white,a)){
+	    return;
+	}
+	// Only complete lines for this position.
+	if(!a.complete || !CheckPv(known.board,white,a.pv)){
+	    say("Analysis line not used: %s\n",analysis_row.c_str());
+	    return;
+	}
+	std::string info;
+	char buf[64];
+	snprintf(buf,sizeof(buf),"info time %u score %s %d pv",
+		 GetTicks()-uci.thinking_start,a.mate?"mate":"cp",a.score);
+	info=buf;
+	for(size_t i=0;i<a.pv.size();i++){
+	    info+=" "+a.pv[i];
+	}
+	uci_send("%s\n",info.c_str());
+	uci.info_move=a.pv[0];
+    }
+
     // Drives Psion towards the state the GUI asked for. Called every tick.
     static void UciStep(){
 	unsigned int now=GetTicks();
@@ -1060,7 +1128,7 @@ namespace psion {
 	   pending_promotion){
 	    return;
 	}
-	if(!level_set_check() || !easy_check()){
+	if(!level_set_check() || !easy_check() || !analysis_check()){
 	    return;
 	}
 	if(!uci_synced()){
@@ -1135,8 +1203,11 @@ namespace psion {
 	if(uci.go_pending){
 	    uci.go_pending=false;
 	    press(KBD_c);
+	    uci.thinking_start=GetTicks();
 	    game_state.thinking=true;
 	    uci.search=SEARCH_RUNNING;
+	    uci.last_analysis=analysis_row;   // from an earlier search
+	    uci.info_move.clear();
 	    uci.movenow_sent=false;
 	}
     }
@@ -1152,6 +1223,11 @@ namespace psion {
 	    if(row.find_first_not_of(' ')!=std::string::npos){
 		screen_rows[i]=row;
 	    }
+	}
+	std::string row(txt_buf[24],TEXT_WIDTH);
+	if(row!=analysis_row){
+	    analysis_row=row;
+	    analysis_row_since=GetTicks();
 	}
 	ocr_board(board,(unsigned char *)pixels);
 	if(MemScan_Enabled()){
@@ -1233,6 +1309,7 @@ namespace psion {
 	CheckGameState();
 	SendPromotion();
 	if(uci_mode){
+	    UciAnalysis();
 	    UciStep();
 	}
 	keyboard_buffer.ProcessKeys();

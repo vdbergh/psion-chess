@@ -68,6 +68,11 @@ and exits.
     position startpos moves e2e4
     go movetime 2000
     bestmove c7c5
+    position startpos moves g2g4 a7a6 h2h4 h7h6
+    go movetime 2000
+    info time 108 score cp -40 pv g1f3 g8f6 d2d4 f6g4 e2e4
+    info time 125 score cp 10 pv e2e4 d7d5 b1c3 d5e4 c3e4
+    bestmove e2e4
 
 Only UCI output is written by default. With `--verbose` (or `-v`), or
 after the UCI command `debug on`, the engine also writes diagnostics to
@@ -84,7 +89,14 @@ stderr: the moves and board after each move, start-up messages, etc.
 - FEN positions other than the start position are not supported: the engine
   answers `info string FEN positions are not supported` and `bestmove 0000`.
   (Psion's set-up mode cannot express castling or en passant rights.)
-- No `info` output (depth, score, principal variation).
+- `info` lines have the time searched (since Psion started to think, so
+  without entering the opponent's move), a score and a principal
+  variation, but no depth or node count: Psion's analysis display does
+  not show those. The score
+  has a resolution of 10 centipawns. Book moves and moves found
+  instantly come without `info`.
+- A mate is shown by Psion as a score of 99.9; the number of moves to mate
+  is derived from the length of the principal variation.
 - `go depth`/`nodes`/`mate` are not supported; such searches take 5 seconds.
 - Pondering is not offered; `go ponder` is treated as `go infinite`.
 - Moves are entered through the keyboard, which takes about 0.7 seconds per
@@ -137,6 +149,12 @@ ignored: Psion flashes the kings when it announces a draw or mate.
   happens almost at once in a locked pawn ending.
 - `e` switches easy mode on: Psion does not think on the opponent's
   time. (Pondering, too, can hang in such positions.)
+- `a` switches analysis mode on: while Psion thinks, the bottom row shows
+  its score (in pawns, for the side to move) and principal variation,
+  e.g. `-00.4 E2-E4 D7-D5 B1-C3 D5xE4`. These become `info` lines. A row
+  is used once it has not changed for 50 ms (Psion erases the characters
+  that change before drawing new ones) and if its moves can be played on
+  the board. Promotions are shown without the piece; a queen is assumed.
 - `2` sets 2-player mode, in which moves for both sides can be entered.
 - `c` (Compute) starts a search, `m` (Move now) ends it when the time
   allocated to the move is used up.
