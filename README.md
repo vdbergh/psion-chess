@@ -70,8 +70,8 @@ and exits.
     bestmove c7c5
     position startpos moves g2g4 a7a6 h2h4 h7h6
     go movetime 2000
-    info time 108 score cp -40 pv g1f3 g8f6 d2d4 f6g4 e2e4
-    info time 125 score cp 10 pv e2e4 d7d5 b1c3 d5e4 c3e4
+    info depth 5 time 87 score cp -40 pv g1f3 g8f6 d2d4 f6g4 e2e4
+    info depth 5 time 104 score cp 10 pv e2e4 d7d5 b1c3 d5e4 c3e4
     bestmove e2e4
 
 Only UCI output is written by default. With `--verbose` (or `-v`), or
@@ -91,8 +91,9 @@ stderr: the moves and board after each move, start-up messages, etc.
   (Psion's set-up mode cannot express castling or en passant rights.)
 - `info` lines have the time searched (since Psion started to think, so
   without entering the opponent's move), a score and a principal
-  variation, but no depth or node count: Psion's analysis display does
-  not show those. The score
+  variation, but no node count. Psion does not show the search depth
+  either; the depth given is the length of the longest principal
+  variation so far in the search. The score
   has a resolution of 10 centipawns. Book moves and moves found
   instantly come without `info`.
 - A mate is shown by Psion as a score of 99.9; the number of moves to mate

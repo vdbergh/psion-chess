@@ -222,15 +222,20 @@ class UciTest(unittest.TestCase):
             self.assertEqual(len(infos[-1]), 3, infos)
             infos.pop()
         self.assertTrue(infos, before)
+        depth = 0
         for info in infos:
-            self.assertEqual(info[:2], ['info', 'time'], info)
-            self.assertEqual(info[3], 'score', info)
-            self.assertIn(info[4], ('cp', 'mate'), info)
-            int(info[5])
-            self.assertEqual(info[6], 'pv', info)
-            pv = info[7:]
+            self.assertEqual(info[:2], ['info', 'depth'], info)
+            self.assertEqual(info[3], 'time', info)
+            self.assertEqual(info[5], 'score', info)
+            self.assertIn(info[6], ('cp', 'mate'), info)
+            int(info[7])
+            self.assertEqual(info[8], 'pv', info)
+            pv = info[9:]
             self.assertTrue(pv, info)
             self.assertTrue(Board(moves).plausible(pv[0]), info)
+            # the depth: the longest pv so far
+            depth = max(depth, len(pv))
+            self.assertEqual(int(info[2]), depth, info)
         self.assertTrue(Board(moves).plausible(line.split()[1]), line)
 
     def test_info_mate(self):
@@ -242,6 +247,8 @@ class UciTest(unittest.TestCase):
         e.send('go movetime 2000')
         line, before = e.expect('bestmove', 30)
         self.assertEqual(line, 'bestmove c4f7')
+        self.assertIn('depth 3 time',
+                      ' '.join(l for l in before if l.startswith('info ')))
         self.assertIn('score mate 2 pv c4f7 e8e7 c3d5',
                       ' '.join(l for l in before if l.startswith('info ')))
 

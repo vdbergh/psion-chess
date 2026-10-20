@@ -896,6 +896,7 @@ namespace psion {
 	int easy_presses;             // 'e' pressed without effect
 	std::string last_analysis;    // analysis row last seen
 	std::string info_move;        // first move of the last info pv
+	size_t info_depth;            // longest pv in this search
 	size_t sync_progress_size;    // moves played when last checked
 	unsigned int sync_progress_ticks;
     } uci;
@@ -1094,10 +1095,14 @@ namespace psion {
 	    say("Analysis line not used: %s\n",analysis_row.c_str());
 	    return;
 	}
+	// Psion does not show the depth; the length of the longest line
+	// seen comes close (and GUIs such as Polyglot need a depth).
+	uci.info_depth=std::max(uci.info_depth,a.pv.size());
 	std::string info;
-	char buf[64];
-	snprintf(buf,sizeof(buf),"info time %u score %s %d pv",
-		 GetTicks()-uci.thinking_start,a.mate?"mate":"cp",a.score);
+	char buf[80];
+	snprintf(buf,sizeof(buf),"info depth %u time %u score %s %d pv",
+		 (unsigned int)uci.info_depth,GetTicks()-uci.thinking_start,
+		 a.mate?"mate":"cp",a.score);
 	info=buf;
 	for(size_t i=0;i<a.pv.size();i++){
 	    info+=" "+a.pv[i];
@@ -1208,6 +1213,7 @@ namespace psion {
 	    uci.search=SEARCH_RUNNING;
 	    uci.last_analysis=analysis_row;   // from an earlier search
 	    uci.info_move.clear();
+	    uci.info_depth=0;
 	    uci.movenow_sent=false;
 	}
     }
