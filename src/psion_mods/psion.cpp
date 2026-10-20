@@ -362,7 +362,7 @@ namespace psion {
 
     bool Psion_Init(DOS_Shell *d){
 	char input_line[CMD_MAXLINE] = {0};
-	char args[1];
+	char args[]="";               // Chess.exe's command line
 	std::string dir=data_dir();
 	if(!has_psion_files(dir)){
 	    fprintf(stderr,"Psion Chess (Chess.exe etc.) not found in %s.\n"
@@ -371,12 +371,13 @@ namespace psion {
 	    exit(1);
 	}
 	init_ocr();
-	args[0]='0';
 	snprintf(input_line,CMD_MAXLINE,"MOUNT C \"%s\"",dir.c_str());
 	d->DoCommand(input_line);
 	strcpy(input_line,"C:");
 	d->DoCommand(input_line);
 	strcpy(input_line,"CHESS.EXE");
+	// Typed ahead: 'C' answers the title screen's question for the
+	// graphics card (IBM colour card), '2' then sets 2-player mode.
 	keyboard_buffer.SendKey(KBD_c);
 	keyboard_buffer.SendKey(KBD_2);
 	if(!(d->Execute(input_line,args))){
