@@ -204,6 +204,27 @@ class UciTest(unittest.TestCase):
         move = bestmove(e, 2)
         self.assertTrue(Board(moves).plausible(move), move)
 
+    def test_locked_pawn_ending(self):
+        """Psion used to hang here (at level Infinite): only the kings can
+        move, and the search reaches its maximum depth at once."""
+        e = self.engine
+        moves = (
+        'e2e4 c7c6 d2d4 g7g6 b1c3 d7d5 h2h3 h7h5 g1f3 f8g7 c1f4 d5e4 c3e4 '
+        'c8f5 e4g3 e7e6 g3f5 e6f5 d1e2 g8e7 e1c1 d8d5 d1e1 g7f6 e2c4 b8d7 '
+        'c4d5 c6d5 f1b5 a7a6 b5d3 a8c8 c2c3 e8g8 e1e2 e7c6 d3c2 f8e8 h1e1 '
+        'e8e2 e1e2 b7b5 a2a3 d7b6 f3e5 f6e5 f4e5 c8e8 c2d3 c6e5 e2e5 e8e5 '
+        'd4e5 b6c4 d3c4 d5c4 c1c2 g6g5 b2b4 f5f4 c2d2 g8g7 g2g4 h5h4 d2e2 '
+        'f7f6 e5f6 g7f6 f2f3 f6e5 e2d2 e5d5 d2e2 a6a5 e2d2 a5a4 d2e2 d5d6 '
+        'e2d2 d6e6 d2e2 e6d7 e2d2 d7d6 d2e2 d6e6 e2d2 e6e7 d2e2 e7f7 e2d2 '
+        'f7g6 d2e2 g6h6 e2d2 h6h7 d2e2 h7g6 e2d1 g6g7 d1e2 g7f8 e2d1 f8e8 '
+        'd1d2 e8d7 d2d1 d7c7 d1d2 c7b6 d2e2 b6b7 e2f2 b7c7 f2e1 c7c8 e1d2 '
+        'c8b7 d2d1 b7b8 d1e2 b8a8 e2d2 a8a7 d2e1 a7a6 e1d2 ').split()
+        e.send('ucinewgame')
+        e.send('position startpos moves ' + ' '.join(moves))
+        e.send('go movetime 100')
+        move = bestmove(e, 150)
+        self.assertTrue(Board(moves).plausible(move), move)
+
     def test_unsupported_fen(self):
         e = self.engine
         e.send('position fen 8/8/8/4k3/8/8/4K3/8 w - - 0 1')

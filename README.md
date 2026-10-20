@@ -131,7 +131,12 @@ ignored: Psion flashes the kings when it announces a draw or mate.
 
 ### Controlling Psion
 
-- Level: set to *Infinite* at start-up, so Psion only moves when told to.
+- Level: set to 11 (4 minutes per move) at start-up, so Psion moves
+  when told to (`m`, below). Not *Infinite*: at that level Psion stops
+  reading the keyboard once its search reaches the maximum depth, which
+  happens almost at once in a locked pawn ending.
+- `e` switches easy mode on: Psion does not think on the opponent's
+  time. (Pondering, too, can hang in such positions.)
 - `2` sets 2-player mode, in which moves for both sides can be entered.
 - `c` (Compute) starts a search, `m` (Move now) ends it when the time
   allocated to the move is used up.

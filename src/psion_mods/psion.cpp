@@ -773,8 +773,21 @@ namespace psion {
 	    r.find("PROGRAM")==std::string::npos;
     }
 
-    static bool level_infinite(){
-	return screen_rows[22].find("LEVEL Infinite")!=std::string::npos;
+    // The level used: 4 minutes per move, longer than any search the
+    // adapter asks for (MOVE-NOW ends it). Not "Infinite": at that level
+    // Psion stops reading the keyboard once its search reaches the
+    // maximum depth, which happens at once in a locked pawn ending.
+    // "LEVEL 11  4 Min", or "LEVEL E 11  4 Min" in easy mode.
+    static bool level_ok(){
+	const std::string &r=screen_rows[22];
+	return r.compare(0,6,"LEVEL ")==0 &&
+	    r.find(" 11  4 Min")!=std::string::npos;
+    }
+
+    // In easy mode Psion does not ponder. (While pondering, it can hang
+    // and stop reading the keyboard, e.g. in a locked pawn ending.)
+    static bool easy_mode(){
+	return screen_rows[22].compare(0,8,"LEVEL E ")==0;
     }
 
     // The piece to promote to, typed once Psion asks for it. Typed any
@@ -865,6 +878,7 @@ namespace psion {
 	int retries;
 	bool level_set;
 	int two_player_presses;       // '2' pressed without effect
+	int easy_presses;             // 'e' pressed without effect
 	size_t sync_progress_size;    // moves played when last checked
 	unsigned int sync_progress_ticks;
     } uci;
@@ -904,7 +918,7 @@ namespace psion {
 	    return;
 	}
 	game_state.thinking=false;
-	press(KBD_2);  // back to 2-player mode, so Psion does not ponder
+	press(KBD_2);  // back to 2-player mode
 	if(uci.has_target && !uci.unsupported){
 	    uci.target.push_back(move);
 	}
@@ -992,19 +1006,35 @@ namespace psion {
 	}
     }
 
-    // Sets the level to "Infinite" so that only MOVE-NOW makes Psion move.
+    // Sets the level (see level_ok()).
     // Returns true once that is done.
     static bool level_set_check(){
 	if(uci.level_set){
 	    return true;
 	}
-	if(level_infinite()){
+	if(level_ok()){
 	    uci.level_set=true;
 	    return true;
 	}
 	if(screen_rows[22].find("LEVEL")!=std::string::npos){
 	    press(KBD_l);
 	}
+	return false;
+    }
+
+    // Switches easy mode on. Returns true once that is done, or when it
+    // does not work.
+    const int MAX_EASY_PRESSES=4;
+    static bool easy_check(){
+	if(easy_mode()){
+	    uci.easy_presses=0;
+	    return true;
+	}
+	if(uci.easy_presses>=MAX_EASY_PRESSES){
+	    return true;
+	}
+	uci.easy_presses++;
+	press(KBD_e);
 	return false;
     }
 
@@ -1030,7 +1060,7 @@ namespace psion {
 	   pending_promotion){
 	    return;
 	}
-	if(!level_set_check()){
+	if(!level_set_check() || !easy_check()){
 	    return;
 	}
 	if(!uci_synced()){
