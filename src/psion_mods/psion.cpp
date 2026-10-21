@@ -672,7 +672,7 @@ namespace psion {
     static PsionState known;          // last accepted state
     static bool have_known=false;
     static bool settled=false;        // memory showed the known state when
-				      // last read
+				      // last read successfully
 
     static bool same_state(const PsionState &a, const PsionState &b){
 	return a.ply==b.ply && a.white_to_move==b.white_to_move &&
@@ -733,11 +733,11 @@ namespace psion {
 	static bool have_pending=false;
 	static unsigned int pending_since=0;
 	PsionState cur;
-	settled=false;
 	if(!ReadGameState(cur)){
 	    // Psion flashes the kings to announce a draw or mate, which makes
 	    // every other read fail. So ignore failed reads: the state read in
-	    // between still has to stay unchanged for STABLE_MS.
+	    // between still has to stay unchanged for STABLE_MS (and settled
+	    // is kept, so that the emulation can be stopped after a mate).
 	    return false;
 	}
 	settled=have_known && same_state(cur,known);
