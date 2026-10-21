@@ -100,13 +100,13 @@ stderr: the moves and board after each move, start-up messages, etc.
   is derived from the length of the principal variation.
 - `go depth`/`nodes`/`mate` are not supported; such searches take 5 seconds.
 - Pondering is not offered; `go ponder` is treated as `go infinite`.
-- Entering the opponent's move and reporting the engine's take about 0.5
+- Entering the opponent's move and reporting the engine's take about 0.1
   seconds per move. This time is taken from the engine's own clock, so
   very fast time controls leave little time for thinking. (A GUI that
   sends `isready` before `go`, like fastchess, starts the clock after the
   opponent's move has been entered.)
 - After `ucinewgame`, or when the GUI's move list diverges by more than four
-  plies, the game is replayed from the start (about 0.4 s per ply).
+  plies, the game is replayed from the start (about 0.13 s per ply).
 - Psion applies its own draw rules and may announce a draw (e.g. by
   repetition) that the GUI does not see. Psion then stops accepting moves,
   so if the GUI continues the game, it is replayed in a new game.

@@ -619,6 +619,10 @@ namespace psion {
     // A memory state is accepted once it has been unchanged for this long;
     // while the engine searches, memory changes far more often.
     const unsigned int STABLE_MS = 200;
+    // ... or this long if it differs from the last one by a complete move.
+    // (Psion's board does not change during a search, but while Psion
+    // plays a move it passes through states such as a piece lifted.)
+    const unsigned int MOVE_STABLE_MS = 20;
 
     static PsionState known; // last accepted state
     static bool have_known = false;
@@ -700,7 +704,12 @@ namespace psion {
             have_pending = true;
             return false;
         }
-        if (GetTicks() - pending_since < STABLE_MS) {
+        std::string candidate;
+        bool one_move =
+            have_known && !cur.unknown &&
+            DeriveMove(known.board, cur.board, known.white_to_move, candidate);
+        if (GetTicks() - pending_since <
+            (one_move ? MOVE_STABLE_MS : STABLE_MS)) {
             return false;
         }
         if (cur.unknown && !resolve_unknown_squares(cur)) {
@@ -852,8 +861,8 @@ namespace psion {
     /* UCI */
 
     // Time between the engine being told to move and its move being
-    // detected (key delays plus STABLE_MS).
-    const unsigned int MOVE_LATENCY_MS = 250;
+    // detected (key delays plus MOVE_STABLE_MS and polling).
+    const unsigned int MOVE_LATENCY_MS = 50;
     // Pause after a key action before the screen is consulted again.
     const unsigned int ACTION_GAP_MS = 300;
     // Psion thinks at least this long, also when the time for the move
@@ -884,7 +893,14 @@ namespace psion {
         unsigned int movenow_ticks;
         std::string held_move; // found before "stop" in infinite mode
         unsigned int last_action;
-        bool inflight; // a position move has been sent
+        bool action_done;        // its effect seen: no need to wait
+        bool two_player_pending; // '2' pressed after the engine moved
+        bool saw_program;        // the screen showed Psion thinking
+        Board search_board;      // the position searched
+        bool search_white;
+        std::string reported_move;   // played, to report after the last
+        unsigned int reported_since; // analysis line
+        bool inflight;               // a position move has been sent
         size_t inflight_size;
         unsigned int inflight_since;
         int retries;
@@ -910,11 +926,13 @@ namespace psion {
     static void press(KBD_KEYS k) {
         keyboard_buffer.SendKey(k);
         uci.last_action = GetTicks();
+        uci.action_done = false;
     }
 
     static void press(KBD_KEYS modifier, KBD_KEYS k) {
         keyboard_buffer.SendKey(modifier, k);
         uci.last_action = GetTicks();
+        uci.action_done = false;
     }
 
     static bool uci_synced() {
@@ -933,6 +951,16 @@ namespace psion {
         uci_send("bestmove %s\n", move.c_str());
     }
 
+    static void report_move(const std::string move) {
+        uci.reported_move.clear();
+        if (uci.infinite && !uci.stop_received) {
+            uci.held_move = move;
+            uci.search = SEARCH_HOLDING;
+        } else {
+            finish_search(move);
+        }
+    }
+
     // Called when Psion plays a move during a search.
     static void UciEngineMoved(const std::string &move) {
         if (uci.search != SEARCH_RUNNING) {
@@ -940,15 +968,21 @@ namespace psion {
         }
         game_state.thinking = false;
         press(KBD_2); // back to 2-player mode
+        // That it worked shows on the screen, unless Psion moved before
+        // the screen showed it thinking.
+        uci.two_player_pending = uci.saw_program;
         if (uci.has_target && !uci.unsupported) {
             uci.target.push_back(move);
         }
-        if (uci.infinite && !uci.stop_received) {
-            uci.held_move = move;
-            uci.search = SEARCH_HOLDING;
-        } else {
-            finish_search(move);
+        // Psion may have just drawn the analysis line for this move (e.g.
+        // a mate it found at once): report that first.
+        if (analysis_row != uci.last_analysis &&
+            GetTicks() - analysis_row_since < ANALYSIS_STABLE_MS) {
+            uci.reported_move = move;
+            uci.reported_since = GetTicks();
+            return;
         }
+        report_move(move);
     }
 
     static void UciGo(const std::vector<std::string> &tokens) {
@@ -1016,7 +1050,8 @@ namespace psion {
             uci.go_pending = false;
             if (uci.search == SEARCH_HOLDING) {
                 finish_search(uci.held_move);
-            } else if (uci.search == SEARCH_RUNNING && !uci.movenow_sent) {
+            } else if (uci.search == SEARCH_RUNNING && !uci.movenow_sent &&
+                       uci.reported_move.empty()) {
                 press(KBD_m);
                 uci.movenow_sent = true;
                 uci.movenow_ticks = GetTicks();
@@ -1086,13 +1121,14 @@ namespace psion {
             return;
         }
         uci.last_analysis = analysis_row;
-        bool white = white_to_move();
+        // The position searched: Psion may have played its move already.
+        bool white = uci.search_white;
         Analysis a;
         if (!ParseAnalysis(analysis_row, white, a)) {
             return;
         }
         // Only complete lines for this position.
-        if (!a.complete || !CheckPv(known.board, white, a.pv)) {
+        if (!a.complete || !CheckPv(uci.search_board, white, a.pv)) {
             say("Analysis line not used: %s\n", analysis_row.c_str());
             return;
         }
@@ -1119,11 +1155,33 @@ namespace psion {
     // Drives Psion towards the state the GUI asked for. Called every tick.
     static void UciStep() {
         unsigned int now = GetTicks();
-        bool idle =
-            keyboard_buffer.Empty() && now - uci.last_action >= ACTION_GAP_MS;
         std::vector<std::string> &moves = game_state.moves;
+        // The pause after an action ends early once its effect is seen: a
+        // move entered appears in memory, '2' on the screen.
+        if (uci.inflight && moves.size() != uci.inflight_size) {
+            uci.inflight = false;
+            uci.retries = 0;
+            uci.action_done = true;
+        }
+        if (uci.two_player_pending && two_player_mode()) {
+            uci.two_player_pending = false;
+            uci.action_done = true;
+        }
+        bool idle = keyboard_buffer.Empty() &&
+                    (uci.action_done || now - uci.last_action >= ACTION_GAP_MS);
         uci_done = false;
         if (uci.search == SEARCH_RUNNING) {
+            if (!uci.reported_move.empty()) {
+                // UciAnalysis has had its chance to send the line.
+                if (now - analysis_row_since >= ANALYSIS_STABLE_MS ||
+                    now - uci.reported_since >= 2 * ANALYSIS_STABLE_MS) {
+                    report_move(uci.reported_move);
+                }
+                return;
+            }
+            if (!two_player_mode()) {
+                uci.saw_program = true;
+            }
             if (!uci.movenow_sent && uci.think_ms &&
                 now - uci.search_start >= uci.think_ms &&
                 now - uci.thinking_start >= MIN_THINK_MS) {
@@ -1195,6 +1253,7 @@ namespace psion {
             case SYNC_SEND_MOVE:
                 SendUciMove(uci.target[moves.size()]);
                 uci.last_action = now;
+                uci.action_done = false;
                 uci.inflight = true;
                 uci.inflight_size = moves.size();
                 uci.inflight_since = now;
@@ -1224,6 +1283,9 @@ namespace psion {
             uci.info_move.clear();
             uci.info_depth = 0;
             uci.movenow_sent = false;
+            uci.saw_program = false;
+            memcpy(uci.search_board, known.board, sizeof(uci.search_board));
+            uci.search_white = white_to_move();
         }
         uci_done = uci.search == SEARCH_NONE && !uci.readyok_pending;
     }
@@ -1239,8 +1301,11 @@ namespace psion {
     static void freeze_when_idle() {
         static unsigned int quiet_since = 0;
         static bool quiet = false;
+        // Not before ACTION_GAP_MS after a key, even if its effect has been
+        // seen: Psion may still be updating the screen.
         if (!uci_done || !settled || pending_promotion ||
-            !keyboard_buffer.Empty()) {
+            !keyboard_buffer.Empty() ||
+            GetTicks() - uci.last_action < ACTION_GAP_MS) {
             quiet = false;
             return;
         }

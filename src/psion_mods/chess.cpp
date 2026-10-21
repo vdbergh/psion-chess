@@ -72,6 +72,28 @@ namespace psion {
         return c != '.' && (isupper(c) != 0) == white;
     }
 
+    // Plays move (UCI notation) on b: castling also moves the rook, en
+    // passant removes the pawn taken.
+    static void make_move(Board b, const std::string &move) {
+        int ff = move[0] - 'a', fr = move[1] - '1', tf = move[2] - 'a',
+            tr = move[3] - '1';
+        char p = b[ff][fr];
+        bool white = isupper(p) != 0;
+        if (toupper(p) == 'K' && abs(tf - ff) == 2) {
+            int rf = tf > ff ? 7 : 0, rt = tf > ff ? 5 : 3;
+            b[rt][fr] = b[rf][fr];
+            b[rf][fr] = '.';
+        }
+        if (toupper(p) == 'P' && ff != tf && b[tf][tr] == '.') {
+            b[tf][fr] = '.';
+        }
+        if (move.size() == 5) {
+            p = white ? toupper(move[4]) : move[4];
+        }
+        b[ff][fr] = '.';
+        b[tf][tr] = p;
+    }
+
     bool DeriveMove(const Board before, const Board after, bool white,
                     std::string &move) {
         int from[2], to[2], nfrom = 0, nto = 0, other = 0, f, r, i;
@@ -137,7 +159,12 @@ namespace psion {
         if (toupper(piece) == 'P' && toupper(after[fto][rto]) != 'P') {
             move += (char)tolower(after[fto][rto]);
         }
-        return true;
+        // Only a complete move: not, e.g., a castling king whose rook has
+        // not moved yet, while Psion updates its board.
+        Board b;
+        memcpy(b, before, sizeof(b));
+        make_move(b, move);
+        return memcmp(b, after, sizeof(b)) == 0;
     }
 
     bool IsMoveString(const std::string &m) {

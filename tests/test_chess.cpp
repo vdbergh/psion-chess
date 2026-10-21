@@ -225,6 +225,17 @@ static void test_derive_castling(){
     CHECK_EQ(derive(before,white_long,true),std::string("e1c1"));
     CHECK_EQ(derive(before,black_short,false),std::string("e8g8"));
     CHECK_EQ(derive(before,black_long,false),std::string("e8c8"));
+    // while Psion updates its board: the king has moved, the rook not yet
+    const char *white_short_half=
+	"r...k..r"
+	"pppppppp"
+	"........"
+	"........"
+	"........"
+	"........"
+	"PPPPPPPP"
+	"R.....KR";
+    CHECK_EQ(derive(before,white_short_half,true),std::string(""));
 }
 
 static void test_derive_en_passant(){
@@ -266,6 +277,17 @@ static void test_derive_en_passant(){
 	"RNBQKBNR";
     CHECK_EQ(derive(white_before,white_after,true),std::string("e5f6"));
     CHECK_EQ(derive(black_before,black_after,false),std::string("d4e3"));
+    // the pawn taken has not been removed yet
+    const char *white_half=
+	"rnbqkbnr"
+	"ppppp.pp"
+	".....P.."
+	".....p.."
+	"........"
+	"........"
+	"PPPP.PPP"
+	"RNBQKBNR";
+    CHECK_EQ(derive(white_before,white_half,true),std::string(""));
 }
 
 static void test_derive_promotion(){
