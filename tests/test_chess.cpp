@@ -585,8 +585,8 @@ static void test_check_pv(){
 	"r...k..r" "pppppppp" "........" "........"
 	"........" "........" "PPPPPPPP" "R...K..R";
     CHECK_EQ(check_pv(castle,true,"e1g1 e8c8 f1f2"),"");
-    CHECK_EQ(check_pv(castle,true,"e1g1 e8c8 f1e1 d8d1"),
-	     "e1g1 e8c8 f1e1 d8d1");
+    CHECK_EQ(check_pv(castle,true,"e1g1 e8c8 f1e1 d8e8"),
+	     "e1g1 e8c8 f1e1 d8e8");
     // en passant removes the pawn taken
     const char *ep=
 	"....k..." "...p...." "........" "....P..."
@@ -600,6 +600,31 @@ static void test_check_pv(){
     CHECK_EQ(check_pv(promo,true,"c7c8 g2g1 c8c1 g1e3"),
 	     "c7c8q g2g1q c8c1 g1e3");
     CHECK_EQ(check_pv(promo,true,"c7c8n e8d8 c8b6"),"c7c8n e8d8 c8b6");
+    // ... or the piece with which the line works
+    CHECK_EQ(check_pv(promo,true,"c7c8 e8d7 c8b6"),"c7c8n e8d7 c8b6");
+    CHECK_EQ(check_pv(promo,true,"c7c8 e8d7 c8h8"),"c7c8q e8d7 c8h8");
+    CHECK_EQ(check_pv(promo,true,"c7c8 e8d7 c8a5"),"");
+    CHECK_EQ(check_pv(promo,true,"c7c8 e8d7 c8b7 d7c7"),"c7c8q e8d7 c8b7 d7c7");
+    CHECK_EQ(check_pv(promo,true,"c7c8 e8d7 c8a6"),"c7c8q e8d7 c8a6");
+    // from a game: Psion promoted to a knight
+    const char *knight=
+	"........" ".......P" "........" "........"
+	"........" ".KQ....." "....p..." "...k....";
+    CHECK_EQ(check_pv(knight,false,"e2e1 h7h8 e1f3 h8h1 d1e2"),
+	     "e2e1n h7h8q e1f3 h8h1 d1e2");
+    // pieces move their own way, sliding pieces not through others
+    CHECK_EQ(check_pv(start,true,"g1g3"),"");
+    CHECK_EQ(check_pv(start,true,"f1c4"),"");
+    CHECK_EQ(check_pv(start,true,"e2e4 e7e5 f1c4 b8c6 d1h5 g8f6 h5f7"),
+	     "e2e4 e7e5 f1c4 b8c6 d1h5 g8f6 h5f7");
+    CHECK_EQ(check_pv(start,true,"e2e4 e7e5 e4e5"),"");
+    CHECK_EQ(check_pv(start,true,"e2e4 e7e5 e4d5"),"");
+    CHECK_EQ(check_pv(start,true,"a1a3"),"");
+    CHECK_EQ(check_pv(start,true,"e2e4 e7e5 e1e3"),"");
+    CHECK_EQ(check_pv(start,true,"b1d2"),"");
+    CHECK_EQ(check_pv(start,true,"b1c3 b8c6 c3e4"),"b1c3 b8c6 c3e4");
+    // castling through a piece
+    CHECK_EQ(check_pv(start,true,"e1g1"),"");
 }
 
 int main(){

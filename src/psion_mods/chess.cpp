@@ -216,10 +216,84 @@ namespace psion {
 	return true;
     }
 
-    bool CheckPv(const Board board, bool white, std::vector<std::string> &pv){
+    // Whether the piece on (ff,fr) can move to (tf,tr) by the way it
+    // moves: the path of a sliding piece is clear, a pawn moves forward
+    // to an empty square or captures diagonally (also en passant). Checks
+    // are not considered, nor castling rights.
+    static bool piece_can_move(const Board b, int ff, int fr, int tf, int tr){
+	char p=b[ff][fr];
+	bool white=isupper(p)!=0;
+	int df=tf-ff, dr=tr-fr, adf=abs(df), adr=abs(dr);
+	switch(toupper(p)){
+	case 'N':
+	    return (adf==1 && adr==2) || (adf==2 && adr==1);
+	case 'K':
+	    if(adf==2 && dr==0){
+		// Castling: from the home square, towards a rook, through
+		// empty squares.
+		int rf=df>0?7:0, f;
+		if(ff!=4 || fr!=(white?0:7) || b[rf][fr]!=(white?'R':'r')){
+		    return false;
+		}
+		for(f=std::min(ff,rf)+1;f<std::max(ff,rf);f++){
+		    if(b[f][fr]!='.'){
+			return false;
+		    }
+		}
+		return true;
+	    }
+	    return adf<=1 && adr<=1 && (adf || adr);
+	case 'P':{
+	    int dir=white?1:-1;
+	    char t=b[tf][tr];
+	    if(df==0){
+		if(t!='.'){
+		    return false;
+		}
+		if(dr==dir){
+		    return true;
+		}
+		return dr==2*dir && fr==(white?1:6) && b[ff][fr+dir]=='.';
+	    }
+	    if(adf!=1 || dr!=dir){
+		return false;
+	    }
+	    if(t!='.'){
+		return true;
+	    }
+	    // En passant: next to an enemy pawn on its fifth rank.
+	    return fr==(white?4:3) && b[tf][fr]==(white?'p':'P');
+	}
+	case 'B':
+	    if(adf!=adr) return false;
+	    break;
+	case 'R':
+	    if(df && dr) return false;
+	    break;
+	case 'Q':
+	    if(adf!=adr && df && dr) return false;
+	    break;
+	default:
+	    return false;
+	}
+	if(!adf && !adr){
+	    return false;
+	}
+	int sf=(df>0)-(df<0), sr=(dr>0)-(dr<0), f=ff+sf, r=fr+sr;
+	for(;f!=tf || r!=tr;f+=sf,r+=sr){
+	    if(b[f][r]!='.'){
+		return false;
+	    }
+	}
+	return true;
+    }
+
+    // Checks pv from move i on, with board b (white to move).
+    static bool check_pv_from(const Board board, bool white,
+			      std::vector<std::string> &pv, size_t i){
 	Board b;
 	memcpy(b,board,sizeof(b));
-	for(size_t i=0;i<pv.size();i++){
+	for(;i<pv.size();i++){
 	    std::string &m=pv[i];
 	    int ff=m[0]-'a', fr=m[1]-'1', tf=m[2]-'a', tr=m[3]-'1';
 	    char p=b[ff][fr], t=b[tf][tr];
@@ -227,6 +301,9 @@ namespace psion {
 		return false;
 	    }
 	    if(t!='.' && (isupper(t)!=0)==white){
+		return false;
+	    }
+	    if(!piece_can_move(b,ff,fr,tf,tr)){
 		return false;
 	    }
 	    char kind=toupper(p);
@@ -239,17 +316,30 @@ namespace psion {
 	    if(kind=='P' && ff!=tf && t=='.'){
 		b[tf][fr]='.';    // en passant
 	    }
+	    b[ff][fr]='.';
 	    if(kind=='P' && (tr==7 || tr==0)){
 		if(m.size()==4){
-		    m+='q';
+		    // The first piece with which the rest of the line works.
+		    const char *pieces="qnrb";
+		    for(const char *c=pieces;*c;c++){
+			b[tf][tr]=white?toupper(*c):*c;
+			if(check_pv_from(b,!white,pv,i+1)){
+			    m+=*c;
+			    return true;
+			}
+		    }
+		    return false;
 		}
 		p=white?toupper(m[4]):m[4];
 	    }
 	    b[tf][tr]=p;
-	    b[ff][fr]='.';
 	    white=!white;
 	}
 	return true;
+    }
+
+    bool CheckPv(const Board board, bool white, std::vector<std::string> &pv){
+	return check_pv_from(board,white,pv,0);
     }
 
     std::vector<std::string> Tokenize(const char *line){

@@ -204,7 +204,9 @@ whose codes are unknown (see above), and as the reference for `memscan`.
   e.g. `-00.4 E2-E4 D7-D5 B1-C3 D5xE4`. These become `info` lines. A row
   is used once it has not changed for 50 ms (Psion erases the characters
   that change before drawing new ones) and if its moves can be played on
-  the board. Promotions are shown without the piece; a queen is assumed.
+  the board (checks are not considered). Promotions are shown without the
+  piece: the first of queen, knight, rook and bishop with which the rest
+  of the line can be played is assumed.
 - `2` sets 2-player mode, in which moves for both sides can be entered.
 - `c` (Compute) starts a search, `m` (Move now) ends it when the time
   allocated to the move is used up.

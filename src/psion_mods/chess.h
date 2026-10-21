@@ -64,9 +64,11 @@ namespace psion {
     // white: the side to move. False if the row is not an analysis line.
     bool ParseAnalysis(const std::string &row, bool white, Analysis &a);
 
-    // Plays pv on board (white to move) to check it. Psion does not show
-    // the piece promoted to; 'q' is added then. False if a move is not
-    // by a piece of the side to move or captures one of its own pieces.
+    // Plays pv on board (white to move) to check it. False if a move is
+    // not by a piece of the side to move, captures one of its own pieces,
+    // or is not the way the piece moves (checks are not considered).
+    // Psion does not show the piece promoted to; the first of q, n, r, b
+    // with which the rest of the line is possible is added then.
     bool CheckPv(const Board board, bool white, std::vector<std::string> &pv);
 
     enum SyncAction {
