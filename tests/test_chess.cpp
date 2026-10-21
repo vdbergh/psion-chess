@@ -595,17 +595,17 @@ static void test_check_pv(){
     CHECK_EQ(check_pv(ep,false,"d7d5 e5d6 e8d8 d6d7"),"d7d5 e5d6 e8d8 d6d7");
     // promotions without a piece become queens; the queen can move on
     const char *promo=
-	"....k..." "..P....." "........" "........"
-	"........" "........" "......p." "....K...";
+	"........" "..P....." "........" ".......k"
+	"........" "........" "......p." "K.......";
     CHECK_EQ(check_pv(promo,true,"c7c8 g2g1 c8c1 g1e3"),
 	     "c7c8q g2g1q c8c1 g1e3");
-    CHECK_EQ(check_pv(promo,true,"c7c8n e8d8 c8b6"),"c7c8n e8d8 c8b6");
+    CHECK_EQ(check_pv(promo,true,"c7c8n h5g5 c8b6"),"c7c8n h5g5 c8b6");
     // ... or the piece with which the line works
-    CHECK_EQ(check_pv(promo,true,"c7c8 e8d7 c8b6"),"c7c8n e8d7 c8b6");
-    CHECK_EQ(check_pv(promo,true,"c7c8 e8d7 c8h8"),"c7c8q e8d7 c8h8");
-    CHECK_EQ(check_pv(promo,true,"c7c8 e8d7 c8a5"),"");
-    CHECK_EQ(check_pv(promo,true,"c7c8 e8d7 c8b7 d7c7"),"c7c8q e8d7 c8b7 d7c7");
-    CHECK_EQ(check_pv(promo,true,"c7c8 e8d7 c8a6"),"c7c8q e8d7 c8a6");
+    CHECK_EQ(check_pv(promo,true,"c7c8 h5g5 c8b6"),"c7c8n h5g5 c8b6");
+    CHECK_EQ(check_pv(promo,true,"c7c8 h5g5 c8h8"),"c7c8q h5g5 c8h8");
+    CHECK_EQ(check_pv(promo,true,"c7c8 h5g5 c8a5"),"");
+    CHECK_EQ(check_pv(promo,true,"c7c8 h5g5 c8b7 g5f4"),"c7c8q h5g5 c8b7 g5f4");
+    CHECK_EQ(check_pv(promo,true,"c7c8 h5g5 c8a6"),"c7c8q h5g5 c8a6");
     // from a game: Psion promoted to a knight
     const char *knight=
 	"........" ".......P" "........" "........"
@@ -625,6 +625,28 @@ static void test_check_pv(){
     CHECK_EQ(check_pv(start,true,"b1c3 b8c6 c3e4"),"b1c3 b8c6 c3e4");
     // castling through a piece
     CHECK_EQ(check_pv(start,true,"e1g1"),"");
+    // no move may leave the own king in check
+    CHECK_EQ(check_pv(start,true,"e2e4 f7f6 d1h5 e8f7"),"");
+    CHECK_EQ(check_pv(start,true,"e2e4 f7f6 d1h5 g7g6"),
+	     "e2e4 f7f6 d1h5 g7g6");
+    CHECK_EQ(check_pv(start,true,"e2e4 f7f6 d1h5 a7a6"),"");
+    // no castling out of or through check
+    const char *castle_through_check=
+	"....k..." "........" "........" "........"
+	"........" ".......b" "........" "R...K..R";
+    CHECK_EQ(check_pv(castle_through_check,true,"e1c1"),"e1c1");
+    CHECK_EQ(check_pv(castle_through_check,true,"e1g1"),"");
+    const char *castle_in_check=
+	"....k..." "........" "........" "........"
+	".b......" "........" "........" "R...K..R";
+    CHECK_EQ(check_pv(castle_in_check,true,"e1c1"),"");
+    CHECK_EQ(check_pv(castle_in_check,true,"e1g1"),"");
+    CHECK_EQ(check_pv(castle_in_check,true,"e1f1"),"e1f1");
+    // from a game: f8=Q would leave Kh6 in check, so it is f8=N+
+    const char *mate=
+	"........" ".b..QP.p" "p...p.k." ".p...p.."
+	".....P.." ".Pp.P..." "P..r..PP" "....K...";
+    CHECK_EQ(check_pv(mate,true,"f7f8 g6h6 e7g5"),"f7f8n g6h6 e7g5");
 }
 
 int main(){

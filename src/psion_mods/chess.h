@@ -66,7 +66,7 @@ namespace psion {
 
     // Plays pv on board (white to move) to check it. False if a move is
     // not by a piece of the side to move, captures one of its own pieces,
-    // or is not the way the piece moves (checks are not considered).
+    // is not the way the piece moves, or leaves the own king in check.
     // Psion does not show the piece promoted to; the first of q, n, r, b
     // with which the rest of the line is possible is added then.
     bool CheckPv(const Board board, bool white, std::vector<std::string> &pv);

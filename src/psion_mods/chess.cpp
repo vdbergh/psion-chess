@@ -216,10 +216,14 @@ namespace psion {
 	return true;
     }
 
+    static bool attacked(const Board b, int f, int r, bool by_white);
+
     // Whether the piece on (ff,fr) can move to (tf,tr) by the way it
     // moves: the path of a sliding piece is clear, a pawn moves forward
-    // to an empty square or captures diagonally (also en passant). Checks
-    // are not considered, nor castling rights.
+    // to an empty square or captures diagonally (also en passant), the
+    // king does not castle out of or through check. Whether the move
+    // leaves the own king in check is not considered here, nor castling
+    // rights.
     static bool piece_can_move(const Board b, int ff, int fr, int tf, int tr){
 	char p=b[ff][fr];
 	bool white=isupper(p)!=0;
@@ -240,7 +244,8 @@ namespace psion {
 			return false;
 		    }
 		}
-		return true;
+		return !attacked(b,ff,fr,!white) &&
+		    !attacked(b,ff+df/2,fr,!white);
 	    }
 	    return adf<=1 && adr<=1 && (adf || adr);
 	case 'P':{
@@ -288,6 +293,50 @@ namespace psion {
 	return true;
     }
 
+    // Whether a piece of by_white attacks (f,r).
+    static bool attacked(const Board b, int f, int r, bool by_white){
+	int af,ar;
+	for(af=0;af<8;af++){
+	    for(ar=0;ar<8;ar++){
+		char p=b[af][ar];
+		if(p=='.' || p=='?' || (isupper(p)!=0)!=by_white ||
+		   (af==f && ar==r)){
+		    continue;
+		}
+		int adf=abs(f-af), dr=r-ar;
+		switch(toupper(p)){
+		case 'P':
+		    if(adf==1 && dr==(by_white?1:-1)){
+			return true;
+		    }
+		    break;
+		case 'K':
+		    if(adf<=1 && abs(dr)<=1){
+			return true;
+		    }
+		    break;
+		default:
+		    if(piece_can_move(b,af,ar,f,r)){
+			return true;
+		    }
+		}
+	    }
+	}
+	return false;
+    }
+
+    static bool in_check(const Board b, bool white){
+	int f,r;
+	for(f=0;f<8;f++){
+	    for(r=0;r<8;r++){
+		if(b[f][r]==(white?'K':'k')){
+		    return attacked(b,f,r,!white);
+		}
+	    }
+	}
+	return false;
+    }
+
     // Checks pv from move i on, with board b (white to move).
     static bool check_pv_from(const Board board, bool white,
 			      std::vector<std::string> &pv, size_t i){
@@ -323,7 +372,7 @@ namespace psion {
 		    const char *pieces="qnrb";
 		    for(const char *c=pieces;*c;c++){
 			b[tf][tr]=white?toupper(*c):*c;
-			if(check_pv_from(b,!white,pv,i+1)){
+			if(!in_check(b,white) && check_pv_from(b,!white,pv,i+1)){
 			    m+=*c;
 			    return true;
 			}
@@ -333,6 +382,9 @@ namespace psion {
 		p=white?toupper(m[4]):m[4];
 	    }
 	    b[tf][tr]=p;
+	    if(in_check(b,white)){
+		return false;
+	    }
 	    white=!white;
 	}
 	return true;
