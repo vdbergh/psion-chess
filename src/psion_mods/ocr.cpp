@@ -143,9 +143,6 @@ namespace psion {
 
     uint64_t font8x8_64[0x80];
 
-    // GnuChess
-    // enum Piece { empty, pawn, knight, bishop, rook, queen, king, bpawn };
-
     struct square {
 	uint32_t crc32;
 	char piece;
@@ -203,16 +200,6 @@ namespace psion {
     };
 
 
-    void bits_to_string(char *buf, unsigned char bits){
-	int i;
-	for(i=0;i<=7;i++){
-	    buf[7-i]='.';
-	    if(bits & (1<<i)){
-		buf[7-i]='o';
-	    }
-	}
-	buf[8]=0;
-    }
     inline bool GetPixel(unsigned char *buf,int width,int x,int y){
 	return buf[4*(width*2*y+x)]!=0;
     }
@@ -243,18 +230,6 @@ namespace psion {
 	    }
 	    printf("\n");
 	}    
-    }
-
-    void print_font(){
-	int i,j;
-	char char_buf[8];
-	for(i=32;i<=127;i++){
-	    printf("%03d=====\n",i);
-	    for(j=0;j<=7;j++){
-		bits_to_string(char_buf,font8x8[8*i+j]);
-		printf("%s\n",char_buf);
-	    }
-	}
     }
 
     void ocr(char txt_buf[TEXT_HEIGHT][TEXT_WIDTH],unsigned char* buf){

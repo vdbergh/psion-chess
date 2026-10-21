@@ -33,12 +33,10 @@
 #include "control.h"
 #include "psion.h"
 
-// Some stuff from sdl_mapper.cpp 
+// Stubs for what the SDL front end (sdl_main.cpp, sdl_mapper.cpp) provides.
 
 void MAPPER_AddHandler(MAPPER_Handler * handler,MapKeys key,Bitu mods,char const * const eventname,char const * const buttonname) {
 }
-
-bool autofire = false;
 
 struct State_Block {
     bool active;			//If this isn't set don't draw
@@ -61,8 +59,6 @@ float JOYSTICK_GetMove_Y(Bitu which){
 
 static State_Block state;
 
-extern const char* RunningProgram;
-extern bool CPU_CycleAutoAdjust;
 //Globals for keyboard initialisation
 bool startup_state_numlock=false;
 bool startup_state_capslock=false;
@@ -100,13 +96,10 @@ bool GFX_StartUpdate(Bit8u * & pixels,Bitu & pitch) {
 }
 
 void GFX_EndUpdate( const Bit16u *changedLines ) {
-    static unsigned int last_tickcount=0,new_tickcount=0;
     if (!state.updating)
 	return;
     state.updating=false;
-    /******/
     psion::ProcessScreen(state.pixels);
-
 }
 
 void GFX_SetPalette(Bitu start,Bitu count,GFX_PalEntry * entries) {
@@ -133,9 +126,7 @@ void GFX_LosingFocus(void) {
 }
 
 void GFX_Events() {
-    /****/
     psion::ProcessConsole();
-    /****/
 }
 
 void GFX_ShowMsg(char const* format,...) {
@@ -156,7 +147,6 @@ void GFX_ShowMsg(char const* format,...) {
 void restart_program(std::vector<std::string> & parameters) {
 }
 
-//extern void UI_Init(void);
 int main(int argc, char* argv[]) {
     CommandLine com_line(argc,argv);
     if(com_line.FindExist("--verbose",true) || com_line.FindExist("-v",true)){
@@ -165,9 +155,7 @@ int main(int argc, char* argv[]) {
     Config myconf(&com_line);
     control=&myconf;
     DOSBOX_Init();
-    /****/
     psion::IO_Init();
-    /****/
     if (control->cmdline->FindExist("-version") ||
 	control->cmdline->FindExist("--version") ) {
 	printf("\nDOSBox version %s, copyright 2002-2013 DOSBox Team.\n\n",VERSION);

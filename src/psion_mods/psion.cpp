@@ -9,10 +9,9 @@
 #include <sys/time.h>
 #endif
 #include <time.h>
-#include "queue"
+#include <queue>
 #include <vector>
 #include <algorithm>
-
 
 #include "shell.h"
 #include "keyboard.h"
@@ -111,93 +110,6 @@ namespace psion {
 	WriteLines(uci_mode?stderr:stdout,pending,buf);
     }
 
-    bool validate_move(std::string move){
-	if(move[0]<'A'){
-	    return false;
-	}
-	if(move[0]>'H'){
-	    return false;
-	}
-	if(move[1]<'1'){
-	    return false;
-	}
-	if(move[1]>'8'){
-	    return false;
-	}
-	if(move[2]<'A'){
-	    return false;
-	}
-	if(move[2]>'H'){
-	    return false;
-	}
-	if(move[3]<'1'){
-	    return false;
-	}
-	if(move[3]>'8'){
-	    return false;
-	}
-	return true;
-	
-    }
-    class ParsedScreen {
-    public:
-	std::string header[4];
-	std::string status_line[3];;
-	std::vector<std::string> moves;
-	ParsedScreen(char txt_buf[TEXT_HEIGHT][TEXT_WIDTH]);
-	void print();
-	bool status;
-    };
-
-    ParsedScreen::ParsedScreen(char txt_buf[TEXT_HEIGHT][TEXT_WIDTH]){
-	int i;
-	std::string move;
-	header[0]=std::string(txt_buf[0],TEXT_WIDTH);
-	header[1]=std::string(txt_buf[1],TEXT_WIDTH);
-	header[2]=std::string(txt_buf[2],TEXT_WIDTH);
-	header[3]=std::string(txt_buf[3],TEXT_WIDTH);
-	status_line[0]=std::string(txt_buf[20],TEXT_WIDTH);
-	status_line[1]=std::string(txt_buf[22],TEXT_WIDTH);
-	status_line[2]=std::string(txt_buf[24],TEXT_WIDTH);
-	status=true;
-	for(i=0;i<5;i++){
-	    // TODO promotion piece
-	    move=std::string(txt_buf[9+2*i]);
-	    move=move.substr(6,2)+move.substr(9,2);
-	    if(move=="    "){
-		break;
-	    }
-	    status=validate_move(move);
-	    if(!status){
-		break;
-	    }
-	    moves.push_back(move);
-	    move=std::string(txt_buf[10+2*i]);
-	    move=move.substr(16,2)+move.substr(19,2);
-	    if(move=="    "){
-		break;
-	    }
-	    status=validate_move(move);
-	    if(!status){
-		break;
-	    }
-	    moves.push_back(move);
-	}
-    }
-
-    void ParsedScreen::print(){
-	int i;
-	for(i=0;i<4;i++){
-	    printf("%s\n",header[i].c_str());
-	}
-	for(i=0;i<3;i++){
-	    printf("%s\n",status_line[i].c_str());
-	}
-	for(i=0;i<moves.size();i++){
-	    printf("%s\n",moves[i].c_str());
-	}
-    }
-
     class GameState {
     public:
 	std::vector<std::string> moves;
@@ -276,7 +188,6 @@ namespace psion {
     void SendMove(bool white, int file1, int row1, int file2, int row2){
 	int i;
 	int file0,row0;
-	//		printf("SendMove()\n");
 	ResetCursor();
 	file0=0;
 	if(white){
@@ -297,7 +208,6 @@ namespace psion {
 	    }
 	}
 	keyboard_buffer.SendKey(KBD_enter);
-	//	ResetCursor();
 	if(file1<=file2){
 	    for(i=file1;i<file2;i++){
 		keyboard_buffer.SendKey(KBD_right);
@@ -1289,7 +1199,6 @@ namespace psion {
 	char txt_buf[TEXT_HEIGHT][TEXT_WIDTH];
 	unsigned int i;
 	ocr(txt_buf,(unsigned char *)pixels);
-	ParsedScreen p=ParsedScreen(txt_buf);
 	for(i=0;i<(unsigned int)TEXT_HEIGHT;i++){
 	    std::string row(txt_buf[i],TEXT_WIDTH);
 	    if(row.find_first_not_of(' ')!=std::string::npos){
@@ -1311,8 +1220,9 @@ namespace psion {
 		MemScan_Snapshot(board);
 	    }
 	}
-	promotion_prompt=p.status_line[2].find("PROMOTE TO")!=std::string::npos;
-	if(!illegal_move_seen && p.status_line[2].find("ILLEGAL")!=std::string::npos){
+	// The bottom row also shows prompts and errors.
+	promotion_prompt=row.find("PROMOTE TO")!=std::string::npos;
+	if(!illegal_move_seen && row.find("ILLEGAL")!=std::string::npos){
 	    say("Illegal move!\n");
 	    illegal_move_seen=true;
 	    ResetCursor();
