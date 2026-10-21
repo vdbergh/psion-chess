@@ -130,6 +130,13 @@ ways:
 - **Everything else** is read from the screen: the level, the modes,
   prompts and the analysis display.
 
+The rule: what must be exactly right to keep the game in sync comes from
+memory; what is only checked, or shown to the user, may come from the
+screen. The board on the screen proved unreliable for the game: the
+cursor, highlighted squares and flashing kings cause misread squares,
+and the screen shows neither the whole move list nor reliably whose
+turn it is.
+
 Psion is controlled only through simulated keypresses. The adapter checks
 the effect of each key, in memory or on the screen, before it presses the
 next one, and retries a few times if a key had no effect.
