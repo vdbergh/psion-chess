@@ -1258,9 +1258,10 @@ namespace psion {
     // While Psion waits for the GUI (it does not ponder), the emulation is
     // stopped until the next command, which saves a CPU core. Psion's own
     // clock stands still meanwhile, which does not matter: the adapter
-    // keeps the time. The state has to be quiet for a while first, so that
-    // Psion has finished drawing the screen and memory has settled.
-    const unsigned int FREEZE_DELAY_MS=500;
+    // keeps the time. Psion is only idle once ACTION_GAP_MS has passed
+    // since the last key, enough to handle it; then memory must show the
+    // known state for a few frames more, so that the screen is up to date.
+    const unsigned int FREEZE_DELAY_MS=50;
 
     static void freeze_when_idle(){
 	static unsigned int quiet_since=0;
