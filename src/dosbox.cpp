@@ -247,6 +247,16 @@ void DOSBOX_SetNormalLoop() {
 	loop=Normal_Loop;
 }
 
+/* Psion: after the emulation was paused (while waiting for input),
+   restart the timing as if nothing happened, so that the pause is neither
+   caught up nor counted by the auto-adjustment of the cycles. */
+void DOSBOX_ResetTicks(void) {
+	ticksLast = GetTicks();
+	ticksAdded = 0;
+	ticksDone = 0;
+	ticksScheduled = 0;
+}
+
 void DOSBOX_RunMachine(void){
 	Bitu ret;
 	do {

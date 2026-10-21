@@ -34,6 +34,7 @@ typedef Bitu (LoopHandler)(void);
 void DOSBOX_RunMachine();
 void DOSBOX_SetLoop(LoopHandler * handler);
 void DOSBOX_SetNormalLoop();
+void DOSBOX_ResetTicks();
 
 void DOSBOX_Init(void);
 

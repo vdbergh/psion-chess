@@ -410,11 +410,13 @@ namespace psion {
     static CRITICAL_SECTION input_lock;
     static std::queue<std::string> input_lines;
     static bool input_eof=false;
+    static HANDLE input_event;  // set when a line or the end is queued
 
     static void add_input_line(const std::string &line){
 	EnterCriticalSection(&input_lock);
 	input_lines.push(line);
 	LeaveCriticalSection(&input_lock);
+	SetEvent(input_event);
     }
 
     // A console echoes what is typed relative to where the cursor was when
@@ -480,11 +482,13 @@ namespace psion {
 	EnterCriticalSection(&input_lock);
 	input_eof=true;
 	LeaveCriticalSection(&input_lock);
+	SetEvent(input_event);
 	return 0;
     }
 
     static void start_input(){
 	InitializeCriticalSection(&input_lock);
+	input_event=CreateEvent(NULL,FALSE,FALSE,NULL);
 	CreateThread(NULL,0,input_thread,NULL,0,NULL);
     }
 
@@ -501,6 +505,19 @@ namespace psion {
 	eof=!ok && input_eof;
 	LeaveCriticalSection(&input_lock);
 	return ok;
+    }
+
+    // Blocks until a line of input (or the end of the input) is available.
+    static void wait_for_input(){
+	for(;;){
+	    EnterCriticalSection(&input_lock);
+	    bool ready=!input_lines.empty() || input_eof;
+	    LeaveCriticalSection(&input_lock);
+	    if(ready){
+		return;
+	    }
+	    WaitForSingleObject(input_event,INFINITE);
+	}
     }
 #else
     static void start_input(){
@@ -536,6 +553,15 @@ namespace psion {
 	}
 	eof=feof(stdin)!=0;
 	return false;
+    }
+
+    // Blocks until input (or the end of the input) is available.
+    static void wait_for_input(){
+	fd_set set[1];
+	do{
+	    FD_ZERO(set);
+	    FD_SET(STDIN_FILENO,set);
+	}while(select(STDIN_FILENO+1,set,NULL,NULL,NULL)<0 && errno==EINTR);
     }
 #endif
 
@@ -645,6 +671,8 @@ namespace psion {
 
     static PsionState known;          // last accepted state
     static bool have_known=false;
+    static bool settled=false;        // memory showed the known state when
+				      // last read
 
     static bool same_state(const PsionState &a, const PsionState &b){
 	return a.ply==b.ply && a.white_to_move==b.white_to_move &&
@@ -705,12 +733,14 @@ namespace psion {
 	static bool have_pending=false;
 	static unsigned int pending_since=0;
 	PsionState cur;
+	settled=false;
 	if(!ReadGameState(cur)){
 	    // Psion flashes the kings to announce a draw or mate, which makes
 	    // every other read fail. So ignore failed reads: the state read in
 	    // between still has to stay unchanged for STABLE_MS.
 	    return false;
 	}
+	settled=have_known && same_state(cur,known);
 	if(!have_pending || !same_state(cur,pending)){
 	    pending=cur;
 	    pending_since=GetTicks();
@@ -1112,11 +1142,16 @@ namespace psion {
 	uci.info_move=a.pv[0];
     }
 
+    // Set by UciStep when Psion is where the GUI wants it and has nothing
+    // to do until the next command.
+    static bool uci_done=false;
+
     // Drives Psion towards the state the GUI asked for. Called every tick.
     static void UciStep(){
 	unsigned int now=GetTicks();
 	bool idle=keyboard_buffer.Empty() && now-uci.last_action>=ACTION_GAP_MS;
 	std::vector<std::string> &moves=game_state.moves;
+	uci_done=false;
 	if(uci.search==SEARCH_RUNNING){
 	    if(!uci.movenow_sent && uci.think_ms &&
 	       now-uci.search_start>=uci.think_ms){
@@ -1217,6 +1252,35 @@ namespace psion {
 	    uci.info_depth=0;
 	    uci.movenow_sent=false;
 	}
+	uci_done=uci.search==SEARCH_NONE && !uci.readyok_pending;
+    }
+
+    // While Psion waits for the GUI (it does not ponder), the emulation is
+    // stopped until the next command, which saves a CPU core. Psion's own
+    // clock stands still meanwhile, which does not matter: the adapter
+    // keeps the time. The state has to be quiet for a while first, so that
+    // Psion has finished drawing the screen and memory has settled.
+    const unsigned int FREEZE_DELAY_MS=500;
+
+    static void freeze_when_idle(){
+	static unsigned int quiet_since=0;
+	static bool quiet=false;
+	if(!uci_done || !settled || pending_promotion ||
+	   !keyboard_buffer.Empty()){
+	    quiet=false;
+	    return;
+	}
+	if(!quiet){
+	    quiet=true;
+	    quiet_since=GetTicks();
+	    return;
+	}
+	if(GetTicks()-quiet_since<FREEZE_DELAY_MS){
+	    return;
+	}
+	wait_for_input();
+	DOSBOX_ResetTicks();
+	quiet=false;
     }
 
     void ProcessScreen(unsigned char pixels[SCREEN_BPP*SCREEN_WIDTH*SCREEN_HEIGHT]){
@@ -1320,6 +1384,9 @@ namespace psion {
 	    UciStep();
 	}
 	keyboard_buffer.ProcessKeys();
+	if(uci_mode){
+	    freeze_when_idle();
+	}
     }
 
 }

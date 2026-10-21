@@ -211,6 +211,11 @@ whose codes are unknown (see above), and as the reference for `memscan`.
 - `t` takes back one ply, `$` starts a new game.
 - Moves are entered by moving the cursor; F3 F3 (into and out of set-up
   mode) resets it to a known square.
+- While Psion waits for the GUI, the emulation is stopped until the next
+  command arrives, so an idle engine uses no CPU (Psion does not ponder).
+  This starts once Psion has been idle for half a second, so that it has
+  finished drawing the screen. Psion's own clock stands still meanwhile,
+  which does not matter: the adapter keeps the time.
 
 ## Other modes and tools
 
