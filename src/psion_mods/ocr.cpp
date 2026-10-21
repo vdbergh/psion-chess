@@ -8,9 +8,9 @@
 #define SQUARE_Y 16
 #define SQUARE_TYPES_NUM 26
 
-
 namespace psion {
-        unsigned char font8x8[] = {
+    // clang-format off
+    unsigned char font8x8[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // 00
 	0x7E, 0x81, 0xA5, 0x81, 0xBD, 0x99, 0x81, 0x7E,  // 01  white smiley
 	0x7E, 0xFF, 0xDB, 0xFF, 0xC3, 0xE7, 0xFF, 0x7E,  // 02  black smiley
@@ -140,44 +140,26 @@ namespace psion {
 	0x76, 0xDC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // 7e  tilde
 	0x00, 0x10, 0x38, 0x6C, 0xC6, 0xC6, 0xFE, 0x00,  // 7f  pyramid
     };
+    // clang-format on
 
     uint64_t font8x8_64[0x80];
 
     struct square {
-	uint32_t crc32;
-	char piece;
+        uint32_t crc32;
+        char piece;
     };
-    struct square square_font[SQUARE_TYPES_NUM]={
-	{0x16a2a27a,'.'},
-	{0x00000000,'.'},
-	{0x1a302ba3,'P'},
-	{0xed437a52,'P'},
-	{0xfbe1d828,'p'},
-	{0x0c9289d9,'p'},
-	{0xa791212d,'N'},
-	{0x83b9d12b,'N'},
-	{0x951b7351,'n'},
-	{0xb1338357,'n'},
-	{0x543f7dc7,'B'},
-	{0x692251d1,'B'},
-	{0x7f80f3ab,'b'},
-	{0x429ddfbd,'b'},
-	{0xa64ecda0,'R'},
-	{0xd6c5cc9e,'R'},
-	{0xc0676ee4,'r'},
-	{0xb0ec6fda,'r'},
-	{0x7d825247,'Q'},
-	{0xb56cdf44,'Q'},
-	{0xa3ce7d3e,'q'},
-	{0x6b20f03d,'q'},
-	{0x3489c4e9,'K'},
-	{0x432c2d6b,'K'},
-	{0x558e8f11,'k'},
-	{0x222b6693,'k'}
-    };
+    struct square square_font[SQUARE_TYPES_NUM] = {
+        {0x16a2a27a, '.'}, {0x00000000, '.'}, {0x1a302ba3, 'P'},
+        {0xed437a52, 'P'}, {0xfbe1d828, 'p'}, {0x0c9289d9, 'p'},
+        {0xa791212d, 'N'}, {0x83b9d12b, 'N'}, {0x951b7351, 'n'},
+        {0xb1338357, 'n'}, {0x543f7dc7, 'B'}, {0x692251d1, 'B'},
+        {0x7f80f3ab, 'b'}, {0x429ddfbd, 'b'}, {0xa64ecda0, 'R'},
+        {0xd6c5cc9e, 'R'}, {0xc0676ee4, 'r'}, {0xb0ec6fda, 'r'},
+        {0x7d825247, 'Q'}, {0xb56cdf44, 'Q'}, {0xa3ce7d3e, 'q'},
+        {0x6b20f03d, 'q'}, {0x3489c4e9, 'K'}, {0x432c2d6b, 'K'},
+        {0x558e8f11, 'k'}, {0x222b6693, 'k'}};
 
-
-
+    // clang-format off
     const unsigned char cursor[SQUARE_HEIGHT][SQUARE_WIDTH-1]= {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -198,163 +180,163 @@ namespace psion {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     };
+    // clang-format on
 
-
-    inline bool GetPixel(unsigned char *buf,int width,int x,int y){
-	return buf[4*(width*2*y+x)]!=0;
+    inline bool GetPixel(unsigned char *buf, int width, int x, int y) {
+        return buf[4 * (width * 2 * y + x)] != 0;
     }
-    void print_pixels(unsigned char * buf, int hoffset){
-	int i,j;
-	if(hoffset+SCREEN_WIDTH/4>SCREEN_WIDTH){
-	    hoffset=3*SCREEN_WIDTH/4;
-	}
-	for(j=0;j<SCREEN_HEIGHT/2;j+=1){
-	    for(i=hoffset;i<hoffset+SCREEN_WIDTH/4;i+=1){
-		if(GetPixel(buf,SCREEN_WIDTH,i,j)){
-		    printf("o");
-		}else{
-		    printf(".");
-		}
-	    }
-	    printf("\n");
-	}
-    }
-
-    void print_txt(char txt_buf[TEXT_HEIGHT][TEXT_WIDTH]){
-	int x_txt, y_txt;
-
-
-	for(y_txt=0;y_txt<TEXT_HEIGHT;y_txt++){
-	    for(x_txt=0;x_txt<TEXT_WIDTH;x_txt++){
-		printf("%c",txt_buf[y_txt][x_txt]);
-	    }
-	    printf("\n");
-	}    
+    void print_pixels(unsigned char *buf, int hoffset) {
+        int i, j;
+        if (hoffset + SCREEN_WIDTH / 4 > SCREEN_WIDTH) {
+            hoffset = 3 * SCREEN_WIDTH / 4;
+        }
+        for (j = 0; j < SCREEN_HEIGHT / 2; j += 1) {
+            for (i = hoffset; i < hoffset + SCREEN_WIDTH / 4; i += 1) {
+                if (GetPixel(buf, SCREEN_WIDTH, i, j)) {
+                    printf("o");
+                } else {
+                    printf(".");
+                }
+            }
+            printf("\n");
+        }
     }
 
-    void ocr(char txt_buf[TEXT_HEIGHT][TEXT_WIDTH],unsigned char* buf){
-	int x,y;
-	int xy_s;
-	int x_txt, y_txt;
-	int xy_txt_s;
-	int i;
-	uint64_t txt_buf64[TEXT_WIDTH*TEXT_HEIGHT];
-	for(y_txt=0;y_txt<TEXT_HEIGHT;y_txt++){
-	    for(x_txt=0;x_txt<TEXT_WIDTH;x_txt++){
-		xy_txt_s=y_txt*TEXT_WIDTH+x_txt;
-		txt_buf64[xy_txt_s]=0ULL;
-		txt_buf[y_txt][x_txt]=' ';
-	    }    
-	}
-	for(y=0;y<SCREEN_HEIGHT;y+=2){
-	    for(x=0;x<SCREEN_WIDTH;x+=1){
-		int x_pix,y_pix;
-		if(x>=312 && y>=30 && y<=320){
-		    // chess board!
-		    continue;
-		}
-		xy_s=(SCREEN_HEIGHT-y-1)*SCREEN_WIDTH+x;
-		x_pix=x/8;
-		y_pix=y/2;
-		if(y_pix>4*SCREEN_HEIGHT/2/5){
-		    // the banner is slightly off grid
-		    y_pix+=2;
-		}
-		x_txt=x_pix;
-		y_txt=y_pix/8;
-		xy_txt_s=y_txt*TEXT_WIDTH+x_txt;
-		if(buf[4*xy_s]!=0 && y_txt < TEXT_HEIGHT){
-		    txt_buf64[xy_txt_s]|=1ULL<<((7-x%8)+8*((y_pix)%8));
-		}
-	    }
-	}
-	for(y_txt=0;y_txt<TEXT_HEIGHT;y_txt++){
-	    for(x_txt=0;x_txt<TEXT_WIDTH;x_txt++){
-		xy_txt_s=y_txt*TEXT_WIDTH+x_txt;
-		for(i=32;i<=127;i++){
-		    if(font8x8_64[i]==txt_buf64[xy_txt_s]){
-			txt_buf[TEXT_HEIGHT-1-y_txt][x_txt]=(char)i;
-		    }
-		}
+    void print_txt(char txt_buf[TEXT_HEIGHT][TEXT_WIDTH]) {
+        int x_txt, y_txt;
 
-	    }
-	}    
+        for (y_txt = 0; y_txt < TEXT_HEIGHT; y_txt++) {
+            for (x_txt = 0; x_txt < TEXT_WIDTH; x_txt++) {
+                printf("%c", txt_buf[y_txt][x_txt]);
+            }
+            printf("\n");
+        }
     }
 
-    void init_font8x8_64(){
-	int i,j;
-	for(i=0;i<=0x7f;i++){
-	    font8x8_64[i]=0L;
-	    for(j=0;j<=7;j++){
-		font8x8_64[i]<<=8L;
-		font8x8_64[i]+=font8x8[8*i+j];
-	    }
-	}
+    void ocr(char txt_buf[TEXT_HEIGHT][TEXT_WIDTH], unsigned char *buf) {
+        int x, y;
+        int xy_s;
+        int x_txt, y_txt;
+        int xy_txt_s;
+        int i;
+        uint64_t txt_buf64[TEXT_WIDTH * TEXT_HEIGHT];
+        for (y_txt = 0; y_txt < TEXT_HEIGHT; y_txt++) {
+            for (x_txt = 0; x_txt < TEXT_WIDTH; x_txt++) {
+                xy_txt_s = y_txt * TEXT_WIDTH + x_txt;
+                txt_buf64[xy_txt_s] = 0ULL;
+                txt_buf[y_txt][x_txt] = ' ';
+            }
+        }
+        for (y = 0; y < SCREEN_HEIGHT; y += 2) {
+            for (x = 0; x < SCREEN_WIDTH; x += 1) {
+                int x_pix, y_pix;
+                if (x >= 312 && y >= 30 && y <= 320) {
+                    // chess board!
+                    continue;
+                }
+                xy_s = (SCREEN_HEIGHT - y - 1) * SCREEN_WIDTH + x;
+                x_pix = x / 8;
+                y_pix = y / 2;
+                if (y_pix > 4 * SCREEN_HEIGHT / 2 / 5) {
+                    // the banner is slightly off grid
+                    y_pix += 2;
+                }
+                x_txt = x_pix;
+                y_txt = y_pix / 8;
+                xy_txt_s = y_txt * TEXT_WIDTH + x_txt;
+                if (buf[4 * xy_s] != 0 && y_txt < TEXT_HEIGHT) {
+                    txt_buf64[xy_txt_s] |= 1ULL
+                                           << ((7 - x % 8) + 8 * ((y_pix) % 8));
+                }
+            }
+        }
+        for (y_txt = 0; y_txt < TEXT_HEIGHT; y_txt++) {
+            for (x_txt = 0; x_txt < TEXT_WIDTH; x_txt++) {
+                xy_txt_s = y_txt * TEXT_WIDTH + x_txt;
+                for (i = 32; i <= 127; i++) {
+                    if (font8x8_64[i] == txt_buf64[xy_txt_s]) {
+                        txt_buf[TEXT_HEIGHT - 1 - y_txt][x_txt] = (char)i;
+                    }
+                }
+            }
+        }
     }
 
-    uint32_t crc32_square(unsigned char *buf, int file, int row){
-	int x,y;
-	int xy_s;
-	int x_left,x_right,y_lower,y_upper;
-	uint32_t crc32;
-	unsigned char bit;
-	x_left=SQUARE_X+file*SQUARE_WIDTH;
-	x_right=SQUARE_X+(file+1)*SQUARE_WIDTH-1;
-	y_lower=2*(SQUARE_Y+row*SQUARE_HEIGHT);
-	y_upper=2*(SQUARE_Y+(row+1)*SQUARE_HEIGHT);
-
-	crc32=0;
-	for(y=y_lower;y<y_upper;y+=2){
-	    for(x=x_left;x<x_right;x+=1){
-		xy_s=(SCREEN_HEIGHT-y-1)*SCREEN_WIDTH+x;
-		if(buf[4*xy_s]!=0 && 
-		   !((y==2*SQUARE_Y)&&(file%2==0)) && // some fiddling with the border
-		   cursor[(y-y_lower)/2][x-x_left]!=1   // ignore cursor pixels
-		   ){ 
-		    bit=1;
-		}else{
-		    bit=0;
-		}
-		bit^=(crc32&0x1);
-		crc32>>=1;
-		if(bit){
-		    crc32^=0xEDB88320;
-		}
-	    }
-	}
-	return crc32;
+    void init_font8x8_64() {
+        int i, j;
+        for (i = 0; i <= 0x7f; i++) {
+            font8x8_64[i] = 0L;
+            for (j = 0; j <= 7; j++) {
+                font8x8_64[i] <<= 8L;
+                font8x8_64[i] += font8x8[8 * i + j];
+            }
+        }
     }
 
-    void ocr_board(char board[8][8], unsigned char *buf){
-	int f,r,i;
-	uint32_t crc32;
-	for(f=0;f<8;f++){
-	    for(r=0;r<8;r++){
-		crc32=crc32_square(buf,f,r);
-		board[f][r]='*';
-		for(i=0;i<SQUARE_TYPES_NUM;i++){
-		    if(square_font[i].crc32==crc32){
-			board[f][r]=square_font[i].piece;
-			break;
-		    }
-		}
-	    }
-	}
+    uint32_t crc32_square(unsigned char *buf, int file, int row) {
+        int x, y;
+        int xy_s;
+        int x_left, x_right, y_lower, y_upper;
+        uint32_t crc32;
+        unsigned char bit;
+        x_left = SQUARE_X + file * SQUARE_WIDTH;
+        x_right = SQUARE_X + (file + 1) * SQUARE_WIDTH - 1;
+        y_lower = 2 * (SQUARE_Y + row * SQUARE_HEIGHT);
+        y_upper = 2 * (SQUARE_Y + (row + 1) * SQUARE_HEIGHT);
+
+        crc32 = 0;
+        for (y = y_lower; y < y_upper; y += 2) {
+            for (x = x_left; x < x_right; x += 1) {
+                xy_s = (SCREEN_HEIGHT - y - 1) * SCREEN_WIDTH + x;
+                if (buf[4 * xy_s] != 0 &&
+                    !((y == 2 * SQUARE_Y) &&
+                      (file % 2 == 0)) && // some fiddling with the border
+                    cursor[(y - y_lower) / 2][x - x_left] !=
+                        1 // ignore cursor pixels
+                ) {
+                    bit = 1;
+                } else {
+                    bit = 0;
+                }
+                bit ^= (crc32 & 0x1);
+                crc32 >>= 1;
+                if (bit) {
+                    crc32 ^= 0xEDB88320;
+                }
+            }
+        }
+        return crc32;
     }
 
-    void print_board(char board[8][8]){
-	int f,r;
-	for(r=0;r<8;r++){
-	    for(f=0;f<8;f++){
-		printf("%c",board[f][7-r]);
-	    }
-	    printf("\n");
-	}
+    void ocr_board(char board[8][8], unsigned char *buf) {
+        int f, r, i;
+        uint32_t crc32;
+        for (f = 0; f < 8; f++) {
+            for (r = 0; r < 8; r++) {
+                crc32 = crc32_square(buf, f, r);
+                board[f][r] = '*';
+                for (i = 0; i < SQUARE_TYPES_NUM; i++) {
+                    if (square_font[i].crc32 == crc32) {
+                        board[f][r] = square_font[i].piece;
+                        break;
+                    }
+                }
+            }
+        }
     }
 
-
-    void init_ocr(){
-	init_font8x8_64();
+    void print_board(char board[8][8]) {
+        int f, r;
+        for (r = 0; r < 8; r++) {
+            for (f = 0; f < 8; f++) {
+                printf("%c", board[f][7 - r]);
+            }
+            printf("\n");
+        }
     }
 
-}
+    void init_ocr() {
+        init_font8x8_64();
+    }
+
+} // namespace psion

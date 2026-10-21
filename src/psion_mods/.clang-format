@@ -1,0 +1,12 @@
+# Style of the adapter's own code (not DOSBox's): clang-format -i *.cpp *.h
+BasedOnStyle: LLVM
+IndentWidth: 4
+UseTab: Never
+ColumnLimit: 80
+NamespaceIndentation: All
+PointerAlignment: Right
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+SortIncludes: Never
+BreakStringLiterals: false

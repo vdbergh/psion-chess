@@ -24,30 +24,30 @@ namespace psion {
     // Derives the move (UCI notation) by which the side given by white
     // turns before into after.
     bool DeriveMove(const Board before, const Board after, bool white,
-		    std::string &move);
+                    std::string &move);
 
     bool IsMoveString(const std::string &m);
 
     std::vector<std::string> Tokenize(const char *line);
 
     struct GoParams {
-	int wtime, btime;    // -1 if not given
-	int winc, binc;
-	int movestogo;       // 0 if not given
-	int movetime;        // 0 if not given
-	bool infinite;       // "infinite" or "ponder"
+        int wtime, btime; // -1 if not given
+        int winc, binc;
+        int movestogo; // 0 if not given
+        int movetime;  // 0 if not given
+        bool infinite; // "infinite" or "ponder"
     };
     GoParams ParseGo(const std::vector<std::string> &tokens);
 
     // How long to think (ms) before pressing MOVE-NOW, allowing latency ms
     // for the move to be detected. 0 means until "stop".
     unsigned int ThinkTime(const GoParams &go, bool white,
-			   unsigned int latency);
+                           unsigned int latency);
 
     struct PositionRequest {
-	bool supported;
-	std::vector<std::string> moves;   // from the start position
-	std::string error;                // why it is not supported
+        bool supported;
+        std::vector<std::string> moves; // from the start position
+        std::string error;              // why it is not supported
     };
     PositionRequest ParsePosition(const std::vector<std::string> &tokens);
 
@@ -56,10 +56,10 @@ namespace psion {
     // variation, e.g. "-00.4 E2-E4 D7-D5 B1-C3 D5xE4". A mate is shown as
     // 99.9 (or -99.9 when the side to move is mated).
     struct Analysis {
-	bool mate;
-	int score;        // centipawns, or moves to mate (< 0: being mated)
-	std::vector<std::string> pv;   // UCI notation
-	bool complete;    // all of the line was understood
+        bool mate;
+        int score; // centipawns, or moves to mate (< 0: being mated)
+        std::vector<std::string> pv; // UCI notation
+        bool complete;               // all of the line was understood
     };
     // white: the side to move. False if the row is not an analysis line.
     bool ParseAnalysis(const std::string &row, bool white, Analysis &a);
@@ -72,15 +72,15 @@ namespace psion {
     bool CheckPv(const Board board, bool white, std::vector<std::string> &pv);
 
     enum SyncAction {
-	SYNC_DONE,         // game equals target
-	SYNC_SEND_MOVE,    // enter target[game.size()]
-	SYNC_TAKEBACK,     // take back the last move
-	SYNC_NEW_GAME      // start a new game, then replay the target
+        SYNC_DONE,      // game equals target
+        SYNC_SEND_MOVE, // enter target[game.size()]
+        SYNC_TAKEBACK,  // take back the last move
+        SYNC_NEW_GAME   // start a new game, then replay the target
     };
     // The next step to get from the game Psion has played to the target.
     SyncAction PlanSync(const std::vector<std::string> &game,
-			const std::vector<std::string> &target);
+                        const std::vector<std::string> &target);
 
-}
+} // namespace psion
 
 #endif

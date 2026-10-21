@@ -10,6 +10,6 @@ namespace psion {
     bool MemScan_Enabled();
     void MemScan_Snapshot(char board[8][8]);
 
-}
+} // namespace psion
 
 #endif
