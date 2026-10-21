@@ -121,10 +121,31 @@ stderr: the moves and board after each move, start-up messages, etc.
 | `ocr.cpp` | Reading text and pieces from the screen. |
 | `memscan.cpp` | A tool that locates Psion's board in memory (see below). |
 
+The adapter never modifies Psion or its memory. It gets its data in two
+ways:
+
+- **The game** (board, side to move, ply) is read from Psion's memory.
+  Moves are derived from changes of the board, not from the screen: memory
+  is exact and changes even when the screen is not redrawn.
+- **Everything else** is read from the screen: the level, the modes,
+  prompts and the analysis display.
+
+Psion is controlled only through simulated keypresses. The adapter checks
+the effect of each key, in memory or on the screen, before it presses the
+next one, and retries a few times if a key had no effect.
+
+Psion keeps no node count, and its search depth is not found in memory
+or on the screen. So `info` lines have no `nodes` or `nps`, the depth is
+the length of the longest principal variation seen, and the time is
+measured by the adapter itself.
+
 ### Psion's memory
 
-These offsets are relative to Psion's data segment, which the adapter
-locates once at start-up by scanning memory for the start position:
+These offsets are relative to Psion's data segment. The adapter locates
+it once, while Psion shows the start position: it tries DS first, and
+otherwise scans memory for the start position. The segment is not
+searched again later, because other board-like data in memory could be
+taken for the game.
 
 | Offset | Contents |
 |---|---|
@@ -138,9 +159,30 @@ flags that do not change the piece. Promoted pieces get codes that are not
 known in advance (seen: `10` and `20`); the adapter learns them from the
 piece it typed at the promotion prompt or from the screen.
 
-The adapter accepts a memory state once it has been unchanged for 200 ms
-and derives each move from the change of the board. Reads that fail are
-ignored: Psion flashes the kings when it announces a draw or mate.
+The adapter reads these every 10 ms. It accepts a memory state once it
+has been unchanged for 200 ms (while Psion searches, memory changes much
+more often) and derives each move from the change of the board. While
+Psion searches its own move, the adapter counts the plies itself instead
+of trusting the side-to-move byte. If no legal move explains a change,
+it resynchronizes to the state in memory. Reads that fail are ignored:
+Psion flashes the kings when it announces a draw or mate.
+
+### The screen
+
+DOSBox renders each screen update into a 640x400 frame, which
+`ProcessScreen` hands to `ocr.cpp`. `ocr()` turns it into 80x25 text by
+matching each 8x8 cell against Psion's font, and `ocr_board()` reads the
+pieces off the graphical board. Each row keeps its last non-blank
+contents, because some rows blink. The adapter uses:
+
+| Row | Used for |
+|---|---|
+| 6 | `PLAYER PLAYER`: 2-player mode is on. |
+| 22 | The status line: level 11 (`LEVEL 11  4 Min`), easy mode (`LEVEL E`), `ANALYSIS ON`. |
+| 24 | The analysis display (see below), and the `PROMOTE TO` and `ILLEGAL` prompts. |
+
+The board read from the screen is used only to identify promoted pieces
+whose codes are unknown (see above), and as the reference for `memscan`.
 
 ### Controlling Psion
 
