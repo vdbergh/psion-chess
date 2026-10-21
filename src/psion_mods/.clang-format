@@ -10,3 +10,4 @@ AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 SortIncludes: Never
 BreakStringLiterals: false
+Standard: c++03

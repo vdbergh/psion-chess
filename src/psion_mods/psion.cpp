@@ -124,59 +124,98 @@ namespace psion {
 
     GameState game_state;
 
+    // Keys for Psion. A key (with its modifier, if any) is passed on once
+    // Psion has taken the previous one from the BIOS keyboard buffer, so
+    // keys go in as fast as Psion reads them and the buffer never fills.
     class KeyBoardBuffer {
         struct KeyEvent {
             KBD_KEYS key;
             bool pressed;
         };
-        std::queue<KeyEvent> events;
-        int last_ticks;
-        void Push(KBD_KEYS k, bool pressed);
+        std::queue<std::vector<KeyEvent> > strokes;
+        bool waiting;       // for Psion to take the last key
+        bool arrived;       // the last key is in the BIOS buffer
+        unsigned int tail;  // BIOS buffer tail when it was sent
+        unsigned int since; // when it was sent
+        void Push(std::vector<KeyEvent> &stroke, KBD_KEYS k, bool pressed);
 
       public:
         KeyBoardBuffer();
         void SendKey(KBD_KEYS k);
         void SendKey(KBD_KEYS modifier, KBD_KEYS k);
-        void ProcessKeys(int delay);
+        void ProcessKeys();
         bool Empty();
     };
+
+    // The BIOS keyboard buffer: head and tail offsets in segment 0040.
+    const unsigned int BIOS_KBD_HEAD = 0x41A;
+    const unsigned int BIOS_KBD_TAIL = 0x41C;
+    // A key that has not reached the BIOS buffer by then (e.g. a key
+    // without a character) is taken to be handled.
+    const unsigned int KEY_ARRIVAL_MS = 50;
+
     KeyBoardBuffer::KeyBoardBuffer() {
-        last_ticks = 0;
+        waiting = false;
+        arrived = false;
+        tail = 0;
+        since = 0;
     }
-    void KeyBoardBuffer::Push(KBD_KEYS k, bool pressed) {
+    void KeyBoardBuffer::Push(std::vector<KeyEvent> &stroke, KBD_KEYS k,
+                              bool pressed) {
         KeyEvent e;
         e.key = k;
         e.pressed = pressed;
-        events.push(e);
+        stroke.push_back(e);
     }
     void KeyBoardBuffer::SendKey(KBD_KEYS k) {
-        Push(k, true);
-        Push(k, false);
+        std::vector<KeyEvent> stroke;
+        Push(stroke, k, true);
+        Push(stroke, k, false);
+        strokes.push(stroke);
     }
     // Key combination such as shift-4 ('$') or ctrl-L.
     void KeyBoardBuffer::SendKey(KBD_KEYS modifier, KBD_KEYS k) {
-        Push(modifier, true);
-        Push(k, true);
-        Push(k, false);
-        Push(modifier, false);
+        std::vector<KeyEvent> stroke;
+        Push(stroke, modifier, true);
+        Push(stroke, k, true);
+        Push(stroke, k, false);
+        Push(stroke, modifier, false);
+        strokes.push(stroke);
     }
+    // True once all keys have been taken by Psion.
     bool KeyBoardBuffer::Empty() {
-        return events.empty();
+        return strokes.empty() && !waiting;
     }
-    void KeyBoardBuffer::ProcessKeys(int delay = 20) {
-        if (delay) {
-            int new_ticks;
-            new_ticks = GetTicks();
-            if (new_ticks - last_ticks < delay) {
+    void KeyBoardBuffer::ProcessKeys() {
+        unsigned int head = mem_readw(BIOS_KBD_HEAD);
+        unsigned int now_tail = mem_readw(BIOS_KBD_TAIL);
+        if (waiting) {
+            if (!arrived) {
+                if (now_tail != tail) {
+                    arrived = true;
+                } else if (GetTicks() - since >= KEY_ARRIVAL_MS) {
+                    waiting = false;
+                }
+            }
+            if (arrived && head == now_tail) {
+                waiting = false;
+            }
+            if (waiting) {
                 return;
-            } else {
-                last_ticks = new_ticks;
             }
         }
-        if (!events.empty()) {
-            KEYBOARD_AddKey(events.front().key, events.front().pressed);
-            events.pop();
+        if (strokes.empty()) {
+            return;
         }
+        const std::vector<KeyEvent> &stroke = strokes.front();
+        for (size_t i = 0; i < stroke.size(); i++) {
+            KEYBOARD_AddKey(stroke[i].key, stroke[i].pressed);
+        }
+        strokes.pop();
+        waiting = true;
+        arrived = false;
+        tail = now_tail;
+        since = GetTicks();
     }
 
     KeyBoardBuffer keyboard_buffer;
@@ -817,6 +856,9 @@ namespace psion {
     const unsigned int MOVE_LATENCY_MS = 250;
     // Pause after a key action before the screen is consulted again.
     const unsigned int ACTION_GAP_MS = 300;
+    // Psion thinks at least this long, also when the time for the move
+    // was used up before it could start (e.g. setting up the position).
+    const unsigned int MIN_THINK_MS = 50;
     const unsigned int MOVE_TIMEOUT_MS = 5000;
     const int MAX_RETRIES = 3;
     const int MAX_TWO_PLAYER_PRESSES = 5;
@@ -1083,7 +1125,8 @@ namespace psion {
         uci_done = false;
         if (uci.search == SEARCH_RUNNING) {
             if (!uci.movenow_sent && uci.think_ms &&
-                now - uci.search_start >= uci.think_ms) {
+                now - uci.search_start >= uci.think_ms &&
+                now - uci.thinking_start >= MIN_THINK_MS) {
                 press(KBD_m);
                 uci.movenow_sent = true;
                 uci.movenow_ticks = now;

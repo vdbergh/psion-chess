@@ -100,11 +100,13 @@ stderr: the moves and board after each move, start-up messages, etc.
   is derived from the length of the principal variation.
 - `go depth`/`nodes`/`mate` are not supported; such searches take 5 seconds.
 - Pondering is not offered; `go ponder` is treated as `go infinite`.
-- Moves are entered through the keyboard, which takes about 0.7 seconds per
-  move. This time is taken from the engine's own clock, so very fast time
-  controls leave little time for thinking.
+- Entering the opponent's move and reporting the engine's take about 0.5
+  seconds per move. This time is taken from the engine's own clock, so
+  very fast time controls leave little time for thinking. (A GUI that
+  sends `isready` before `go`, like fastchess, starts the clock after the
+  opponent's move has been entered.)
 - After `ucinewgame`, or when the GUI's move list diverges by more than four
-  plies, the game is replayed from the start (about 0.7 s per ply).
+  plies, the game is replayed from the start (about 0.4 s per ply).
 - Psion applies its own draw rules and may announce a draw (e.g. by
   repetition) that the GUI does not see. Psion then stops accepting moves,
   so if the GUI continues the game, it is replayed in a new game.
@@ -232,7 +234,9 @@ and Psion replies to them; diagnostics then go to stdout. Environment variables 
 | `PSION_MEMDUMP` | Directory to write memory snapshots to (with `PSION_MEMSCAN`). |
 
 `tools/find_state.py` searches such snapshots for side-to-move flags and
-counters; `tools/match.py` plays two engines against each other.
+counters; `tools/match.py` plays two engines against each other;
+`tools/lichess_check.py` checks the engine with python-chess, the way
+lichess-bot uses it.
 
 ## Licence
 
