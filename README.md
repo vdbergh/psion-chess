@@ -111,6 +111,24 @@ stderr: the moves and board after each move, start-up messages, etc.
   repetition) that the GUI does not see. Psion then stops accepting moves,
   so if the GUI continues the game, it is replayed in a new game.
 
+### Speed
+
+The emulated PC runs as fast as the host allows (DOSBox's `cycles=max`).
+On an Intel Core i5-1135G7 this is about 187,000 cycles per millisecond
+during a search, i.e. roughly 190 million 8086 instructions per second;
+an original IBM PC (8088, 4.77 MHz) managed about 0.3 million.
+
+For comparison, Richard Lang's program won the 1987 World Microcomputer
+Chess Championship on a 68020 at 12 MHz, about 2 million instructions
+per second, so the engine runs some 60 to 120 times faster. This is only
+a rough figure: the 1987 program was the 68000-family version, not this
+8086 one, and a 68020 instruction (32-bit) does more work than an 8086
+one (16-bit, segmented memory), so the real advantage is somewhat
+smaller. At about 90 times the speed, a second here is worth a minute
+and a half then: in a 3+2 blitz game (about 6 seconds a move) the engine
+effectively thinks longer than at a tournament rate of 40 moves in 2
+hours (3 minutes a move).
+
 ## How it works
 
 `src/psion_mods/` holds everything that is not DOSBox:
