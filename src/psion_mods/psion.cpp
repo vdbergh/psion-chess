@@ -623,6 +623,11 @@ namespace psion {
     // (Psion's board does not change during a search, but while Psion
     // plays a move it passes through states such as a piece lifted.)
     const unsigned int MOVE_STABLE_MS = 20;
+    // ... or this long if it looks like Psion is still playing a move: only
+    // the board changed, not the ply or the side to move, or pieces were
+    // only removed (a piece is lifted). This takes longer when the
+    // emulation runs slowly.
+    const unsigned int MID_MOVE_STABLE_MS = 3000;
 
     static PsionState known; // last accepted state
     static bool have_known = false;
@@ -632,6 +637,25 @@ namespace psion {
     static bool same_state(const PsionState &a, const PsionState &b) {
         return a.ply == b.ply && a.white_to_move == b.white_to_move &&
                memcmp(a.board, b.board, sizeof(a.board)) == 0;
+    }
+
+    // Whether after is before with some pieces removed and nothing else
+    // changed. No move does that: the moving piece lands somewhere.
+    static bool pieces_lifted(const char before[8][8], const char after[8][8]) {
+        int f, r;
+        bool removed = false;
+        for (f = 0; f < 8; f++) {
+            for (r = 0; r < 8; r++) {
+                if (after[f][r] == before[f][r]) {
+                    continue;
+                }
+                if (after[f][r] != '.') {
+                    return false;
+                }
+                removed = true;
+            }
+        }
+        return removed;
     }
 
     static char ocr_board_buf[8][8]; // last OCR'd board
@@ -708,8 +732,13 @@ namespace psion {
         bool one_move =
             have_known && !cur.unknown &&
             DeriveMove(known.board, cur.board, known.white_to_move, candidate);
-        if (GetTicks() - pending_since <
-            (one_move ? MOVE_STABLE_MS : STABLE_MS)) {
+        bool mid_move =
+            have_known && ((cur.ply == known.ply &&
+                            cur.white_to_move == known.white_to_move) ||
+                           pieces_lifted(known.board, cur.board));
+        if (GetTicks() - pending_since < (one_move   ? MOVE_STABLE_MS
+                                          : mid_move ? MID_MOVE_STABLE_MS
+                                                     : STABLE_MS)) {
             return false;
         }
         if (cur.unknown && !resolve_unknown_squares(cur)) {

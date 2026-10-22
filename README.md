@@ -78,6 +78,11 @@ Only UCI output is written by default. With `--verbose` (or `-v`), or
 after the UCI command `debug on`, the engine also writes diagnostics to
 stderr: the moves and board after each move, start-up messages, etc.
 
+`--cycles N` runs the emulated PC at a fixed speed of N instructions per
+millisecond instead of as fast as possible (see [Speed](#speed)), e.g.
+`--cycles 300` for roughly an original IBM PC. It is meant for tests and
+experiments.
+
 ### Supported UCI commands
 
 `uci`, `isready`, `ucinewgame`, `position startpos [moves ...]`, `go`

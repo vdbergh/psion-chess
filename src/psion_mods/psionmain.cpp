@@ -148,6 +148,14 @@ int main(int argc, char *argv[]) {
     Config myconf(&com_line);
     control = &myconf;
     DOSBOX_Init();
+    // For tests: run the emulated PC at a fixed speed, in instructions per
+    // millisecond, instead of as fast as possible.
+    int cycles;
+    if (com_line.FindInt("--cycles", cycles, true) && cycles > 0) {
+        char line[32];
+        snprintf(line, sizeof(line), "cycles=%d", cycles);
+        control->GetSection("dosbox")->HandleInputline(line);
+    }
     psion::IO_Init();
     if (control->cmdline->FindExist("-version") ||
         control->cmdline->FindExist("--version")) {

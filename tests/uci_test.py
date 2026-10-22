@@ -371,6 +371,30 @@ class QuitTest(unittest.TestCase):
         self.assertIn('e2e4 e7e5', err)
         self.assertNotIn('DOSBox', err)
 
+    def test_slow_emulation(self):
+        """At about the speed of an IBM PC (300 instructions per ms), the
+        states Psion passes through while it plays a move, such as a piece
+        lifted, last long enough to look stable. They must not be taken
+        for positions: the moves would then no longer follow."""
+        e = Engine(args=('--verbose', '--cycles', '300'))
+        try:
+            e.send('uci')
+            e.expect('uciok', 10)
+            moves = ['e2e4', 'e7e5', 'g1f3', 'b8c6']
+            e.send('position startpos moves ' + ' '.join(moves[:2]))
+            e.ready()
+            # The moves are entered one at a time, as during a game.
+            e.send('position startpos moves ' + ' '.join(moves[:3]))
+            e.ready()
+            e.send('position startpos moves ' + ' '.join(moves))
+            e.send('go movetime 500')
+            line, before = e.expect('bestmove', 60)
+            self.assertFalse([l for l in before if 'does not accept' in l],
+                             before)
+            self.assertTrue(Board(moves).plausible(line.split()[1]), line)
+        finally:
+            e.close()
+
 
 if __name__ == '__main__':
     PSION = sys.argv.pop(1)
