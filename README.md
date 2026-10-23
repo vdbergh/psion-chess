@@ -1,5 +1,7 @@
 # Psion Chess as a UCI engine
 
+![Psion Chess running in DOSBox](screenshot.png)
+
 Psion Chess (Richard Lang, 1985) is a DOS program. This project runs it in
 a stripped-down, headless DOSBox and adds an adapter that speaks the UCI
 protocol, so that it can be used from any chess GUI or match runner.
