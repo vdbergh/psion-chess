@@ -91,14 +91,15 @@ experiments.
 
 ### Limitations
 
-- FEN positions are set up with Psion's set-up mode, which gives neither
-  side castling rights (Psion then treats every king and rook as moved).
-  So a FEN with castling rights is not supported: the engine answers
-  `info string Castling rights in FEN positions are not supported` and
-  `bestmove 0000`. An en passant capture is possible: the position before
-  the pawn's double step is set up, and the step is then played. The move
-  counters of a FEN are ignored, so Psion's 50-move rule counts from the
-  FEN (the GUI still applies the rule itself).
+- FEN positions are set up with Psion's set-up mode (see below). Castling
+  rights are kept: Psion treats a king or rook typed in set-up mode as
+  moved, so those with rights are left where they stand in the start
+  position. Castling rights whose king or rook is not on its square are
+  ignored, and Chess960 rights are not supported. An en passant capture
+  is possible: the position before the pawn's double step is set up, and
+  the step is then played. The move counters of a FEN are ignored, so
+  Psion's 50-move rule counts from the FEN (the GUI still applies the rule
+  itself).
 - `info` lines have the time searched (since Psion started to think, so
   without entering the opponent's move), a score and a principal
   variation, but no node count. Psion does not show the search depth
@@ -231,10 +232,10 @@ queen `17`, king `01`; bit `80` is set for Black and bits `40`/`04` are
 flags that do not change the piece. Promoted pieces get codes that are not
 known in advance (seen: `10` and `20`); the adapter learns them from the
 piece it typed at the promotion prompt or from the screen. Bit `04` (and
-`40`) marks a king or rook that has moved: after set-up mode every king
-and rook has it, which is why castling is then impossible. Leaving set-up
-mode, which the adapter does for each move (F3 F3 resets the cursor),
-recomputes these codes, so they cannot simply be written into memory.
+`40`) marks a king or rook that has moved. Psion's own record of that
+(whether it may castle) is elsewhere, e.g. in its piece list (from `5BC0`
+for White); a king or rook typed in set-up mode is marked as moved there,
+while the board at `28AC` still shows it as unmoved.
 
 The adapter reads these every 10 ms. It accepts a memory state once it
 has been unchanged for 200 ms (while Psion searches, memory changes much
@@ -282,12 +283,15 @@ whose codes are unknown (see above), and as the reference for `memscan`.
   allocated to the move is used up.
 - `t` takes back one ply, `$` starts a new game.
 - F3 enters and leaves set-up mode. For a FEN, the adapter starts a new
-  game, enters set-up mode, empties the board (`e`), moves the cursor to
-  each square and types the piece, with `c` to change the colour, and
-  leaves set-up mode with the side to move as the colour last set up. The
-  kings come last, so that the board in memory is not taken for a
-  position before it is complete. A new game first, because entered with
-  Black to move, Psion leaves set-up mode with an invalid side to move.
+  game and enters set-up mode. Without castling rights it empties the
+  board (`e`); with castling rights it keeps the start position, empties
+  the squares that change (`0`) and types a rook again to remove its
+  right. It moves the cursor to each square and types the piece, with `c`
+  to change the colour, and leaves set-up mode with the side to move as
+  the colour last set up. The kings come last, so that the board in
+  memory is not taken for a position before it is complete. A new game
+  first, for the start position, and because entered with Black to move,
+  Psion leaves set-up mode with an invalid side to move.
 - Moves are entered by moving the cursor; F3 F3 (into and out of set-up
   mode) resets it to a known square.
 - While Psion waits for the GUI, the emulation is stopped until the next

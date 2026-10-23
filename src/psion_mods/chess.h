@@ -45,11 +45,12 @@ namespace psion {
                            unsigned int latency);
 
     // The position a game starts from: the start position, or one set up
-    // in Psion's set-up mode (which gives neither side castling rights).
+    // in Psion's set-up mode.
     struct StartPosition {
         bool standard;
-        Board board; // if not standard
-        bool white;  // to move
+        Board board;          // if not standard
+        bool white;           // to move
+        std::string castling; // if not standard: "KQkq", a part, or "-"
     };
     StartPosition StandardStart();
     bool SameStart(const StartPosition &a, const StartPosition &b);
@@ -64,12 +65,13 @@ namespace psion {
     // double pawn move, which is then the first of moves.
     PositionRequest ParsePosition(const std::vector<std::string> &tokens);
 
-    // The keys that set up board in Psion's set-up mode, with white to
-    // move, once it is in that mode: 'e' (empty board), the cursor keys
-    // 'U', 'D', 'L', 'R', a piece letter ("kqrbnp") to place a piece of
-    // the colour being set up, 'c' to change that colour. colour_white:
-    // the colour at the start, with the cursor on a2 (White) or a7.
-    std::string SetupKeys(const Board board, bool white, bool colour_white);
+    // The keys that set up start in Psion's set-up mode, once it is in
+    // that mode in a new game: 'e' (empty board), '0' (empty the square),
+    // the cursor keys 'U', 'D', 'L', 'R', a piece letter ("kqrbnp") to
+    // place a piece of the colour being set up, 'c' to change that colour.
+    // colour_white: the colour at the start, with the cursor on a2 (White)
+    // or a7. A king or rook that is not typed keeps its castling rights.
+    std::string SetupKeys(const StartPosition &start, bool colour_white);
 
     // Psion's analysis display (bottom row, in analysis mode): a score in
     // pawns from the side to move's point of view, then the principal

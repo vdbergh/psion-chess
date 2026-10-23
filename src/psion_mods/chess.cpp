@@ -520,6 +520,7 @@ namespace psion {
         s.standard = true;
         memset(s.board, '.', sizeof(s.board));
         s.white = true;
+        s.castling = "KQkq";
         return s;
     }
 
@@ -527,7 +528,7 @@ namespace psion {
         if (a.standard || b.standard) {
             return a.standard == b.standard;
         }
-        return a.white == b.white &&
+        return a.white == b.white && a.castling == b.castling &&
                memcmp(a.board, b.board, sizeof(a.board)) == 0;
     }
 
@@ -577,18 +578,33 @@ namespace psion {
         if (castling.empty() ||
             (castling != "-" &&
              castling.find_first_not_of("KQkq") != std::string::npos)) {
+            if (castling.find_first_not_of("ABCDEFGHabcdefgh") ==
+                std::string::npos) {
+                req.error = "Chess960 castling rights are not supported";
+            }
             return false;
         }
-        if (IsStartPosition(b) && req.start.white && castling == "KQkq" &&
-            ep == "-") {
+        // In the order "KQkq", without rights whose king or rook is not
+        // on its square (as python-chess does).
+        req.start.castling = "";
+        for (i = 0; i < 4; i++) {
+            char c = "KQkq"[i];
+            int rr = i < 2 ? 0 : 7, rf = i % 2 == 0 ? 7 : 0;
+            if (castling.find(c) != std::string::npos &&
+                b[4][rr] == (i < 2 ? 'K' : 'k') &&
+                b[rf][rr] == (i < 2 ? 'R' : 'r')) {
+                req.start.castling += c;
+            }
+        }
+        if (req.start.castling.empty()) {
+            req.start.castling = "-";
+        }
+        if (IsStartPosition(b) && req.start.white &&
+            req.start.castling == "KQkq" && ep == "-") {
             req.start = StandardStart();
             return true;
         }
         req.start.standard = false;
-        if (castling != "-") {
-            req.error = "Castling rights in FEN positions are not supported";
-            return false;
-        }
         if (ep == "-") {
             return true;
         }
@@ -669,14 +685,15 @@ namespace psion {
             keys += 'D';
     }
 
-    // Places the pieces of one colour, kings or the others.
+    // Places the pieces of one colour, kings or the others, on the squares
+    // in todo.
     static void place(std::string &keys, int &f, int &r, const Board board,
-                      bool white, bool kings) {
+                      const bool todo[8][8], bool white, bool kings) {
         int sf, sr;
         for (sr = 0; sr < 8; sr++) {
             for (sf = 0; sf < 8; sf++) {
                 char p = board[sf][sr];
-                if (p == '.' || (isupper(p) != 0) != white ||
+                if (!todo[sf][sr] || p == '.' || (isupper(p) != 0) != white ||
                     (toupper(p) == 'K') != kings) {
                     continue;
                 }
@@ -686,20 +703,64 @@ namespace psion {
         }
     }
 
-    std::string SetupKeys(const Board board, bool white, bool colour_white) {
-        std::string keys = "e";
-        int f = 0, r = colour_white ? 1 : 6;
-        bool colour = colour_white;
+    std::string SetupKeys(const StartPosition &start, bool colour_white) {
+        const char *initial = "RNBQKBNR"
+                              "PPPPPPPP"
+                              "........"
+                              "........"
+                              "........"
+                              "........"
+                              "pppppppp"
+                              "rnbqkbnr"; // a1..h1, ..., a8..h8
+        std::string keys;
+        int f = 0, r = colour_white ? 1 : 6, sf, sr;
+        bool colour = colour_white, todo[8][8];
+        if (start.castling == "-") {
+            // From an empty board.
+            keys = "e";
+            for (sf = 0; sf < 8; sf++) {
+                for (sr = 0; sr < 8; sr++) {
+                    todo[sf][sr] = true;
+                }
+            }
+        } else {
+            // From the start position, which is on the board in a new
+            // game: kings and rooks that are not typed keep their castling
+            // rights. A rook is typed again to remove its right.
+            for (sf = 0; sf < 8; sf++) {
+                for (sr = 0; sr < 8; sr++) {
+                    todo[sf][sr] = start.board[sf][sr] != initial[sr * 8 + sf];
+                }
+            }
+            for (int i = 0; i < 4; i++) {
+                int rr = i < 2 ? 0 : 7, rf = i % 2 == 0 ? 7 : 0;
+                if (start.castling.find("KQkq"[i]) == std::string::npos) {
+                    todo[rf][rr] = true;
+                }
+            }
+            // First empty the squares whose piece changes (a rook that is
+            // typed again is not removed), so that a king is not placed
+            // while one of its colour is still on the board.
+            for (sr = 0; sr < 8; sr++) {
+                for (sf = 0; sf < 8; sf++) {
+                    if (todo[sf][sr] && initial[sr * 8 + sf] != '.' &&
+                        start.board[sf][sr] != initial[sr * 8 + sf]) {
+                        cursor_to(keys, f, r, sf, sr);
+                        keys += '0';
+                    }
+                }
+            }
+        }
         // The kings last: until both are on the board, Psion's board is not
         // taken for a position (see ReadGameState).
-        place(keys, f, r, board, colour, false);
+        place(keys, f, r, start.board, todo, colour, false);
         keys += 'c';
-        place(keys, f, r, board, !colour, false);
-        place(keys, f, r, board, !colour, true);
+        place(keys, f, r, start.board, todo, !colour, false);
+        place(keys, f, r, start.board, todo, !colour, true);
         keys += 'c';
-        place(keys, f, r, board, colour, true);
+        place(keys, f, r, start.board, todo, colour, true);
         // Psion leaves set-up mode with the colour being set up to move.
-        if (colour != white) {
+        if (colour != start.white) {
             keys += 'c';
         }
         return keys;

@@ -516,12 +516,32 @@ static void test_parse_fen(){
     req=ParsePosition(split("position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"));
     CHECK(req.supported);
     CHECK(!req.start.standard);
-    // Psion's set-up mode gives no castling rights.
+    CHECK_EQ(req.start.castling,std::string("-"));
+    // Castling rights
+    req=ParsePosition(split("position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
+    CHECK(req.supported);
+    CHECK(req.start.standard);
+    req=ParsePosition(split("position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w kKq - 0 1"));
+    CHECK(req.supported);
+    CHECK(!req.start.standard);
+    CHECK_EQ(req.start.castling,std::string("Kkq"));
     req=ParsePosition(split("position fen r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1"));
-    CHECK(!req.supported);
-    CHECK_EQ(req.error,std::string("Castling rights in FEN positions are not supported"));
+    CHECK(req.supported);
+    CHECK_EQ(req.start.castling,std::string("KQkq"));
     req=ParsePosition(split("position fen r3k2r/8/8/8/8/8/8/R3K2R b k - 0 1"));
+    CHECK(req.supported);
+    CHECK_EQ(req.start.castling,std::string("k"));
+    // ... without those whose king or rook is not on its square
+    req=ParsePosition(split("position fen r3k3/8/8/8/8/8/8/R4K1R w KQkq - 0 1"));
+    CHECK(req.supported);
+    CHECK_EQ(req.start.castling,std::string("q"));
+    req=ParsePosition(split("position fen 4k3/8/8/8/8/8/8/4K3 w KQkq - 0 1"));
+    CHECK(req.supported);
+    CHECK_EQ(req.start.castling,std::string("-"));
+    // Chess960 (Shredder-FEN) castling rights
+    req=ParsePosition(split("position fen r3k2r/8/8/8/8/8/8/R3K2R w HAha - 0 1"));
     CHECK(!req.supported);
+    CHECK_EQ(req.error,std::string("Chess960 castling rights are not supported"));
     // En passant: set up before the pawn moved two squares.
     req=ParsePosition(split("position fen 4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1 moves e5d6"));
     CHECK(req.supported);
@@ -576,23 +596,36 @@ static void test_same_start(){
     CHECK(!SameStart(a.start,c.start));
     CHECK(SameStart(StandardStart(),StandardStart()));
     CHECK(!SameStart(StandardStart(),a.start));
+    PositionRequest d=ParsePosition(split("position fen r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1"));
+    PositionRequest e=ParsePosition(split("position fen r3k2r/8/8/8/8/8/8/R3K2R w Kkq - 0 1"));
+    CHECK(SameStart(d.start,d.start));
+    CHECK(!SameStart(d.start,e.start));
 }
 
 static void test_setup_keys(){
-    Board b;
-    make_board(b,
-	       "....k..."
-	       "........"
-	       "........"
-	       "........"
-	       "........"
-	       "........"
-	       "........"
-	       "...QK...");
-    // The cursor starts on a2 (a7 when setting up Black); the kings last.
-    CHECK_EQ(SetupKeys(b,true,true),std::string("eRRRDqcRUUUUUUUkcDDDDDDDk"));
-    CHECK_EQ(SetupKeys(b,false,true),std::string("eRRRDqcRUUUUUUUkcDDDDDDDkc"));
-    CHECK_EQ(SetupKeys(b,true,false),std::string("ecRRRDDDDDDqRkcUUUUUUUkc"));
+    // Without castling rights: from an empty board. The cursor starts on
+    // a2 (a7 when setting up Black); the kings last.
+    StartPosition st=ParsePosition(split("position fen 4k3/8/8/8/8/8/8/3QK3 w - - 0 1")).start;
+    CHECK_EQ(SetupKeys(st,true),std::string("eRRRDqcRUUUUUUUkcDDDDDDDk"));
+    CHECK_EQ(SetupKeys(st,false),std::string("ecRRRDDDDDDqRkcUUUUUUUkc"));
+    st.white=false;
+    CHECK_EQ(SetupKeys(st,true),std::string("eRRRDqcRUUUUUUUkcDDDDDDDkc"));
+    // With castling rights: from the start position, emptying the squares
+    // that change ('0'). The rooks that lose their rights are typed again.
+    st=ParsePosition(split("position fen r3k2r/8/8/8/8/8/8/R3K2R w Kq - 0 1")).start;
+    std::string keys="RD0R0R0RR0R0"        // b1 c1 d1 f1 g1
+	"LLLLLLU0R0R0R0R0R0R0R0"            // a2..h2
+	"LLLLLLLUUUUU0R0R0R0R0R0R0R0"       // a7..h7
+	"LLLLLLU0R0R0RR0R0"                 // b8 c8 d8 f8 g8
+	"LLLLLLDDDDDDDr"                    // the rook on a1 again
+	"c"
+	"RRRRRRRUUUUUUUr"                   // the rook on h8 again
+	"c";
+    CHECK_EQ(SetupKeys(st,true),keys);
+    // Only what differs from the start position
+    st=ParsePosition(split("position fen rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1")).start;
+    CHECK(!st.standard);
+    CHECK_EQ(SetupKeys(st,true),std::string("RRRR0UUUUU0DDDpcUpc"));
 }
 
 static void test_plan_sync(){

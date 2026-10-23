@@ -1240,9 +1240,10 @@ namespace psion {
     }
 
     // Starts the game at uci.target_start: a new game, and then the set-up.
-    // Set-up mode is only entered from a new game: entered with Black to
-    // move, Psion leaves it with a side to move byte that is neither 00 nor
-    // FF, and in a game from an earlier set-up it can fail.
+    // Set-up mode is only entered from a new game: SetupKeys() starts from
+    // the start position, entered with Black to move Psion leaves it with
+    // a side to move byte that is neither 00 nor FF, and in a game from an
+    // earlier set-up it can fail.
     static void start_target_game() {
         if (uci.target_start.standard || !game_state.start.standard ||
             !game_state.moves.empty() || known.ply != 0) {
@@ -1272,12 +1273,11 @@ namespace psion {
             }
             bool colour_white =
                 screen_rows[20].find("WHITE") != std::string::npos;
-            std::string keys = SetupKeys(uci.target_start.board,
-                                         uci.target_start.white, colour_white);
+            std::string keys = SetupKeys(uci.target_start, colour_white);
             for (size_t i = 0; i < keys.size(); i++) {
-                static const char *chars = "UDLRcekqrbnp";
+                static const char *chars = "UDLRce0kqrbnp";
                 static const KBD_KEYS codes[] = {
-                    KBD_up, KBD_down, KBD_left, KBD_right, KBD_c, KBD_e,
+                    KBD_up, KBD_down, KBD_left, KBD_right, KBD_c, KBD_e, KBD_0,
                     KBD_k,  KBD_q,    KBD_r,    KBD_b,     KBD_n, KBD_p};
                 press(codes[strchr(chars, keys[i]) - chars]);
             }
