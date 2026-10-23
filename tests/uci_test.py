@@ -273,13 +273,42 @@ class UciTest(unittest.TestCase):
         move = bestmove(e, 150)
         self.assertTrue(Board(moves).plausible(move), move)
 
-    def test_unsupported_fen(self):
+    def test_fen_castling_rights(self):
         e = self.engine
-        e.send('position fen 8/8/8/4k3/8/8/4K3/8 w - - 0 1')
+        e.send('position fen r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1')
         e.send('go movetime 500')
         line, before = e.expect('bestmove', 5)
         self.assertEqual(line, 'bestmove 0000')
-        self.assertIn('info string FEN positions are not supported', before)
+        self.assertIn('info string Castling rights in FEN positions are not'
+                      ' supported', before)
+
+    def fen_search(self, fen, timeout=30):
+        """Set up the FEN position, search; return the move and the lines
+        before it."""
+        e = self.engine
+        e.send('position fen ' + fen)
+        e.send('go movetime 1000')
+        line, before = e.expect('bestmove', timeout)
+        self.assertNotIn('info string', ' '.join(before))
+        return line.split()[1], before
+
+    def test_fen(self):
+        # Mate in one, for either side to move: the position must have
+        # been set up right.
+        self.assertEqual(
+            self.fen_search('6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1')[0], 'a1a8')
+        self.assertEqual(
+            self.fen_search('r5k1/8/8/8/8/8/5PPP/6K1 b - - 0 1')[0], 'a8a1')
+        # Moves after the FEN, then the start position again
+        self.assertEqual(self.fen_search(
+            '6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1 moves a1b1 h7h6')[0], 'b1b8')
+        self.search(['e2e4'])
+
+    def test_fen_en_passant(self):
+        # White has just played d2d4: c4d3 takes en passant.
+        move, _ = self.fen_search('4k3/8/8/8/2pP4/8/8/4K3 b - d3 0 1'
+                                  ' moves c4d3 e1f2')
+        self.assertTrue(move[:2] in ('d3', 'e8') and len(move) >= 4, move)
 
     def test_start_fen(self):
         e = self.engine

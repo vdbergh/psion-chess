@@ -44,12 +44,32 @@ namespace psion {
     unsigned int ThinkTime(const GoParams &go, bool white,
                            unsigned int latency);
 
+    // The position a game starts from: the start position, or one set up
+    // in Psion's set-up mode (which gives neither side castling rights).
+    struct StartPosition {
+        bool standard;
+        Board board; // if not standard
+        bool white;  // to move
+    };
+    StartPosition StandardStart();
+    bool SameStart(const StartPosition &a, const StartPosition &b);
+
     struct PositionRequest {
         bool supported;
-        std::vector<std::string> moves; // from the start position
+        StartPosition start;
+        std::vector<std::string> moves; // from start
         std::string error;              // why it is not supported
     };
+    // A FEN position with an en passant capture is set up before the
+    // double pawn move, which is then the first of moves.
     PositionRequest ParsePosition(const std::vector<std::string> &tokens);
+
+    // The keys that set up board in Psion's set-up mode, with white to
+    // move, once it is in that mode: 'e' (empty board), the cursor keys
+    // 'U', 'D', 'L', 'R', a piece letter ("kqrbnp") to place a piece of
+    // the colour being set up, 'c' to change that colour. colour_white:
+    // the colour at the start, with the cursor on a2 (White) or a7.
+    std::string SetupKeys(const Board board, bool white, bool colour_white);
 
     // Psion's analysis display (bottom row, in analysis mode): a score in
     // pawns from the side to move's point of view, then the principal

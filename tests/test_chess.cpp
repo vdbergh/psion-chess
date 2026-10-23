@@ -490,9 +490,7 @@ static void test_parse_position(){
     req=ParsePosition(split("position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 moves d2d4"));
     CHECK(req.supported);
     CHECK_EQ(req.moves.size(),(size_t)1);
-    req=ParsePosition(split("position fen 8/8/8/4k3/8/8/4K3/8 w - - 0 1"));
-    CHECK(!req.supported);
-    CHECK_EQ(req.error,std::string("FEN positions are not supported"));
+    CHECK(req.start.standard);
     req=ParsePosition(split("position startpos moves e2e4 junk"));
     CHECK(!req.supported);
     CHECK(req.moves.empty());
@@ -501,6 +499,100 @@ static void test_parse_position(){
     CHECK(!req.supported);
     req=ParsePosition(split("position nonsense"));
     CHECK(!req.supported);
+}
+
+static void test_parse_fen(){
+    // A FEN is set up (also the start position without castling rights).
+    PositionRequest req=ParsePosition(split("position fen 8/8/8/4k3/8/8/4K3/8 w - - 0 1 moves e2d3"));
+    CHECK(req.supported);
+    CHECK(!req.start.standard);
+    CHECK(req.start.white);
+    CHECK_EQ(req.start.board[4][1],'K');
+    CHECK_EQ(req.start.board[4][4],'k');
+    CHECK_EQ(req.moves.size(),(size_t)1);
+    req=ParsePosition(split("position fen 4k3/8/8/8/8/8/8/4K3 b - -"));
+    CHECK(req.supported);
+    CHECK(!req.start.white);
+    req=ParsePosition(split("position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"));
+    CHECK(req.supported);
+    CHECK(!req.start.standard);
+    // Psion's set-up mode gives no castling rights.
+    req=ParsePosition(split("position fen r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1"));
+    CHECK(!req.supported);
+    CHECK_EQ(req.error,std::string("Castling rights in FEN positions are not supported"));
+    req=ParsePosition(split("position fen r3k2r/8/8/8/8/8/8/R3K2R b k - 0 1"));
+    CHECK(!req.supported);
+    // En passant: set up before the pawn moved two squares.
+    req=ParsePosition(split("position fen 4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1 moves e5d6"));
+    CHECK(req.supported);
+    CHECK(!req.start.white);
+    CHECK_EQ(req.start.board[3][6],'p');
+    CHECK_EQ(req.start.board[3][4],'.');
+    CHECK_EQ(req.moves.size(),(size_t)2);
+    if(req.moves.size()==2){
+	CHECK_EQ(req.moves[0],std::string("d7d5"));
+	CHECK_EQ(req.moves[1],std::string("e5d6"));
+    }
+    req=ParsePosition(split("position fen 4k3/8/8/8/2pP4/8/8/4K3 b - d3 0 1"));
+    CHECK(req.supported);
+    CHECK(req.start.white);
+    CHECK_EQ(req.start.board[3][1],'P');
+    CHECK_EQ(req.moves.size(),(size_t)1);
+    if(req.moves.size()==1){
+	CHECK_EQ(req.moves[0],std::string("d2d4"));
+    }
+    // ... unless no pawn can take: as if not given
+    req=ParsePosition(split("position fen 4k3/8/8/3p4/8/8/8/4K3 w - d6 0 1"));
+    CHECK(req.supported);
+    CHECK(req.start.white);
+    CHECK_EQ(req.start.board[3][4],'p');
+    CHECK(req.moves.empty());
+    // Invalid FENs
+    const char *invalid[]={
+	"4k3/8/8/8/8/8/8/4K3 w - e3 0 1",   // no pawn moved two squares
+	"8/8/8/8/8/8/8/4K3 w - - 0 1",      // no black king
+	"4k3/8/8/8/8/8/8/4K2r b - - 0 1",   // the side not to move is in check
+	"P3k3/8/8/8/8/8/8/4K3 w - - 0 1",   // a pawn on the eighth rank
+	"4k3/8/8/8/8/8/8/4K3 x - - 0 1",
+	"4k3/8/8/8/8/8/8/4K4 w - - 0 1",
+	"4k3/8/8/8/8/8/4K3 w - - 0 1",
+	"4k3/8/8/8/8/8/8/4K3 w",
+	"4k3/8/8/8/8/8/8/4K3 w X - 0 1",
+	0};
+    for(const char **f=invalid;*f;f++){
+	req=ParsePosition(split((std::string("position fen ")+*f+" moves e2e4").c_str()));
+	CHECK(!req.supported);
+	CHECK_EQ(req.error,std::string("Invalid FEN"));
+	CHECK(req.moves.empty());
+    }
+}
+
+static void test_same_start(){
+    PositionRequest a=ParsePosition(split("position fen 4k3/8/8/8/8/8/8/4K3 w - - 0 1"));
+    PositionRequest b=ParsePosition(split("position fen 4k3/8/8/8/8/8/8/4K3 b - - 0 1"));
+    PositionRequest c=ParsePosition(split("position fen 4k3/8/8/8/8/8/8/3K4 w - - 0 1"));
+    CHECK(SameStart(a.start,a.start));
+    CHECK(!SameStart(a.start,b.start));
+    CHECK(!SameStart(a.start,c.start));
+    CHECK(SameStart(StandardStart(),StandardStart()));
+    CHECK(!SameStart(StandardStart(),a.start));
+}
+
+static void test_setup_keys(){
+    Board b;
+    make_board(b,
+	       "....k..."
+	       "........"
+	       "........"
+	       "........"
+	       "........"
+	       "........"
+	       "........"
+	       "...QK...");
+    // The cursor starts on a2 (a7 when setting up Black); the kings last.
+    CHECK_EQ(SetupKeys(b,true,true),std::string("eRRRDqcRUUUUUUUkcDDDDDDDk"));
+    CHECK_EQ(SetupKeys(b,false,true),std::string("eRRRDqcRUUUUUUUkcDDDDDDDkc"));
+    CHECK_EQ(SetupKeys(b,true,false),std::string("ecRRRDDDDDDqRkcUUUUUUUkc"));
 }
 
 static void test_plan_sync(){
@@ -686,6 +778,9 @@ int main(){
     test_parse_go();
     test_think_time();
     test_parse_position();
+    test_parse_fen();
+    test_same_start();
+    test_setup_keys();
     test_plan_sync();
     test_parse_analysis();
     test_check_pv();

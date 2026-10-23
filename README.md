@@ -85,15 +85,20 @@ experiments.
 
 ### Supported UCI commands
 
-`uci`, `isready`, `ucinewgame`, `position startpos [moves ...]`, `go`
+`uci`, `isready`, `ucinewgame`, `position startpos|fen ... [moves ...]`, `go`
 (`wtime`, `btime`, `winc`, `binc`, `movestogo`, `movetime`, `infinite`),
 `stop`, `debug on|off` and `quit`.
 
 ### Limitations
 
-- FEN positions other than the start position are not supported: the engine
-  answers `info string FEN positions are not supported` and `bestmove 0000`.
-  (Psion's set-up mode cannot express castling or en passant rights.)
+- FEN positions are set up with Psion's set-up mode, which gives neither
+  side castling rights (Psion then treats every king and rook as moved).
+  So a FEN with castling rights is not supported: the engine answers
+  `info string Castling rights in FEN positions are not supported` and
+  `bestmove 0000`. An en passant capture is possible: the position before
+  the pawn's double step is set up, and the step is then played. The move
+  counters of a FEN are ignored, so Psion's 50-move rule counts from the
+  FEN (the GUI still applies the rule itself).
 - `info` lines have the time searched (since Psion started to think, so
   without entering the opponent's move), a score and a principal
   variation, but no node count. Psion does not show the search depth
@@ -133,6 +138,36 @@ smaller. At about 90 times the speed, a second here is worth a minute
 and a half then: in a 3+2 blitz game (about 6 seconds a move) the engine
 effectively thinks longer than at a tournament rate of 40 moves in 2
 hours (3 minutes a move).
+
+### Strength
+
+Matches with [fastchess](https://github.com/Disservin/fastchess), on the
+i5-1135G7, with the balanced book `8moves_v3.pgn` (each opening played
+with both colours); Elo with 95% confidence intervals, from the
+pentanomial statistics.
+
+| Match | Time control | Games | Result |
+|---|---|---|---|
+| Full speed against `--cycles 2000` (about 90 times slower) | 120+1.2 | 100 | +576 ± 192 Elo (94 wins, 1 loss, 5 draws) |
+| Full speed against `--cycles 48000` (about 3.6 times slower) | 120+1.2 | 300 | +170 ± 35 Elo |
+| Against micro-Max 4.8 (CCRL Blitz 1855) | 120+1 | 300 | −154 ± 38 Elo |
+
+- Psion gains about 90 Elo per doubling of the speed (1.83 doublings in
+  the second match). So the engine is now some hundreds of Elo stronger
+  than on the hardware of its time.
+- Against micro-Max, Psion rates about 1700 on the CCRL Blitz scale. (Five
+  of its 52 wins came from under-promotions to a knight, which micro-Max
+  cannot represent: it resigns, also under WinBoard at CCRL. Without
+  them the result would be about −167.) For comparison, the Swedish
+  rating list (SSDF) has Psion on an 8 MHz Atari at 1791, a list once
+  calibrated against human players; CCRL ratings are generally taken to
+  be some hundreds of Elo below human ratings.
+- Psion has no transposition table: during a search only about 4 KB of
+  memory changes, in small areas such as move lists, and nothing that
+  fills up as the search proceeds. Every search starts afresh, which
+  costs it most in endgames. Compared with native engines it is also
+  handicapped by the emulation: the emulated PC is much slower than a
+  native program on the same machine.
 
 ## How it works
 
@@ -183,13 +218,17 @@ taken for the game.
 |---|---|
 | `28AC` | The board: 64 bytes, a8..h8, a7..h7, ..., a1..h1. |
 | `725B` | Side to move: `00` White, `FF` Black. Unreliable while the engine searches its own move. |
-| `7260` | Ply counter (word). While pondering it includes the predicted reply. |
+| `7260` | Ply counter (word). While pondering it includes the predicted reply. After set-up mode it starts at 20 (21 with Black to move). |
 
 Square codes: empty `00`, pawn `2C`, knight `24`, bishop `1C`, rook `0A`,
 queen `17`, king `01`; bit `80` is set for Black and bits `40`/`04` are
 flags that do not change the piece. Promoted pieces get codes that are not
 known in advance (seen: `10` and `20`); the adapter learns them from the
-piece it typed at the promotion prompt or from the screen.
+piece it typed at the promotion prompt or from the screen. Bit `04` (and
+`40`) marks a king or rook that has moved: after set-up mode every king
+and rook has it, which is why castling is then impossible. Leaving set-up
+mode, which the adapter does for each move (F3 F3 resets the cursor),
+recomputes these codes, so they cannot simply be written into memory.
 
 The adapter reads these every 10 ms. It accepts a memory state once it
 has been unchanged for 200 ms (while Psion searches, memory changes much
@@ -236,6 +275,13 @@ whose codes are unknown (see above), and as the reference for `memscan`.
 - `c` (Compute) starts a search, `m` (Move now) ends it when the time
   allocated to the move is used up.
 - `t` takes back one ply, `$` starts a new game.
+- F3 enters and leaves set-up mode. For a FEN, the adapter starts a new
+  game, enters set-up mode, empties the board (`e`), moves the cursor to
+  each square and types the piece, with `c` to change the colour, and
+  leaves set-up mode with the side to move as the colour last set up. The
+  kings come last, so that the board in memory is not taken for a
+  position before it is complete. A new game first, because entered with
+  Black to move, Psion leaves set-up mode with an invalid side to move.
 - Moves are entered by moving the cursor; F3 F3 (into and out of set-up
   mode) resets it to a known square.
 - While Psion waits for the GUI, the emulation is stopped until the next

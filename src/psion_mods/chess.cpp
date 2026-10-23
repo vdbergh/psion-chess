@@ -515,19 +515,127 @@ namespace psion {
         return std::max(t - (int)latency, 50);
     }
 
+    StartPosition StandardStart() {
+        StartPosition s;
+        s.standard = true;
+        memset(s.board, '.', sizeof(s.board));
+        s.white = true;
+        return s;
+    }
+
+    bool SameStart(const StartPosition &a, const StartPosition &b) {
+        if (a.standard || b.standard) {
+            return a.standard == b.standard;
+        }
+        return a.white == b.white &&
+               memcmp(a.board, b.board, sizeof(a.board)) == 0;
+    }
+
+    // Parses a FEN (the move counters are ignored) into req.start, and
+    // req.moves for an en passant capture. False with req.error if Psion
+    // cannot play from it.
+    static bool parse_fen(const std::vector<std::string> &fields,
+                          PositionRequest &req) {
+        Board &b = req.start.board;
+        int f = 0, r = 7, white_kings = 0, black_kings = 0;
+        size_t i;
+        req.error = "Invalid FEN";
+        if (fields.size() < 4 || (fields[1] != "w" && fields[1] != "b")) {
+            return false;
+        }
+        memset(b, '.', sizeof(b));
+        for (i = 0; i < fields[0].size(); i++) {
+            char c = fields[0][i];
+            if (c == '/') {
+                if (f != 8 || r == 0) {
+                    return false;
+                }
+                f = 0;
+                r--;
+            } else if (c >= '1' && c <= '8') {
+                f += c - '0';
+                if (f > 8) {
+                    return false;
+                }
+            } else if (strchr("PNBRQKpnbrqk", c) && f < 8) {
+                if (toupper(c) == 'P' && (r == 0 || r == 7)) {
+                    return false;
+                }
+                white_kings += c == 'K';
+                black_kings += c == 'k';
+                b[f++][r] = c;
+            } else {
+                return false;
+            }
+        }
+        req.start.white = fields[1] == "w";
+        if (f != 8 || r != 0 || white_kings != 1 || black_kings != 1 ||
+            in_check(b, !req.start.white)) {
+            return false;
+        }
+        const std::string &castling = fields[2], &ep = fields[3];
+        if (castling.empty() ||
+            (castling != "-" &&
+             castling.find_first_not_of("KQkq") != std::string::npos)) {
+            return false;
+        }
+        if (IsStartPosition(b) && req.start.white && castling == "KQkq" &&
+            ep == "-") {
+            req.start = StandardStart();
+            return true;
+        }
+        req.start.standard = false;
+        if (castling != "-") {
+            req.error = "Castling rights in FEN positions are not supported";
+            return false;
+        }
+        if (ep == "-") {
+            return true;
+        }
+        // The pawn that moved two squares, and the squares it passed.
+        bool white = req.start.white;
+        int ef = ep.size() == 2 ? ep[0] - 'a' : -1;
+        int er = ep.size() == 2 ? ep[1] - '1' : -1;
+        int dir = white ? -1 : 1; // the direction the pawn moved in
+        char pawn = white ? 'p' : 'P', own = white ? 'P' : 'p';
+        if (ef < 0 || ef > 7 || er != (white ? 5 : 2) ||
+            b[ef][er + dir] != pawn || b[ef][er] != '.' ||
+            b[ef][er - dir] != '.') {
+            return false;
+        }
+        if ((ef == 0 || b[ef - 1][er + dir] != own) &&
+            (ef == 7 || b[ef + 1][er + dir] != own)) {
+            return true; // no pawn can take it: as if not given
+        }
+        // Set up the position before that pawn move, and play it.
+        b[ef][er + dir] = '.';
+        b[ef][er - dir] = pawn;
+        req.start.white = !white;
+        if (in_check(b, white)) {
+            req.error = "This en passant position cannot be set up";
+            return false;
+        }
+        std::string m;
+        m += (char)('a' + ef);
+        m += (char)('1' + er - dir);
+        m += (char)('a' + ef);
+        m += (char)('1' + er + dir);
+        req.moves.push_back(m);
+        return true;
+    }
+
     PositionRequest ParsePosition(const std::vector<std::string> &tokens) {
-        static const char *start_fen =
-            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         PositionRequest req;
         size_t i = 2;
         req.supported = false;
+        req.start = StandardStart();
         if (tokens.size() > 1 && tokens[1] == "fen") {
-            std::string fen;
+            std::vector<std::string> fields;
             for (i = 2; i < tokens.size() && tokens[i] != "moves"; i++) {
-                fen += (fen.empty() ? "" : " ") + tokens[i];
+                fields.push_back(tokens[i]);
             }
-            if (fen != start_fen) {
-                req.error = "FEN positions are not supported";
+            if (!parse_fen(fields, req)) {
+                req.moves.clear();
                 return req;
             }
         } else if (tokens.size() < 2 || tokens[1] != "startpos") {
@@ -538,6 +646,7 @@ namespace psion {
             for (i++; i < tokens.size(); i++) {
                 if (!IsMoveString(tokens[i])) {
                     req.moves.clear();
+                    req.start = StandardStart();
                     req.error = "Invalid move " + tokens[i];
                     return req;
                 }
@@ -546,6 +655,54 @@ namespace psion {
         }
         req.supported = true;
         return req;
+    }
+
+    // Moves the cursor from (f,r) to (tf,tr).
+    static void cursor_to(std::string &keys, int &f, int &r, int tf, int tr) {
+        for (; f < tf; f++)
+            keys += 'R';
+        for (; f > tf; f--)
+            keys += 'L';
+        for (; r < tr; r++)
+            keys += 'U';
+        for (; r > tr; r--)
+            keys += 'D';
+    }
+
+    // Places the pieces of one colour, kings or the others.
+    static void place(std::string &keys, int &f, int &r, const Board board,
+                      bool white, bool kings) {
+        int sf, sr;
+        for (sr = 0; sr < 8; sr++) {
+            for (sf = 0; sf < 8; sf++) {
+                char p = board[sf][sr];
+                if (p == '.' || (isupper(p) != 0) != white ||
+                    (toupper(p) == 'K') != kings) {
+                    continue;
+                }
+                cursor_to(keys, f, r, sf, sr);
+                keys += (char)tolower(p);
+            }
+        }
+    }
+
+    std::string SetupKeys(const Board board, bool white, bool colour_white) {
+        std::string keys = "e";
+        int f = 0, r = colour_white ? 1 : 6;
+        bool colour = colour_white;
+        // The kings last: until both are on the board, Psion's board is not
+        // taken for a position (see ReadGameState).
+        place(keys, f, r, board, colour, false);
+        keys += 'c';
+        place(keys, f, r, board, !colour, false);
+        place(keys, f, r, board, !colour, true);
+        keys += 'c';
+        place(keys, f, r, board, colour, true);
+        // Psion leaves set-up mode with the colour being set up to move.
+        if (colour != white) {
+            keys += 'c';
+        }
+        return keys;
     }
 
     SyncAction PlanSync(const std::vector<std::string> &game,

@@ -113,12 +113,16 @@ namespace psion {
 
     class GameState {
       public:
-        std::vector<std::string> moves;
+        StartPosition start;            // the position the game started from
+        int base_ply;                   // Psion's ply counter there
+        std::vector<std::string> moves; // from start
         bool thinking;
         GameState();
     };
 
     GameState::GameState() {
+        start = StandardStart();
+        base_ply = 0;
         thinking = false;
     }
 
@@ -707,6 +711,11 @@ namespace psion {
         }
     }
 
+    // Set while the adapter sets up setup_start in Psion's set-up mode.
+    static bool setting_up = false;
+    static StartPosition setup_start;
+    static bool in_setup_mode();
+
     // Track the game through Psion's memory. Returns true and sets move
     // when a new move has been played.
     static bool PollGameState(std::string &move) {
@@ -726,6 +735,24 @@ namespace psion {
             pending = cur;
             pending_since = GetTicks();
             have_pending = true;
+            return false;
+        }
+        if (setting_up) {
+            // Only the position set up counts, once Psion has left set-up
+            // mode. (Until then the side byte is the colour being set up.)
+            if (GetTicks() - pending_since < STABLE_MS || in_setup_mode() ||
+                cur.unknown || cur.white_to_move != setup_start.white ||
+                memcmp(cur.board, setup_start.board, sizeof(cur.board))) {
+                return false;
+            }
+            say("Position set up at ply %d\n", cur.ply);
+            setting_up = false;
+            game_state.start = setup_start;
+            game_state.base_ply = cur.ply;
+            game_state.moves.clear();
+            known = cur;
+            have_known = true;
+            settled = true;
             return false;
         }
         std::string candidate;
@@ -771,10 +798,21 @@ namespace psion {
         } else {
             say("Synchronized at ply %d, %s to move\n", cur.ply,
                 cur.white_to_move ? "White" : "Black");
-            if (cur.ply <= (int)game_state.moves.size()) {
-                game_state.moves.resize(cur.ply);
+            int n = cur.ply - game_state.base_ply;
+            if (IsStartPosition(cur.board) && cur.ply == 0) {
+                // A new game
+                game_state.start = StandardStart();
+                game_state.base_ply = 0;
+                game_state.moves.clear();
+            } else if (n >= 0 && n <= (int)game_state.moves.size()) {
+                game_state.moves.resize(n);
             } else {
                 game_state.moves.clear();
+                if (!game_state.start.standard) {
+                    // Where the game started is not known now: set up the
+                    // position again.
+                    game_state.start.board[0][0] = '?';
+                }
             }
         }
         known = cur;
@@ -789,6 +827,11 @@ namespace psion {
 
     // Last non-blank contents of each screen row (some rows blink).
     static std::string screen_rows[TEXT_HEIGHT];
+
+    // Row 20: "SET-UP POSITION  WHITE" (or BLACK) in set-up mode.
+    static bool in_setup_mode() {
+        return screen_rows[20].find("SET-UP POSITION") != std::string::npos;
+    }
 
     // Row 6 names the players: "PLAYER PLAYER" in 2-player mode.
     static bool two_player_mode() {
@@ -901,15 +944,21 @@ namespace psion {
     const int MAX_RETRIES = 3;
     const int MAX_TWO_PLAYER_PRESSES = 5;
     const unsigned int SYNC_TIMEOUT_MS = 20000;
+    const unsigned int SETUP_TIMEOUT_MS = 10000;
 
     enum SearchState { SEARCH_NONE, SEARCH_RUNNING, SEARCH_HOLDING };
+    enum SetupStage { SETUP_NONE, SETUP_ENTERING, SETUP_LEAVING };
 
     static struct {
         bool has_target;  // a position has been given
         bool unsupported; // ... but we cannot set it up
-        std::vector<std::string> target;
-        bool new_game; // ucinewgame: press '$' before setting
-                       // up the next position
+        StartPosition target_start;
+        std::vector<std::string> target; // moves from target_start
+        SetupStage setup;
+        unsigned int setup_since;
+        bool setup_keys_done; // Psion has taken the set-up keys
+        bool new_game;        // ucinewgame: press '$' before setting
+                              // up the next position
         bool readyok_pending;
         bool go_pending;
         SearchState search;
@@ -966,7 +1015,8 @@ namespace psion {
 
     static bool uci_synced() {
         return !uci.has_target || uci.unsupported ||
-               game_state.moves == uci.target;
+               (SameStart(game_state.start, uci.target_start) &&
+                game_state.moves == uci.target);
     }
 
     static void finish_search(const std::string &move) {
@@ -1021,10 +1071,11 @@ namespace psion {
             return;
         }
         // The side to move once the position has been set up.
-        bool white =
-            (uci.has_target ? uci.target.size() : game_state.moves.size()) %
-                2 ==
-            0;
+        const StartPosition &start =
+            uci.has_target ? uci.target_start : game_state.start;
+        size_t plies =
+            uci.has_target ? uci.target.size() : game_state.moves.size();
+        bool white = start.white == (plies % 2 == 0);
         uci.infinite = go.infinite;
         uci.think_ms = ThinkTime(go, white, MOVE_LATENCY_MS);
         uci.stop_received = false;
@@ -1040,6 +1091,7 @@ namespace psion {
         uci.sync_progress_ticks = GetTicks();
         uci.has_target = true;
         uci.unsupported = !req.supported;
+        uci.target_start = req.start;
         uci.target = req.moves;
         uci.retries = 0;
         if (!req.supported) {
@@ -1177,6 +1229,76 @@ namespace psion {
         uci.info_move = a.pv[0];
     }
 
+    // Sets up uci.target_start in Psion's set-up mode: F3, then the keys
+    // from SetupKeys() once the screen shows set-up mode, then F3 again to
+    // leave it. PollGameState() sees when that has worked.
+    static void begin_setup() {
+        say("Setting up the position\n");
+        uci.setup = SETUP_ENTERING;
+        uci.setup_since = GetTicks();
+        press(KBD_f3);
+    }
+
+    // Starts the game at uci.target_start: a new game, and then the set-up.
+    // Set-up mode is only entered from a new game: entered with Black to
+    // move, Psion leaves it with a side to move byte that is neither 00 nor
+    // FF, and in a game from an earlier set-up it can fail.
+    static void start_target_game() {
+        if (uci.target_start.standard || !game_state.start.standard ||
+            !game_state.moves.empty() || known.ply != 0) {
+            press(KBD_leftshift, KBD_4); // '$': new game
+        } else {
+            begin_setup();
+        }
+    }
+
+    static void setup_failed() {
+        say("Set-up failed\n");
+        uci_send("info string Cannot set up the position\n");
+        uci.unsupported = true;
+        uci.setup = SETUP_NONE;
+        setting_up = false;
+        press(KBD_leftshift, KBD_4); // leaves set-up mode: a new game
+    }
+
+    static void step_setup() {
+        unsigned int now = GetTicks();
+        if (uci.setup == SETUP_ENTERING) {
+            if (!in_setup_mode()) {
+                if (now - uci.setup_since > SETUP_TIMEOUT_MS) {
+                    setup_failed();
+                }
+                return;
+            }
+            bool colour_white =
+                screen_rows[20].find("WHITE") != std::string::npos;
+            std::string keys = SetupKeys(uci.target_start.board,
+                                         uci.target_start.white, colour_white);
+            for (size_t i = 0; i < keys.size(); i++) {
+                static const char *chars = "UDLRcekqrbnp";
+                static const KBD_KEYS codes[] = {
+                    KBD_up, KBD_down, KBD_left, KBD_right, KBD_c, KBD_e,
+                    KBD_k,  KBD_q,    KBD_r,    KBD_b,     KBD_n, KBD_p};
+                press(codes[strchr(chars, keys[i]) - chars]);
+            }
+            press(KBD_f3);
+            setup_start = uci.target_start;
+            setting_up = true;
+            uci.setup = SETUP_LEAVING;
+            uci.setup_since = now;
+            uci.setup_keys_done = false;
+        } else if (!setting_up) {
+            uci.setup = SETUP_NONE; // done
+        } else if (!uci.setup_keys_done) {
+            // Called once the keys have been taken: the timeout runs from now.
+            uci.setup_keys_done = true;
+            uci.setup_since = now;
+        } else if (analysis_row.find("ILLEGAL POSITION") != std::string::npos ||
+                   now - uci.setup_since > SETUP_TIMEOUT_MS) {
+            setup_failed();
+        }
+    }
+
     // Set by UciStep when Psion is where the GUI wants it and has nothing
     // to do until the next command.
     static bool uci_done = false;
@@ -1229,6 +1351,12 @@ namespace psion {
             pending_promotion) {
             return;
         }
+        if (uci.setup != SETUP_NONE) {
+            // Before anything else: in set-up mode most keys place pieces.
+            uci.sync_progress_ticks = now;
+            step_setup();
+            return;
+        }
         if (!level_set_check() || !easy_check() || !analysis_check()) {
             return;
         }
@@ -1263,6 +1391,10 @@ namespace psion {
                 return;
             }
             uci.two_player_presses = 0;
+            if (!SameStart(game_state.start, uci.target_start)) {
+                start_target_game();
+                return;
+            }
             if (uci.inflight) {
                 if (moves.size() != uci.inflight_size) {
                     uci.inflight = false;
@@ -1291,7 +1423,11 @@ namespace psion {
                 press(KBD_t);
                 break;
             case SYNC_NEW_GAME:
-                press(KBD_leftshift, KBD_4);
+                if (uci.target_start.standard) {
+                    press(KBD_leftshift, KBD_4);
+                } else {
+                    start_target_game();
+                }
                 break;
             case SYNC_DONE:
                 break;
@@ -1301,6 +1437,11 @@ namespace psion {
         if (uci.readyok_pending) {
             uci.readyok_pending = false;
             uci_send("readyok\n");
+        }
+        if (uci.go_pending && uci.has_target && uci.unsupported) {
+            // The position could not be set up after "go" was received.
+            uci.go_pending = false;
+            uci_send("bestmove 0000\n");
         }
         if (uci.go_pending) {
             uci.go_pending = false;
