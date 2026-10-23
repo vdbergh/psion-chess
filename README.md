@@ -109,6 +109,12 @@ experiments.
 - A mate is shown by Psion as a score of 99.9; the number of moves to mate
   is derived from the length of the principal variation.
 - `go depth`/`nodes`/`mate` are not supported; such searches take 5 seconds.
+- Psion searches to a fixed maximum depth and moves as soon as it is
+  reached, whatever the time left. In a locked pawn ending, with few moves
+  per ply, this takes under a second, so Psion moves almost at once even at
+  long time controls (in Fine's position 70 it moves after about 1 second
+  with 10 seconds to think). The depth limit is part of Psion's program and
+  is left as it is.
 - Pondering is not offered; `go ponder` is treated as `go infinite`.
 - Entering the opponent's move and reporting the engine's take about 0.1
   seconds per move. This time is taken from the engine's own clock, so
