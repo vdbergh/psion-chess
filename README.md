@@ -173,10 +173,16 @@ pentanomial statistics.
 | Full speed against `--cycles 48000` (about 3.6 times slower) | 120+1.2 | 300 | +170 ± 35 Elo |
 | Against micro-Max 4.8 (CCRL Blitz 1855) | 120+1 | 300 | −154 ± 38 Elo |
 | Pondering against not pondering (book `UHO_4060_v4.epd`)\* | 30+0.3 | 100 | +70 ± 56 Elo |
+| Pondering and not pondering, each against micro-Max 4.8\*\* | 30+0.3 | 400 | pondering −162 ± 50, not pondering −217 ± 48; difference +55 ± 57 Elo |
 
 \* Not with fastchess, which does not support pondering, but through
 python-chess, which sends `ponderhit` (or `stop` and the new position) as
-lichess-bot does; 59% of the moves pondered on were played.
+lichess-bot does. 59% of the moves pondered on were played.
+
+\*\* Also through python-chess. Both versions played the same 100
+openings, each with both colours; the error of the difference is computed
+from the differences per opening (the two versions' results correlate).
+Against micro-Max, 48.5% of the moves pondered on were played.
 
 - Psion gains about 90 Elo per doubling of the speed (1.83 doublings in
   the second match). So the engine is now some hundreds of Elo stronger
@@ -188,9 +194,34 @@ lichess-bot does; 59% of the moves pondered on were played.
   rating list (SSDF) has Psion on an 8 MHz Atari at 1791, a list once
   calibrated against human players; CCRL ratings are generally taken to
   be some hundreds of Elo below human ratings.
-- Pondering gains about as much as 1.7 times the speed would (at 90 Elo
-  per doubling). A move pondered on in vain costs about 0.05 seconds (the
-  takebacks), which the time gained on the others more than makes up for.
+- Pondering gains about 55 to 70 Elo, about as much as 1.5 to 1.7 times
+  the speed would (at 90 Elo per doubling); less against another engine,
+  whose moves Psion predicts less often than its own. A move pondered on
+  in vain costs about 0.05 seconds (the takebacks), which the time gained
+  on the others more than makes up for.
+- All these games in one rating list, computed with
+  [Ordo](https://github.com/michiguel/Ordo) (errors are 95% intervals,
+  relative to the anchor). The time controls are kept apart: Psion and
+  micro-Max at 30+0.3 are other players than at 120+1. Both groups are
+  anchored at micro-Max's CCRL Blitz rating of 1855, which CCRL measures
+  at about 120+1, so for 30+0.3 this is only an approximation. Matches of
+  identical engines are left out.
+
+  | 120+1 (700 games) | Rating | Error |
+  |---|---|---|
+  | micro-Max 4.8 | 1855 | anchor |
+  | Psion | 1699 | ± 38 |
+  | Psion, 3.6 times slower | 1527 | ± 52 |
+  | Psion, 90 times slower | 1117 | ± 163 |
+
+  | 30+0.3 (500 games) | Rating | Error |
+  |---|---|---|
+  | micro-Max 4.8 | 1855 | anchor |
+  | Psion, pondering | 1695 | ± 40 |
+  | Psion | 1631 | ± 42 |
+
+  In the second list the difference between pondering and not pondering
+  is 64 ± 44 Elo (Ordo, from all 500 games, as independent games).
 - Psion has no transposition table: during a search only about 4 KB of
   memory changes, in small areas such as move lists, and nothing that
   fills up as the search proceeds. Every search starts afresh, which
