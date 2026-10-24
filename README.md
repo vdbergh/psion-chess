@@ -189,9 +189,8 @@ lichess-bot does; 59% of the moves pondered on were played.
   calibrated against human players; CCRL ratings are generally taken to
   be some hundreds of Elo below human ratings.
 - Pondering gains about as much as 1.7 times the speed would (at 90 Elo
-  per doubling). A move
-  pondered on in vain costs about 0.05 seconds (the takebacks), which
-  the time gained on the others more than makes up for.
+  per doubling). A move pondered on in vain costs about 0.05 seconds (the
+  takebacks), which the time gained on the others more than makes up for.
 - Psion has no transposition table: during a search only about 4 KB of
   memory changes, in small areas such as move lists, and nothing that
   fills up as the search proceeds. Every search starts afresh, which
