@@ -35,7 +35,8 @@ namespace psion {
         int winc, binc;
         int movestogo; // 0 if not given
         int movetime;  // 0 if not given
-        bool infinite; // "infinite" or "ponder"
+        bool infinite; // until "stop"
+        bool ponder;   // until "ponderhit" or "stop"
     };
     GoParams ParseGo(const std::vector<std::string> &tokens);
 
@@ -102,6 +103,14 @@ namespace psion {
     // The next step to get from the game Psion has played to the target.
     SyncAction PlanSync(const std::vector<std::string> &game,
                         const std::vector<std::string> &target);
+    // The number of moves the two have in common at the start.
+    size_t CommonMoves(const std::vector<std::string> &game,
+                       const std::vector<std::string> &target);
+
+    // The board after the first n of moves from start.
+    void BoardAfter(const StartPosition &start,
+                    const std::vector<std::string> &moves, size_t n,
+                    Board board);
 
 } // namespace psion
 

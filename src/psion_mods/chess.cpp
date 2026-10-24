@@ -473,7 +473,7 @@ namespace psion {
         size_t i;
         go.wtime = go.btime = -1;
         go.winc = go.binc = go.movestogo = go.movetime = 0;
-        go.infinite = false;
+        go.infinite = go.ponder = false;
         for (i = 1; i < tokens.size(); i++) {
             const std::string &t = tokens[i];
             int v = i + 1 < tokens.size() ? atoi(tokens[i + 1].c_str()) : 0;
@@ -489,8 +489,10 @@ namespace psion {
                 go.movestogo = v;
             else if (t == "movetime")
                 go.movetime = v;
-            else if (t == "infinite" || t == "ponder")
+            else if (t == "infinite")
                 go.infinite = true;
+            else if (t == "ponder")
+                go.ponder = true;
         }
         return go;
     }
@@ -766,15 +768,40 @@ namespace psion {
         return keys;
     }
 
-    SyncAction PlanSync(const std::vector<std::string> &game,
-                        const std::vector<std::string> &target) {
+    size_t CommonMoves(const std::vector<std::string> &game,
+                       const std::vector<std::string> &target) {
         size_t p = 0;
-        if (game == target) {
-            return SYNC_DONE;
-        }
         while (p < game.size() && p < target.size() && game[p] == target[p]) {
             p++;
         }
+        return p;
+    }
+
+    void BoardAfter(const StartPosition &start,
+                    const std::vector<std::string> &moves, size_t n,
+                    Board board) {
+        const char *initial = "RNBQKBNRPPPPPPPP................................"
+                              "pppppppprnbqkbnr"; // a1..h1, ..., a8..h8
+        int f, r;
+        size_t i;
+        for (f = 0; f < 8; f++) {
+            for (r = 0; r < 8; r++) {
+                board[f][r] =
+                    start.standard ? initial[r * 8 + f] : start.board[f][r];
+            }
+        }
+        for (i = 0; i < n && i < moves.size(); i++) {
+            make_move(board, moves[i]);
+        }
+    }
+
+    SyncAction PlanSync(const std::vector<std::string> &game,
+                        const std::vector<std::string> &target) {
+        size_t p;
+        if (game == target) {
+            return SYNC_DONE;
+        }
+        p = CommonMoves(game, target);
         if (p == game.size()) {
             return SYNC_SEND_MOVE;
         }

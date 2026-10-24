@@ -90,8 +90,9 @@ experiments.
 ### Supported UCI commands
 
 `uci`, `isready`, `ucinewgame`, `position startpos|fen ... [moves ...]`, `go`
-(`wtime`, `btime`, `winc`, `binc`, `movestogo`, `movetime`, `infinite`),
-`stop`, `debug on|off` and `quit`.
+(`wtime`, `btime`, `winc`, `binc`, `movestogo`, `movetime`, `infinite`,
+`ponder`), `ponderhit`, `stop`, `debug on|off` and `quit`. The engine offers
+the `Ponder` option, for GUIs that only let an engine ponder if it does.
 
 ### Limitations
 
@@ -120,7 +121,16 @@ experiments.
   long time controls (in Fine's position 70 it moves after about 1 second
   with 10 seconds to think). The depth limit is part of Psion's program and
   is left as it is.
-- Pondering is not offered; `go ponder` is treated as `go infinite`.
+- Pondering is done by the adapter, not with Psion's own pondering (see
+  easy mode below): after `go ponder` the move to ponder on is entered and
+  Psion searches as for `go infinite`; after `ponderhit` the time for the
+  move counts from then on, while Psion goes on with its search. After
+  `stop` (the opponent played another move) the adapter takes back that
+  move and Psion's reply, which costs about 0.05 seconds of the engine's
+  clock. The move to ponder on (`bestmove ... ponder ...`) is
+  the second move of Psion's principal variation, so there is none after
+  a book move or a move found at once. While pondering, the engine uses
+  a CPU core all the time.
 - Entering the opponent's move and reporting the engine's take about 0.1
   seconds per move. This time is taken from the engine's own clock, so
   very fast time controls leave little time for thinking. (A GUI that
@@ -162,6 +172,11 @@ pentanomial statistics.
 | Full speed against `--cycles 2000` (about 90 times slower) | 120+1.2 | 100 | +576 ± 192 Elo (94 wins, 1 loss, 5 draws) |
 | Full speed against `--cycles 48000` (about 3.6 times slower) | 120+1.2 | 300 | +170 ± 35 Elo |
 | Against micro-Max 4.8 (CCRL Blitz 1855) | 120+1 | 300 | −154 ± 38 Elo |
+| Pondering against not pondering (book `UHO_4060_v4.epd`)\* | 30+0.3 | 100 | +70 ± 56 Elo |
+
+\* Not with fastchess, which does not support pondering, but through
+python-chess, which sends `ponderhit` (or `stop` and the new position) as
+lichess-bot does; 59% of the moves pondered on were played.
 
 - Psion gains about 90 Elo per doubling of the speed (1.83 doublings in
   the second match). So the engine is now some hundreds of Elo stronger
@@ -173,6 +188,10 @@ pentanomial statistics.
   rating list (SSDF) has Psion on an 8 MHz Atari at 1791, a list once
   calibrated against human players; CCRL ratings are generally taken to
   be some hundreds of Elo below human ratings.
+- Pondering gains about as much as 1.7 times the speed would (at 90 Elo
+  per doubling). A move
+  pondered on in vain costs about 0.05 seconds (the takebacks), which
+  the time gained on the others more than makes up for.
 - Psion has no transposition table: during a search only about 4 KB of
   memory changes, in small areas such as move lists, and nothing that
   fills up as the search proceeds. Every search starts afresh, which
@@ -285,7 +304,9 @@ whose codes are unknown (see above), and as the reference for `memscan`.
 - `2` sets 2-player mode, in which moves for both sides can be entered.
 - `c` (Compute) starts a search, `m` (Move now) ends it when the time
   allocated to the move is used up.
-- `t` takes back one ply, `$` starts a new game.
+- `t` takes back one ply, `$` starts a new game. Several plies are taken
+  back with one `t` each, pressed at once; the position they lead to is
+  accepted as soon as it is in memory.
 - F3 enters and leaves set-up mode. For a FEN, the adapter starts a new
   game and enters set-up mode. Without castling rights it empties the
   board (`e`); with castling rights it keeps the start position, empties
@@ -299,7 +320,7 @@ whose codes are unknown (see above), and as the reference for `memscan`.
 - Moves are entered by moving the cursor; F3 F3 (into and out of set-up
   mode) resets it to a known square.
 - While Psion waits for the GUI, the emulation is stopped until the next
-  command arrives, so an idle engine uses no CPU (Psion does not ponder).
+  command arrives, so an idle engine uses no CPU (unless it ponders).
   This starts once Psion has been idle for a moment, so that it has
   finished drawing the screen. Psion's own clock stands still meanwhile,
   which does not matter: the adapter keeps the time.

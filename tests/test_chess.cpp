@@ -450,7 +450,11 @@ static void test_parse_go(){
     go=ParseGo(split("go movetime 1500"));
     CHECK_EQ(go.movetime,1500);
     CHECK(ParseGo(split("go infinite")).infinite);
-    CHECK(ParseGo(split("go ponder wtime 1000 btime 1000")).infinite);
+    go=ParseGo(split("go ponder wtime 30000 btime 1000"));
+    CHECK(go.ponder);
+    CHECK(!go.infinite);
+    // the time for the move, once "ponderhit" comes
+    CHECK_EQ(ThinkTime(go,true,0),1000u);
     // a value missing at the end
     CHECK_EQ(ParseGo(split("go wtime")).wtime,0);
 }
@@ -626,6 +630,30 @@ static void test_setup_keys(){
     st=ParsePosition(split("position fen rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1")).start;
     CHECK(!st.standard);
     CHECK_EQ(SetupKeys(st,true),std::string("RRRR0UUUUU0DDDpcUpc"));
+}
+
+static void test_board_after(){
+    std::vector<std::string> game=split("e2e4 e7e5 g1f3 b8c6");
+    CHECK_EQ(CommonMoves(game,split("e2e4 e7e5 f1c4")),(size_t)2);
+    CHECK_EQ(CommonMoves(game,game),(size_t)4);
+    Board b,c;
+    BoardAfter(StandardStart(),game,0,b);
+    CHECK(IsStartPosition(b));
+    BoardAfter(StandardStart(),game,3,b);
+    make_board(c,
+	       "rnbqkbnr"
+	       "pppp.ppp"
+	       "........"
+	       "....p..."
+	       "....P..."
+	       ".....N.."
+	       "PPPP.PPP"
+	       "RNBQKB.R");
+    CHECK(memcmp(b,c,sizeof(b))==0);
+    StartPosition st=ParsePosition(split("position fen 4k3/8/8/8/8/8/8/R3K3 w Q - 0 1")).start;
+    BoardAfter(st,split("e1c1"),1,b);
+    CHECK_EQ(b[2][0],'K');
+    CHECK_EQ(b[3][0],'R');
 }
 
 static void test_plan_sync(){
@@ -814,6 +842,7 @@ int main(){
     test_parse_fen();
     test_same_start();
     test_setup_keys();
+    test_board_after();
     test_plan_sync();
     test_parse_analysis();
     test_check_pv();

@@ -711,6 +711,9 @@ namespace psion {
         }
     }
 
+    // Set while takebacks are on their way: the number of moves left then.
+    static int takeback_to = -1;
+
     // Set while the adapter sets up setup_start in Psion's set-up mode.
     static bool setting_up = false;
     static StartPosition setup_start;
@@ -763,6 +766,15 @@ namespace psion {
             have_known && ((cur.ply == known.ply &&
                             cur.white_to_move == known.white_to_move) ||
                            pieces_lifted(known.board, cur.board));
+        // The position the takebacks lead to counts at once, like a move.
+        if (takeback_to >= 0 && !one_move && !cur.unknown &&
+            !game_state.thinking &&
+            cur.ply == game_state.base_ply + takeback_to) {
+            Board b;
+            BoardAfter(game_state.start, game_state.moves, takeback_to, b);
+            one_move = memcmp(b, cur.board, sizeof(b)) == 0;
+            mid_move = mid_move && !one_move;
+        }
         if (GetTicks() - pending_since < (one_move   ? MOVE_STABLE_MS
                                           : mid_move ? MID_MOVE_STABLE_MS
                                                      : STABLE_MS)) {
@@ -962,9 +974,11 @@ namespace psion {
         bool readyok_pending;
         bool go_pending;
         SearchState search;
-        bool infinite; // wait for "stop" before bestmove
+        bool infinite; // wait for "stop" (or "ponderhit") before bestmove
+        bool ponder;   // "go ponder", until "ponderhit" or "stop"
         bool stop_received;
         unsigned int think_ms;       // 0: until "stop"
+        unsigned int ponderhit_ms;   // think_ms from "ponderhit" on
         unsigned int search_start;   // when "go" was received
         unsigned int thinking_start; // when Psion started to think
         bool movenow_sent;
@@ -988,6 +1002,7 @@ namespace psion {
         int easy_presses;          // 'e' pressed without effect
         std::string last_analysis; // analysis row last seen
         std::string info_move;     // first move of the last info pv
+        std::string info_ponder;   // ... and the second, to ponder on
         size_t info_depth;         // longest pv in this search
         size_t sync_progress_size; // moves played when last checked
         unsigned int sync_progress_ticks;
@@ -1027,7 +1042,12 @@ namespace psion {
         if (!uci.info_move.empty() && move != uci.info_move && move != "0000") {
             uci_send("info pv %s\n", move.c_str());
         }
-        uci_send("bestmove %s\n", move.c_str());
+        if (move == uci.info_move && !uci.info_ponder.empty()) {
+            uci_send("bestmove %s ponder %s\n", move.c_str(),
+                     uci.info_ponder.c_str());
+        } else {
+            uci_send("bestmove %s\n", move.c_str());
+        }
     }
 
     static void report_move(const std::string move) {
@@ -1076,8 +1096,12 @@ namespace psion {
         size_t plies =
             uci.has_target ? uci.target.size() : game_state.moves.size();
         bool white = start.white == (plies % 2 == 0);
-        uci.infinite = go.infinite;
-        uci.think_ms = ThinkTime(go, white, MOVE_LATENCY_MS);
+        // A ponder search ends like an infinite one, unless "ponderhit"
+        // comes first: then the time for the move counts from there.
+        uci.infinite = go.infinite || go.ponder;
+        uci.ponder = go.ponder;
+        uci.ponderhit_ms = ThinkTime(go, white, MOVE_LATENCY_MS);
+        uci.think_ms = go.ponder ? 0 : uci.ponderhit_ms;
         uci.stop_received = false;
         uci.go_pending = true;
         // The GUI's clock runs from now, including the time it takes to set
@@ -1109,6 +1133,7 @@ namespace psion {
             uci_mode = true;
             uci_send("id name Psion Chess 1985\n");
             uci_send("id author Richard Lang\n");
+            uci_send("option name Ponder type check default false\n");
             uci_send("uciok\n");
         } else if (cmd == "isready") {
             if (uci.search != SEARCH_NONE) {
@@ -1126,9 +1151,36 @@ namespace psion {
             if (uci.search == SEARCH_NONE) {
                 UciGo(tokens);
             }
+        } else if (cmd == "ponderhit") {
+            // The opponent played the move pondered on: a normal search
+            // from now on (Psion goes on with the search it is doing).
+            if (!uci.ponder) {
+                return;
+            }
+            uci.ponder = false;
+            uci.infinite = false;
+            uci.think_ms = uci.ponderhit_ms;
+            uci.search_start = GetTicks();
+            if (uci.search == SEARCH_HOLDING) {
+                finish_search(uci.held_move);
+            }
         } else if (cmd == "stop") {
             uci.stop_received = true;
-            uci.go_pending = false;
+            if (uci.go_pending) {
+                // The search has not started yet (the position is still
+                // being set up). After "go ponder" the GUI ignores the
+                // move; otherwise Psion searches briefly once it can.
+                if (uci.ponder) {
+                    uci.go_pending = false;
+                    uci.ponder = false;
+                    uci_send("bestmove 0000\n");
+                } else {
+                    uci.infinite = false;
+                    uci.think_ms = 1;
+                }
+                return;
+            }
+            uci.ponder = false;
             if (uci.search == SEARCH_HOLDING) {
                 finish_search(uci.held_move);
             } else if (uci.search == SEARCH_RUNNING && !uci.movenow_sent &&
@@ -1227,6 +1279,7 @@ namespace psion {
         }
         uci_send("%s\n", info.c_str());
         uci.info_move = a.pv[0];
+        uci.info_ponder = a.pv.size() > 1 ? a.pv[1] : "";
     }
 
     // Sets up uci.target_start in Psion's set-up mode: F3, then the keys
@@ -1299,6 +1352,18 @@ namespace psion {
         }
     }
 
+    // Takes back the moves Psion has played beyond those of the target, all
+    // at once (as after a ponder miss: the move pondered on and Psion's
+    // reply).
+    static void take_back() {
+        std::vector<std::string> &moves = game_state.moves;
+        size_t n = moves.size() - CommonMoves(moves, uci.target);
+        takeback_to = (int)(moves.size() - n);
+        for (size_t i = 0; i < n; i++) {
+            press(KBD_t);
+        }
+    }
+
     // Set by UciStep when Psion is where the GUI wants it and has nothing
     // to do until the next command.
     static bool uci_done = false;
@@ -1312,6 +1377,10 @@ namespace psion {
         if (uci.inflight && moves.size() != uci.inflight_size) {
             uci.inflight = false;
             uci.retries = 0;
+            uci.action_done = true;
+        }
+        if (takeback_to >= 0 && (int)moves.size() <= takeback_to) {
+            takeback_to = -1;
             uci.action_done = true;
         }
         if (uci.two_player_pending && two_player_mode()) {
@@ -1378,6 +1447,15 @@ namespace psion {
                     return;
                 }
             }
+            if (!two_player_mode() && takeback_to < 0 &&
+                SameStart(game_state.start, uci.target_start) &&
+                PlanSync(moves, uci.target) == SYNC_TAKEBACK) {
+                // Psion takes back moves also when it considers the game
+                // over and ignores '2', e.g. after a mate it played while
+                // pondering.
+                take_back();
+                return;
+            }
             if (!two_player_mode()) {
                 // Once Psion considers the game over (e.g. it announced a
                 // draw) it ignores '2'; only a new game helps then.
@@ -1420,7 +1498,7 @@ namespace psion {
                 uci.inflight_since = now;
                 break;
             case SYNC_TAKEBACK:
-                press(KBD_t);
+                take_back();
                 break;
             case SYNC_NEW_GAME:
                 if (uci.target_start.standard) {
@@ -1451,6 +1529,7 @@ namespace psion {
             uci.search = SEARCH_RUNNING;
             uci.last_analysis = analysis_row; // from an earlier search
             uci.info_move.clear();
+            uci.info_ponder.clear();
             uci.info_depth = 0;
             uci.movenow_sent = false;
             uci.saw_program = false;
@@ -1460,7 +1539,7 @@ namespace psion {
         uci_done = uci.search == SEARCH_NONE && !uci.readyok_pending;
     }
 
-    // While Psion waits for the GUI (it does not ponder), the emulation is
+    // While Psion waits for the GUI (it is not searching), the emulation is
     // stopped until the next command, which saves a CPU core. Psion's own
     // clock stands still meanwhile, which does not matter: the adapter
     // keeps the time. Psion is only idle once ACTION_GAP_MS has passed

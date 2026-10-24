@@ -205,6 +205,37 @@ class UciTest(unittest.TestCase):
         move = bestmove(e, 2)
         self.assertTrue(Board(moves).plausible(move), move)
 
+    def test_ponder(self):
+        e = self.engine
+        moves = ['a2a4', 'h7h5', 'h2h4', 'a7a5', 'b1c3']
+        clock = ' wtime 30000 btime 30000'
+        # ponderhit: then a search with the time for the move
+        e.send('position startpos moves ' + ' '.join(moves))
+        e.send('go ponder' + clock)
+        self.assertEqual([l for l in e.silent(2) if not l.startswith('info ')],
+                         [])
+        start = time.time()
+        e.send('ponderhit')
+        move = bestmove(e, 10)
+        self.assertTrue(Board(moves).plausible(move), move)
+        self.assertLess(time.time() - start, 30000 / 30 / 1000 + 0.5)
+        # stop (the opponent played another move), then that move
+        e.send('position startpos moves ' + ' '.join(moves[:-1] + ['g1f3']))
+        e.send('go ponder' + clock)
+        e.silent(1)
+        e.send('stop')
+        bestmove(e, 2)
+        moves = moves[:-1] + ['b1a3']
+        e.send('position startpos moves ' + ' '.join(moves))
+        e.send('go movetime 500')
+        move = bestmove(e, 10)
+        self.assertTrue(Board(moves).plausible(move), move)
+        # stop before the search has started
+        e.send('position startpos moves ' + ' '.join(moves + [move, 'g1f3']))
+        e.send('go ponder' + clock)
+        e.send('stop')
+        bestmove(e, 2)
+
     def test_info(self):
         """Psion's analysis display is reported as info lines."""
         e = self.engine
@@ -246,7 +277,7 @@ class UciTest(unittest.TestCase):
         e.send('position startpos moves ' + ' '.join(moves))
         e.send('go movetime 2000')
         line, before = e.expect('bestmove', 30)
-        self.assertEqual(line, 'bestmove c4f7')
+        self.assertEqual(line.split()[:2], ['bestmove', 'c4f7'])
         self.assertIn('depth 3 time',
                       ' '.join(l for l in before if l.startswith('info ')))
         self.assertIn('score mate 2 pv c4f7 e8e7 c3d5',

@@ -1,6 +1,7 @@
 """Checks that the engine works with python-chess the way lichess-bot uses it.
 
-usage: python3 lichess_check.py [--games N] [--tc BASE+INC] ENGINE_COMMAND...
+usage: python3 lichess_check.py [--games N] [--tc BASE+INC] [--ponder]
+                                ENGINE_COMMAND...
 
 e.g.   python3 lichess_check.py --games 2 --tc 60+1 ../psion
 
@@ -10,7 +11,9 @@ engines get the clocks with every move (chess.engine.Limit with
 white_clock etc.) and are asked for all info (INFO_ALL). As on Lichess,
 the clocks start after the first move of each side. After the games,
 fresh engines join a game in progress, as when lichess-bot restarts:
-they first replay the game, on their clock.
+they first replay the game, on their clock. With --ponder both engines
+ponder (python-chess sends "go ponder", then "ponderhit" or "stop"), as
+lichess-bot does with "ponder: true".
 
 Reported: start-up times, moves that were illegal or came too late,
 problems python-chess logged (e.g. info lines it could not parse) and
@@ -57,7 +60,8 @@ def start_engine(command):
     return engine, time.monotonic() - t0
 
 
-def play(engines, board, base, inc, report, first_moves_free=True):
+def play(engines, board, base, inc, report, first_moves_free=True,
+         ponder=False):
     """Plays from board until the game ends; engines[0] plays White.
     Returns the result and the time each side took for its first move."""
     clocks = [base, base]
@@ -69,7 +73,7 @@ def play(engines, board, base, inc, report, first_moves_free=True):
                                    white_inc=inc, black_inc=inc)
         t0 = time.monotonic()
         result = engines[side].play(board, limit, info=chess.engine.INFO_ALL,
-                                    ponder=False)
+                                    ponder=ponder)
         used = time.monotonic() - t0
         if first[side] is None:
             first[side] = used
@@ -96,6 +100,8 @@ def main():
     parser.add_argument('--games', type=int, default=2)
     parser.add_argument('--tc', default='60+1',
                         help='time control in seconds, BASE+INC')
+    parser.add_argument('--ponder', action='store_true',
+                        help='let the engines ponder')
     parser.add_argument('engine', nargs='+', help='engine command')
     args = parser.parse_args()
     base, inc = (float(x) for x in args.tc.split('+'))
@@ -118,7 +124,8 @@ def main():
             engines.append(engine)
             startups.append(t)
         board = chess.Board()
-        result, _ = play(engines, board, base, inc, report)
+        result, _ = play(engines, board, base, inc, report,
+                         ponder=args.ponder)
         games.append(board)
         print('game %d: %s in %d plies' % (g + 1, result, len(board.move_stack)),
               flush=True)
@@ -137,7 +144,7 @@ def main():
         startups.append(t)
     plies = len(board.move_stack)
     result, first = play(engines, board, base, inc, report,
-                         first_moves_free=False)
+                         first_moves_free=False, ponder=args.ponder)
     print('resumed game from ply %d: %s in %d plies; first moves took '
           '%.1f and %.1f s' % (plies, result, len(board.move_stack),
                                 first[0] or 0, first[1] or 0), flush=True)
