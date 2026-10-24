@@ -1,11 +1,13 @@
 # Psion Chess files
 
 Psion Chess itself is not part of this repository. Download it from
+Classic DOS Games, which lists it as freeware:
 
-https://www.dosgamesarchive.com/download/psion-chess
+https://www.classicdosgames.com/game/Psion_Chess.html
 
-and unzip it into this directory, so that `Chess.exe` is directly in
-`data/` (not in a subdirectory). The directory should then contain:
+(the file `psion213.zip`) and unzip it into this directory, so that
+`Chess.exe` is directly in `data/` (not in a subdirectory). The directory
+should then contain:
 
     Chess.exe   Chess.hlp   Psion.grt   Verm2.13
     Chess1.ovl  Chess2.ovl  Chess3.ovl  Chess4.ovl
