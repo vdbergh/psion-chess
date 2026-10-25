@@ -79,10 +79,15 @@ jobs:
           name: windows-tests
           path: windows-tests
 
-  # Runs the Linux package with Psion's files: the UCI integration tests.
+  # Runs the Linux package with Psion's files: the UCI integration tests,
+  # on the oldest and the newest Ubuntu that GitHub offers.
   integration:
     needs: build
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
     env:
       PACKAGE: psion-chess-linux-x86_64
       PYTHON: python3
@@ -123,15 +128,20 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: uci-test-log-linux
+          name: uci-test-log-${{ matrix.os }}
           path: tests/uci_test.log
 
   # Runs the Windows build on Windows: the unit tests, a start-up check
   # (without Psion's files the engine must report them missing), then the
-  # UCI integration tests with Psion's files.
+  # UCI integration tests with Psion's files; on the oldest and the newest
+  # Windows that GitHub offers (Windows Server only).
   test-windows:
     needs: build-windows
-    runs-on: windows-2025
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         shell: bash
@@ -184,7 +194,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: uci-test-log-windows
+          name: uci-test-log-${{ matrix.os }}
           path: source/tests/uci_test.log
 
   # For version tags (v1.0, ...): publish the packages as a GitHub Release.

@@ -47,7 +47,8 @@ logged in to GitHub).
 - `psion-chess-linux-x86_64`: a statically linked executable that runs on
   any x86-64 Linux.
 - `psion-chess-windows-x86`: `psion.exe` for Windows. The integration tests
-  pass with it under Wine and, in GitHub Actions, on Windows Server 2025.
+  pass with it under Wine and, in GitHub Actions, on Windows Server 2022
+  and 2025.
 
 Unpack the package and add Psion's files to its `data/` directory.
 
