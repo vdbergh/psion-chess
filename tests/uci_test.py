@@ -192,6 +192,31 @@ class UciTest(unittest.TestCase):
         self.assertTrue(Board(moves).plausible(move), move)
         self.assertLess(used, 30000 / 30 / 1000 + 0.5)
 
+    def test_move_overhead(self):
+        e = self.engine
+        e.send('uci')
+        _, before = e.expect('uciok', 10)
+        self.assertIn('option name Move Overhead type spin default 94 min 0 max 5000',
+                      before)
+        moves = ['b2b4', 'g7g5', 'g2g4', 'b7b5']
+        try:
+            # 2000 ms for the move minus 1500 ms overhead: the 50 ms minimum
+            e.send('setoption name Move Overhead value 1500')
+            e.send('position startpos moves ' + ' '.join(moves))
+            e.ready()
+            start = time.time()
+            e.send('go movetime 2000')
+            move = bestmove(e, 10)
+            used = time.time() - start
+            self.assertTrue(Board(moves).plausible(move), move)
+            self.assertLess(used, 1.0)
+            e.send('setoption name Move Overhead value -1')
+            line, _ = e.expect('info string', 5)
+            self.assertIn('Move Overhead must be 0 to 5000', line)
+        finally:
+            e.send('setoption name Move Overhead value 94')
+            e.ready()
+
     def test_infinite_and_stop(self):
         e = self.engine
         moves = ['a2a4', 'h7h5', 'h2h4', 'a7a5']

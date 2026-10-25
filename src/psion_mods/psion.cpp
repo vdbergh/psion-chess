@@ -944,9 +944,13 @@ namespace psion {
 
     /* UCI */
 
-    // Time between the engine being told to move and its move being
-    // detected (key delays plus MOVE_STABLE_MS and polling).
-    const unsigned int MOVE_LATENCY_MS = 50;
+    // The "Move Overhead" option: the time a move costs on the clock
+    // besides Psion's thinking (key delays, MOVE_STABLE_MS and polling, the
+    // GUI, the network). The default is what a move cost with lichess-bot
+    // on a PC in Belgium: 94 ms (median of 429 moves).
+    const unsigned int DEFAULT_MOVE_OVERHEAD_MS = 94;
+    const unsigned int MAX_MOVE_OVERHEAD_MS = 5000;
+    static unsigned int move_overhead_ms = DEFAULT_MOVE_OVERHEAD_MS;
     // Pause after a key action before the screen is consulted again.
     const unsigned int ACTION_GAP_MS = 300;
     // Psion thinks at least this long, also when the time for the move
@@ -1100,7 +1104,7 @@ namespace psion {
         // comes first: then the time for the move counts from there.
         uci.infinite = go.infinite || go.ponder;
         uci.ponder = go.ponder;
-        uci.ponderhit_ms = ThinkTime(go, white, MOVE_LATENCY_MS);
+        uci.ponderhit_ms = ThinkTime(go, white, move_overhead_ms);
         uci.think_ms = go.ponder ? 0 : uci.ponderhit_ms;
         uci.stop_received = false;
         uci.go_pending = true;
@@ -1134,6 +1138,9 @@ namespace psion {
             uci_send("id name Psion Chess 1985\n");
             uci_send("id author Richard Lang\n");
             uci_send("option name Ponder type check default false\n");
+            uci_send("option name Move Overhead type spin default %u min 0 "
+                     "max %u\n",
+                     DEFAULT_MOVE_OVERHEAD_MS, MAX_MOVE_OVERHEAD_MS);
             uci_send("uciok\n");
         } else if (cmd == "isready") {
             if (uci.search != SEARCH_NONE) {
@@ -1188,6 +1195,20 @@ namespace psion {
                 press(KBD_m);
                 uci.movenow_sent = true;
                 uci.movenow_ticks = GetTicks();
+            }
+        } else if (cmd == "setoption") {
+            std::string name, value;
+            if (ParseSetOption(tokens, name, value) &&
+                SameOptionName(name, "Move Overhead")) {
+                char *end;
+                long v = strtol(value.c_str(), &end, 10);
+                if (value.empty() || *end || v < 0 ||
+                    v > (long)MAX_MOVE_OVERHEAD_MS) {
+                    uci_send("info string Move Overhead must be 0 to %u\n",
+                             MAX_MOVE_OVERHEAD_MS);
+                } else {
+                    move_overhead_ms = (unsigned int)v;
+                }
             }
         } else if (cmd == "debug") {
             if (tokens.size() > 1) {

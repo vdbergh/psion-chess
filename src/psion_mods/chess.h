@@ -31,7 +31,10 @@ namespace psion {
     std::vector<std::string> Tokenize(const char *line);
 
     struct GoParams {
-        int wtime, btime; // -1 if not given
+        // All values are clamped to 0 .. INT_MAX: a negative clock (the
+        // time used up) counts as 0.
+        bool wtime_given, btime_given;
+        int wtime, btime;
         int winc, binc;
         int movestogo; // 0 if not given
         int movetime;  // 0 if not given
@@ -40,10 +43,19 @@ namespace psion {
     };
     GoParams ParseGo(const std::vector<std::string> &tokens);
 
-    // How long to think (ms) before pressing MOVE-NOW, allowing latency ms
-    // for the move to be detected. 0 means until "stop".
+    // How long to think (ms) before pressing MOVE-NOW, allowing overhead
+    // ms per move for everything else (the move being detected, the GUI,
+    // the network). 0 means until "stop".
     unsigned int ThinkTime(const GoParams &go, bool white,
-                           unsigned int latency);
+                           unsigned int overhead);
+
+    // "setoption name NAME [value VALUE]": name and value may contain
+    // spaces. False if there is no name.
+    bool ParseSetOption(const std::vector<std::string> &tokens,
+                        std::string &name, std::string &value);
+
+    // Case-insensitive, as UCI option names are.
+    bool SameOptionName(const std::string &a, const std::string &b);
 
     // The position a game starts from: the start position, or one set up
     // in Psion's set-up mode.

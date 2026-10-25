@@ -1,3 +1,4 @@
+#include <limits.h>
 // Unit tests for src/psion_mods/chess.cpp. Run with "make check".
 
 #include <stdio.h>
@@ -435,8 +436,8 @@ static void test_tokenize(){
 
 static void test_parse_go(){
     GoParams go=ParseGo(split("go"));
-    CHECK_EQ(go.wtime,-1);
-    CHECK_EQ(go.btime,-1);
+    CHECK(!go.wtime_given);
+    CHECK(!go.btime_given);
     CHECK_EQ(go.winc,0);
     CHECK_EQ(go.movestogo,0);
     CHECK_EQ(go.movetime,0);
@@ -447,14 +448,23 @@ static void test_parse_go(){
     CHECK_EQ(go.winc,1000);
     CHECK_EQ(go.binc,2000);
     CHECK_EQ(go.movestogo,20);
+    CHECK(go.wtime_given);
+    CHECK(go.btime_given);
+    // clamped to 0 .. INT_MAX
+    go=ParseGo(split("go wtime -20 btime 99999999999 winc -5 binc x"));
+    CHECK(go.wtime_given);
+    CHECK_EQ(go.wtime,0);
+    CHECK_EQ(go.btime,INT_MAX);
+    CHECK_EQ(go.winc,0);
+    CHECK_EQ(go.binc,0);
     go=ParseGo(split("go movetime 1500"));
     CHECK_EQ(go.movetime,1500);
     CHECK(ParseGo(split("go infinite")).infinite);
     go=ParseGo(split("go ponder wtime 30000 btime 1000"));
     CHECK(go.ponder);
     CHECK(!go.infinite);
-    // the time for the move, once "ponderhit" comes
-    CHECK_EQ(ThinkTime(go,true,0),1000u);
+    // the time for the move, once "ponderhit" comes (sudden death: /60)
+    CHECK_EQ(ThinkTime(go,true,0),500u);
     // a value missing at the end
     CHECK_EQ(ParseGo(split("go wtime")).wtime,0);
 }
@@ -466,18 +476,47 @@ static void test_think_time(){
     // 60000/30 + 3/4 of the increment
     go=ParseGo(split("go wtime 60000 btime 30000 winc 1000 binc 0"));
     CHECK_EQ(ThinkTime(go,true,400),2350u);
-    CHECK_EQ(ThinkTime(go,false,400),600u);
+    // sudden death: 30000/60
+    CHECK_EQ(ThinkTime(go,false,400),100u);
+    go=ParseGo(split("go wtime 60000 btime 60000"));
+    CHECK_EQ(ThinkTime(go,true,94),906u);
+    // movestogo
+    go=ParseGo(split("go wtime 60000 btime 60000 movestogo 20"));
+    CHECK_EQ(ThinkTime(go,true,94),2906u);
     // at most 3/4 of the remaining time
     go=ParseGo(split("go wtime 10000 btime 10000 movestogo 1"));
     CHECK_EQ(ThinkTime(go,true,400),7100u);
     // never less than 50 ms
     go=ParseGo(split("go wtime 100 btime 100"));
     CHECK_EQ(ThinkTime(go,true,400),50u);
+    // the time used up (negative or 0): the minimum, not the default
+    go=ParseGo(split("go wtime -20 btime 0"));
+    CHECK_EQ(ThinkTime(go,true,94),50u);
+    CHECK_EQ(ThinkTime(go,false,94),50u);
+    // huge clocks and increments do not overflow
+    go=ParseGo(split("go wtime 2147483647 btime 2147483647 winc 2147483647 binc 0"));
+    CHECK_EQ(ThinkTime(go,true,0),(unsigned int)(3*2147483647LL/4)); // the 3/4 cap
+    CHECK_EQ(ThinkTime(go,false,0),(unsigned int)(2147483647LL/60));
+    go=ParseGo(split("go wtime 99999999999 btime 1"));
+    CHECK_EQ(ThinkTime(go,true,0),(unsigned int)(2147483647LL/60));
     // no time information: a fixed default
     go=ParseGo(split("go depth 10"));
     CHECK_EQ(ThinkTime(go,true,400),4600u);
     go=ParseGo(split("go infinite"));
     CHECK_EQ(ThinkTime(go,true,400),0u);
+}
+
+static void test_set_option(){
+    std::string name,value;
+    CHECK(ParseSetOption(split("setoption name Move Overhead value 270"),name,value));
+    CHECK_EQ(name,std::string("Move Overhead"));
+    CHECK_EQ(value,std::string("270"));
+    CHECK(ParseSetOption(split("setoption name Ponder"),name,value));
+    CHECK_EQ(name,std::string("Ponder"));
+    CHECK_EQ(value,std::string(""));
+    CHECK(!ParseSetOption(split("setoption value 3"),name,value));
+    CHECK(SameOptionName("move overhead","Move Overhead"));
+    CHECK(!SameOptionName("Move Overheads","Move Overhead"));
 }
 
 static void test_parse_position(){
@@ -838,6 +877,7 @@ int main(){
     test_tokenize();
     test_parse_go();
     test_think_time();
+    test_set_option();
     test_parse_position();
     test_parse_fen();
     test_same_start();

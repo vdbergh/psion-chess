@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <algorithm>
@@ -468,53 +469,106 @@ namespace psion {
         return tokens;
     }
 
+    // A "go" value: 0 if missing or not a number, else clamped to
+    // 0 .. INT_MAX.
+    static int go_value(const std::vector<std::string> &tokens, size_t i) {
+        if (i >= tokens.size()) {
+            return 0;
+        }
+        long v = strtol(tokens[i].c_str(), NULL, 10); // saturates on overflow
+        return (int)std::min(std::max(v, 0L), (long)INT_MAX);
+    }
+
     GoParams ParseGo(const std::vector<std::string> &tokens) {
         GoParams go;
         size_t i;
-        go.wtime = go.btime = -1;
+        go.wtime_given = go.btime_given = false;
+        go.wtime = go.btime = 0;
         go.winc = go.binc = go.movestogo = go.movetime = 0;
         go.infinite = go.ponder = false;
         for (i = 1; i < tokens.size(); i++) {
             const std::string &t = tokens[i];
-            int v = i + 1 < tokens.size() ? atoi(tokens[i + 1].c_str()) : 0;
-            if (t == "wtime")
+            int v = go_value(tokens, i + 1);
+            if (t == "wtime") {
                 go.wtime = v;
-            else if (t == "btime")
+                go.wtime_given = true;
+            } else if (t == "btime") {
                 go.btime = v;
-            else if (t == "winc")
+                go.btime_given = true;
+            } else if (t == "winc") {
                 go.winc = v;
-            else if (t == "binc")
+            } else if (t == "binc") {
                 go.binc = v;
-            else if (t == "movestogo")
+            } else if (t == "movestogo") {
                 go.movestogo = v;
-            else if (t == "movetime")
+            } else if (t == "movetime") {
                 go.movetime = v;
-            else if (t == "infinite")
+            } else if (t == "infinite") {
                 go.infinite = true;
-            else if (t == "ponder")
+            } else if (t == "ponder") {
                 go.ponder = true;
+            }
         }
         return go;
     }
 
     unsigned int ThinkTime(const GoParams &go, bool white,
-                           unsigned int latency) {
-        int time = white ? go.wtime : go.btime;
-        int inc = white ? go.winc : go.binc;
-        int t;
+                           unsigned int overhead) {
+        // long long: 3 * INT_MAX must not overflow.
+        long long time = white ? go.wtime : go.btime;
+        long long inc = white ? go.winc : go.binc;
+        bool clock = white ? go.wtime_given : go.btime_given;
+        long long t;
         if (go.infinite) {
             return 0;
         }
         if (go.movetime > 0) {
             t = go.movetime;
-        } else if (time >= 0) {
-            t = time / (go.movestogo > 0 ? go.movestogo : 30) +
-                3 * std::max(inc, 0) / 4;
+        } else if (clock) {
+            // In sudden death a smaller share: the overhead of a move is
+            // a fixed cost, so the remaining time must last for many moves.
+            long long n = go.movestogo > 0 ? go.movestogo : inc > 0 ? 30 : 60;
+            t = time / n + 3 * inc / 4;
             t = std::min(t, 3 * time / 4);
         } else {
             t = 5000; // depth, nodes, mate: not supported
         }
-        return std::max(t - (int)latency, 50);
+        // Over the n moves this keeps overhead per move in reserve:
+        // time/n - overhead = (time - n * overhead) / n.
+        // At most INT_MAX, so it fits.
+        return (unsigned int)std::max(t - (long long)overhead, 50LL);
+    }
+
+    bool ParseSetOption(const std::vector<std::string> &tokens,
+                        std::string &name, std::string &value) {
+        name.clear();
+        value.clear();
+        std::string *part = NULL;
+        for (size_t i = 1; i < tokens.size(); i++) {
+            if (tokens[i] == "name" && part != &value) {
+                part = &name;
+            } else if (tokens[i] == "value" && part == &name) {
+                part = &value;
+            } else if (part) {
+                if (!part->empty()) {
+                    *part += ' ';
+                }
+                *part += tokens[i];
+            }
+        }
+        return !name.empty();
+    }
+
+    bool SameOptionName(const std::string &a, const std::string &b) {
+        if (a.size() != b.size()) {
+            return false;
+        }
+        for (size_t i = 0; i < a.size(); i++) {
+            if (tolower((unsigned char)a[i]) != tolower((unsigned char)b[i])) {
+                return false;
+            }
+        }
+        return true;
     }
 
     StartPosition StandardStart() {

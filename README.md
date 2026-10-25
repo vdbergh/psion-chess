@@ -91,8 +91,21 @@ experiments.
 
 `uci`, `isready`, `ucinewgame`, `position startpos|fen ... [moves ...]`, `go`
 (`wtime`, `btime`, `winc`, `binc`, `movestogo`, `movetime`, `infinite`,
-`ponder`), `ponderhit`, `stop`, `debug on|off` and `quit`. The engine offers
-the `Ponder` option, for GUIs that only let an engine ponder if it does.
+`ponder`), `ponderhit`, `stop`, `setoption`, `debug on|off` and `quit`.
+
+Options:
+
+- `Ponder`: for GUIs that only let an engine ponder if it offers it.
+- `Move Overhead` (ms, default 94): what a move costs on the clock besides
+  Psion's thinking: entering it, the GUI, the network. The default is the
+  median with lichess-bot on a PC in Belgium. Increase it if the engine
+  loses on time, e.g. with a slow connection to the server.
+
+With a clock Psion thinks for 1/30 of the remaining time plus 3/4 of the
+increment, or for 1/60 of the remaining time without an increment (with
+`movestogo`: 1/movestogo), minus the move overhead, and at least 50 ms. In
+sudden death the fixed cost of a move would otherwise make long games end
+on time.
 
 ### Limitations
 
