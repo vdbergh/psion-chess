@@ -246,6 +246,16 @@ class UciTest(unittest.TestCase):
             again = depth('Max')
             self.assertGreater(fast, slow)
             self.assertGreater(again, slow)
+            # At low speeds the time to enter the moves is allowed for: in
+            # all about the movetime, not that plus about 1.3 s.
+            e.send('setoption name Cycles value 1000')
+            e.send('position startpos moves ' + ' '.join(moves + ['e2e4']))
+            e.ready()
+            e.send('position startpos moves ' + ' '.join(moves + ['e2e4', 'e7e5']))
+            start = time.time()
+            e.send('go movetime 3000')
+            bestmove(e, 20)
+            self.assertLess(time.time() - start, 3.6)
         finally:
             e.close()
 

@@ -1128,7 +1128,10 @@ namespace psion {
         // comes first: then the time for the move counts from there.
         uci.infinite = go.infinite || go.ponder;
         uci.ponder = go.ponder;
-        uci.ponderhit_ms = ThinkTime(go, white, move_overhead_ms);
+        // At a fixed speed (Cycles, --cycles) moves take longer to enter.
+        unsigned int latency =
+            CyclesLatency(CPU_CycleAutoAdjust ? 0 : (unsigned int)CPU_CycleMax);
+        uci.ponderhit_ms = ThinkTime(go, white, move_overhead_ms + latency);
         uci.think_ms = go.ponder ? 0 : uci.ponderhit_ms;
         uci.stop_received = false;
         uci.go_pending = true;

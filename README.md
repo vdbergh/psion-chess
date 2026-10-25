@@ -47,13 +47,9 @@ logged in to GitHub).
 - `psion-chess-linux-x86_64`: a statically linked executable that runs on
   any x86-64 Linux.
 - `psion-chess-windows-x86`: `psion.exe` for Windows. The integration tests
-  pass with it under Wine; on Windows itself, GitHub Actions only checks
-  that it starts (Psion's files are not available there).
+  pass with it under Wine and, in GitHub Actions, on Windows itself.
 
 Unpack the package and add Psion's files to its `data/` directory.
-
-To make a release, push a version tag, e.g.
-`git tag v1.0 && git push origin v1.0`.
 
 ## Running
 
@@ -105,8 +101,9 @@ Options:
   millisecond, e.g. `300` for roughly an original IBM PC (see
   [Speed](#speed)); at most 1,000,000. Values above what the host can do
   give its full speed. Entering moves and reading Psion's reply slow down
-  as well: at 300 a move costs about 4 seconds besides thinking, so
-  increase `Move Overhead` with low values.
+  as well, which the engine allows for in its time use, on top of
+  `Move Overhead`: about 0.1 s per move at 3000, 1.3 s at 1000 and 5 s at
+  300 (measured on an i5-1135G7).
 
 With a clock Psion thinks for 1/30 of the remaining time plus 3/4 of the
 increment, or for 1/60 of the remaining time without an increment (with

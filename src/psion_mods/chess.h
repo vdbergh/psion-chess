@@ -49,6 +49,11 @@ namespace psion {
     unsigned int ThinkTime(const GoParams &go, bool white,
                            unsigned int overhead);
 
+    // The time (ms) a move costs at a fixed speed of cycles instructions per
+    // ms beyond what it costs at full speed: entering the opponent's move
+    // and reading Psion's slow down. 0 for full speed (cycles 0).
+    unsigned int CyclesLatency(unsigned int cycles);
+
     // "setoption name NAME [value VALUE]": name and value may contain
     // spaces. False if there is no name.
     bool ParseSetOption(const std::vector<std::string> &tokens,
