@@ -22,6 +22,7 @@
 #include "chess.h"
 #include "mem.h"
 #include "regs.h"
+#include "cpu.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -951,6 +952,29 @@ namespace psion {
     const unsigned int DEFAULT_MOVE_OVERHEAD_MS = 94;
     const unsigned int MAX_MOVE_OVERHEAD_MS = 5000;
     static unsigned int move_overhead_ms = DEFAULT_MOVE_OVERHEAD_MS;
+    // The "Cycles" option: "max" (as fast as the host allows) or a fixed
+    // number of emulated instructions per millisecond, as with --cycles.
+    // (DOSBox's "cycles=max limit N" does not work here: its auto-adjust
+    // then lowers the cycles far below N and does not raise them again.)
+    // Higher fixed values than the host can reach slow the emulated clock
+    // down; far higher ones (10 million) also hide the analysis.
+    const unsigned int MAX_CYCLES = 1000000;
+
+    // 0 for "max".
+    static void set_cycles(unsigned int cycles) {
+        // Set directly rather than through the CPU section, whose
+        // Change_Config would also reset the CPU core.
+        CPU_CycleLimit = -1;
+        CPU_CycleAutoAdjust = cycles == 0;
+        if (cycles) {
+            CPU_CycleMax = (Bit32s)cycles;
+        }
+        if (cycles) {
+            say("Cycles: %u per ms\n", cycles);
+        } else {
+            say("Cycles: max\n");
+        }
+    }
     // Pause after a key action before the screen is consulted again.
     const unsigned int ACTION_GAP_MS = 300;
     // Psion thinks at least this long, also when the time for the move
@@ -1141,6 +1165,7 @@ namespace psion {
             uci_send("option name Move Overhead type spin default %u min 0 "
                      "max %u\n",
                      DEFAULT_MOVE_OVERHEAD_MS, MAX_MOVE_OVERHEAD_MS);
+            uci_send("option name Cycles type string default max\n");
             uci_send("uciok\n");
         } else if (cmd == "isready") {
             if (uci.search != SEARCH_NONE) {
@@ -1198,8 +1223,10 @@ namespace psion {
             }
         } else if (cmd == "setoption") {
             std::string name, value;
-            if (ParseSetOption(tokens, name, value) &&
-                SameOptionName(name, "Move Overhead")) {
+            if (!ParseSetOption(tokens, name, value)) {
+                return;
+            }
+            if (SameOptionName(name, "Move Overhead")) {
                 char *end;
                 long v = strtol(value.c_str(), &end, 10);
                 if (value.empty() || *end || v < 0 ||
@@ -1208,6 +1235,18 @@ namespace psion {
                              MAX_MOVE_OVERHEAD_MS);
                 } else {
                     move_overhead_ms = (unsigned int)v;
+                }
+            } else if (SameOptionName(name, "Cycles")) {
+                char *end;
+                long v = strtol(value.c_str(), &end, 10);
+                if (SameOptionName(value, "max")) {
+                    set_cycles(0);
+                } else if (value.empty() || *end || v < 1 ||
+                           v > (long)MAX_CYCLES) {
+                    uci_send("info string Cycles must be max or 1 to %u\n",
+                             MAX_CYCLES);
+                } else {
+                    set_cycles((unsigned int)v);
                 }
             }
         } else if (cmd == "debug") {

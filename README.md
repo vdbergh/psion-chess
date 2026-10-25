@@ -84,8 +84,8 @@ stderr: the moves and board after each move, start-up messages, etc.
 
 `--cycles N` runs the emulated PC at a fixed speed of N instructions per
 millisecond instead of as fast as possible (see [Speed](#speed)), e.g.
-`--cycles 300` for roughly an original IBM PC. It is meant for tests and
-experiments.
+`--cycles 300` for roughly an original IBM PC, from start-up on; the
+`Cycles` option does the same from a GUI.
 
 ### Supported UCI commands
 
@@ -100,6 +100,13 @@ Options:
   Psion's thinking: entering it, the GUI, the network. The default is the
   median with lichess-bot on a PC in Belgium. Increase it if the engine
   loses on time, e.g. with a slow connection to the server.
+- `Cycles` (default `max`): the speed of the emulated PC, `max` for as
+  fast as the host allows or a fixed number of instructions per
+  millisecond, e.g. `300` for roughly an original IBM PC (see
+  [Speed](#speed)); at most 1,000,000. Values above what the host can do
+  give its full speed. Entering moves and reading Psion's reply slow down
+  as well: at 300 a move costs about 4 seconds besides thinking, so
+  increase `Move Overhead` with low values.
 
 With a clock Psion thinks for 1/30 of the remaining time plus 3/4 of the
 increment, or for 1/60 of the remaining time without an increment (with
