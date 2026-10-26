@@ -104,10 +104,10 @@ Options:
   fast as the host allows or a fixed number of instructions per
   millisecond, e.g. `300` for roughly an original IBM PC (see
   [Speed](#speed)); at most 1,000,000. Values above what the host can do
-  give its full speed. Entering moves and reading Psion's reply slow down
-  as well, which the engine allows for in its time use, on top of
-  `Move Overhead`: about 0.1 s per move at 3000, 1.3 s at 1000 and 5 s at
-  300 (measured on an i5-1135G7).
+  give its full speed. The speed applies only while Psion searches:
+  setting up the position and entering moves run at full speed, so a
+  move costs about as much time as at full speed (40 to 75 ms, against
+  about 30 ms, on an i5-1135G7).
 - `UCI_LimitStrength` (default false) and `UCI_Elo` (1150 to 1650,
   default 1400): play at a given strength on the CCRL Blitz scale, by
   running the emulated PC at a fixed speed: about 2,400 cycles for 1150,

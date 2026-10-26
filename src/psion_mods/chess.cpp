@@ -543,33 +543,6 @@ namespace psion {
         return (unsigned int)std::max(t - (long long)overhead, 50LL);
     }
 
-    unsigned int CyclesLatency(unsigned int cycles) {
-        // Medians of "go movetime" against the wall time, after a new
-        // opponent move each time, minus the 33 ms at full speed
-        // (i5-1135G7).
-        static const struct {
-            double cycles, ms;
-        } table[] = {{300, 5144}, {1000, 1255}, {1200, 834}, {1500, 559},
-                     {2000, 297}, {2500, 159}, {3000, 100}, {10000, 21},
-                     {30000, 9},   {100000, 0}};
-        const size_t n = sizeof(table) / sizeof(table[0]);
-        if (cycles == 0 || cycles >= table[n - 1].cycles) {
-            return 0;
-        }
-        if (cycles <= table[0].cycles) {
-            return (unsigned int)(table[0].ms * table[0].cycles / cycles);
-        }
-        size_t i = 1;
-        while (table[i].cycles < cycles) {
-            i++;
-        }
-        // Linear in log(cycles) between the measured speeds.
-        double f = log(cycles / table[i - 1].cycles) /
-                   log(table[i].cycles / table[i - 1].cycles);
-        return (unsigned int)(table[i - 1].ms +
-                              f * (table[i].ms - table[i - 1].ms) + 0.5);
-    }
-
     unsigned int EloCycles(int elo) {
         // Fitted to matches at 120+1 at 2500, 16000 and 100000 cycles
         // against TSCP 1.83b and Sargon 1978 1.01b, anchored at their CCRL

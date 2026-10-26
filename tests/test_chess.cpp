@@ -506,25 +506,6 @@ static void test_think_time(){
     CHECK_EQ(ThinkTime(go,true,400),0u);
 }
 
-static void test_cycles_latency(){
-    CHECK_EQ(CyclesLatency(0),0u);
-    CHECK_EQ(CyclesLatency(100000),0u);
-    CHECK_EQ(CyclesLatency(500000),0u);
-    // measured speeds
-    CHECK_EQ(CyclesLatency(300),5144u);
-    CHECK_EQ(CyclesLatency(3000),100u);
-    // in between, linear in log(cycles)
-    CHECK(CyclesLatency(2200)<297u && CyclesLatency(2200)>159u);
-    // below 300: proportional to 1/cycles
-    CHECK_EQ(CyclesLatency(150),10288u);
-    // decreasing
-    unsigned int prev=CyclesLatency(1);
-    for(unsigned int c=2;c<=100000;c=c*3/2+1){
-        CHECK(CyclesLatency(c)<=prev);
-        prev=CyclesLatency(c);
-    }
-}
-
 static void test_elo_cycles(){
     CHECK_EQ(EloCycles(1614),100000u);
     CHECK_EQ(EloCycles(1614-86),50000u);
@@ -920,7 +901,6 @@ int main(){
     test_parse_go();
     test_think_time();
     test_set_option();
-    test_cycles_latency();
     test_elo_cycles();
     test_parse_position();
     test_parse_fen();

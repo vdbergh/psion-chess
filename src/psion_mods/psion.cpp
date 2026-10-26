@@ -961,43 +961,69 @@ namespace psion {
     // down; far higher ones (10 million) also hide the analysis.
     const unsigned int MAX_CYCLES = 1000000;
 
-    // 0 for "max".
-    static void set_cycles(unsigned int cycles) {
-        // Set directly rather than through the CPU section, whose
-        // Change_Config would also reset the CPU core.
+    // The speed of the emulated PC (0 for "max"). A fixed speed applies
+    // only from the 'c' that starts a search until MOVE-NOW: setting up
+    // positions, entering moves and taking back run at full speed. (The
+    // screen shows the search too late: it would run partly at full
+    // speed.) (Set directly rather than through the CPU section,
+    // whose Change_Config would also reset the CPU core.)
+    static unsigned int search_cycles = 0;
+    static bool search_speed_on = false;
+    static Bit32s auto_cycles = 0; // where the auto-adjust was
+
+    static void dosbox_cycles(unsigned int cycles) {
         CPU_CycleLimit = -1;
-        CPU_CycleAutoAdjust = cycles == 0;
-        if (cycles) {
+        if (cycles == 0) {
+            if (!CPU_CycleAutoAdjust && auto_cycles > 0) {
+                // Go on from where the auto-adjust was, not from the
+                // fixed speed, from which it would take a while to rise.
+                CPU_CycleMax = auto_cycles;
+            }
+            CPU_CycleAutoAdjust = true;
+        } else {
+            if (CPU_CycleAutoAdjust) {
+                auto_cycles = CPU_CycleMax;
+            }
+            CPU_CycleAutoAdjust = false;
             CPU_CycleMax = (Bit32s)cycles;
         }
-        if (cycles) {
-            say("Cycles: %u per ms\n", cycles);
-        } else {
-            say("Cycles: max\n");
+    }
+
+    // on: Psion has started a search; off: it is told to move, or done.
+    static void search_speed(bool on) {
+        if (on != search_speed_on) {
+            search_speed_on = on;
+            dosbox_cycles(on ? search_cycles : 0);
         }
     }
 
     // UCI_LimitStrength and UCI_Elo: a fixed speed for the strength asked
-    // for. Switched off, the speed asked for with Cycles (or --cycles,
-    // remembered when one of these options is first set) applies again.
+    // for. Switched off, the speed asked for with Cycles (or --cycles)
+    // applies again.
     static bool limit_strength = false;
     static int uci_elo = DEFAULT_ELO;
-    static bool base_speed_known = false;
-    static unsigned int base_cycles; // 0 for "max"
+    static unsigned int base_cycles = 0; // 0 for "max"
 
-    static void remember_base_speed() {
-        if (!base_speed_known) {
-            base_cycles = CPU_CycleAutoAdjust ? 0 : (unsigned int)CPU_CycleMax;
-            base_speed_known = true;
-        }
+    // In UCI mode: the speed of --cycles becomes the search speed.
+    static void init_speed() {
+        base_cycles = CPU_CycleAutoAdjust ? 0 : (unsigned int)CPU_CycleMax;
+        search_cycles = base_cycles;
+        search_speed_on = false;
+        dosbox_cycles(0);
     }
 
     static void apply_speed() {
+        search_cycles = limit_strength ? EloCycles(uci_elo) : base_cycles;
         if (limit_strength) {
             say("UCI_Elo %d: ", uci_elo);
-            set_cycles(EloCycles(uci_elo));
-        } else if (base_speed_known) {
-            set_cycles(base_cycles);
+        }
+        if (search_cycles) {
+            say("Cycles: %u per ms while searching\n", search_cycles);
+        } else {
+            say("Cycles: max\n");
+        }
+        if (search_speed_on) {
+            dosbox_cycles(search_cycles);
         }
     }
     // Pause after a key action before the screen is consulted again.
@@ -1090,6 +1116,7 @@ namespace psion {
     }
 
     static void finish_search(const std::string &move) {
+        search_speed(false);
         uci.search = SEARCH_NONE;
         game_state.thinking = false;
         // Stopped by MOVE-NOW, Psion plays the best move found so far, which
@@ -1162,10 +1189,7 @@ namespace psion {
         // comes first: then the time for the move counts from there.
         uci.infinite = go.infinite || go.ponder;
         uci.ponder = go.ponder;
-        // At a fixed speed (Cycles, --cycles) moves take longer to enter.
-        unsigned int latency =
-            CyclesLatency(CPU_CycleAutoAdjust ? 0 : (unsigned int)CPU_CycleMax);
-        uci.ponderhit_ms = ThinkTime(go, white, move_overhead_ms + latency);
+        uci.ponderhit_ms = ThinkTime(go, white, move_overhead_ms);
         uci.think_ms = go.ponder ? 0 : uci.ponderhit_ms;
         uci.stop_received = false;
         uci.go_pending = true;
@@ -1214,6 +1238,9 @@ namespace psion {
             return;
         }
         if (cmd == "uci") {
+            if (!uci_mode) {
+                init_speed();
+            }
             uci_mode = true;
             uci_send("id name Psion Chess 1985\n");
             uci_send("id author Richard Lang\n");
@@ -1276,6 +1303,7 @@ namespace psion {
                 finish_search(uci.held_move);
             } else if (uci.search == SEARCH_RUNNING && !uci.movenow_sent &&
                        uci.reported_move.empty()) {
+                search_speed(false);
                 press(KBD_m);
                 uci.movenow_sent = true;
                 uci.movenow_ticks = GetTicks();
@@ -1300,7 +1328,6 @@ namespace psion {
                 long v = strtol(value.c_str(), &end, 10);
                 if (SameOptionName(value, "max")) {
                     base_cycles = 0;
-                    base_speed_known = true;
                     apply_speed();
                 } else if (value.empty() || *end || v < 1 ||
                            v > (long)MAX_CYCLES) {
@@ -1308,13 +1335,11 @@ namespace psion {
                              MAX_CYCLES);
                 } else {
                     base_cycles = (unsigned int)v;
-                    base_speed_known = true;
                     apply_speed();
                 }
             } else if (SameOptionName(name, "UCI_LimitStrength")) {
                 if (SameOptionName(value, "true") ||
                     SameOptionName(value, "false")) {
-                    remember_base_speed();
                     limit_strength = SameOptionName(value, "true");
                     apply_speed();
                 } else {
@@ -1328,7 +1353,6 @@ namespace psion {
                     uci_send("info string UCI_Elo must be %d to %d\n",
                              MIN_ELO, MAX_ELO);
                 } else {
-                    remember_base_speed();
                     uci_elo = (int)v;
                     apply_speed();
                 }
@@ -1552,6 +1576,7 @@ namespace psion {
             if (!uci.movenow_sent && uci.think_ms &&
                 now - uci.search_start >= uci.think_ms &&
                 now - uci.thinking_start >= MIN_THINK_MS) {
+                search_speed(false);
                 press(KBD_m);
                 uci.movenow_sent = true;
                 uci.movenow_ticks = now;
@@ -1676,6 +1701,7 @@ namespace psion {
         }
         if (uci.go_pending) {
             uci.go_pending = false;
+            search_speed(true);
             press(KBD_c);
             uci.thinking_start = GetTicks();
             game_state.thinking = true;

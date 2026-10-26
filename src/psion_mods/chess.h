@@ -49,11 +49,6 @@ namespace psion {
     unsigned int ThinkTime(const GoParams &go, bool white,
                            unsigned int overhead);
 
-    // The time (ms) a move costs at a fixed speed of cycles instructions per
-    // ms beyond what it costs at full speed: entering the opponent's move
-    // and reading Psion's slow down. 0 for full speed (cycles 0).
-    unsigned int CyclesLatency(unsigned int cycles);
-
     // UCI_Elo: the strength on the CCRL Blitz scale (2'+1"), from
     // MIN_ELO to MAX_ELO, and the fixed speed (cycles per ms) that gives
     // it.
