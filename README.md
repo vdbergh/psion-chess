@@ -397,7 +397,10 @@ whose codes are unknown (see above), and as the reference for `memscan`.
   allocated to the move is used up.
 - `t` takes back one ply, `$` starts a new game. Several plies are taken
   back with one `t` each, pressed at once; the position they lead to is
-  accepted as soon as it is in memory.
+  accepted as soon as it is in memory. Up to 100 plies are taken back
+  this way (in well under a second); beyond that, or from another start
+  position, a new game is started and the moves are entered again, which
+  takes about 0.35 s a ply.
 - F3 enters and leaves set-up mode. For a FEN, the adapter starts a new
   game and enters set-up mode. Without castling rights it empties the
   board (`e`); with castling rights it keeps the start position, empties

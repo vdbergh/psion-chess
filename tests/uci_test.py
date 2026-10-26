@@ -515,7 +515,7 @@ class UciTest(unittest.TestCase):
         line = ['e2e4', 'e7e5', 'g1f3', 'b8c6', 'f1b5', 'a7a6']
         self.search(line)
         self.search(line[:4])                 # takes back
-        self.search(['d2d4', 'd7d5', 'c2c4'])  # diverges: new game
+        self.search(['d2d4', 'd7d5', 'c2c4'])  # diverges: all taken back
         self.engine.send('ucinewgame')
         self.search([])
 

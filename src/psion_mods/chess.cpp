@@ -9,8 +9,11 @@
 
 namespace psion {
 
-    // More plies than this to take back and a new game is quicker.
-    const size_t MAX_TAKEBACKS = 4;
+    // More plies than this to take back and a new game is used instead.
+    // Psion takes back many plies at once in a fraction of a second (100
+    // in a 142-ply game in 0.5 s), while a new game replays every move
+    // (about 0.35 s a ply).
+    const size_t MAX_TAKEBACKS = 100;
 
     static char learned_codes[256];
 

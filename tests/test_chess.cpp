@@ -740,12 +740,21 @@ static void test_plan_sync(){
     CHECK_EQ(PlanSync(game,split("e2e4 e7e5 b1c3")),SYNC_TAKEBACK);
     CHECK_EQ(PlanSync(game,split("")),SYNC_TAKEBACK);
     CHECK_EQ(PlanSync(game,split("d2d4")),SYNC_TAKEBACK);
-    // up to four takebacks, then a new game is quicker
-    std::vector<std::string> long_game=
-	split("e2e4 e7e5 g1f3 b8c6 f1b5 a7a6");
-    CHECK_EQ(PlanSync(long_game,split("e2e4 e7e5")),SYNC_TAKEBACK);
-    CHECK_EQ(PlanSync(long_game,split("e2e4")),SYNC_NEW_GAME);
+    // up to 100 takebacks, then a new game
+    std::vector<std::string> long_game;
+    for(int i=0;i<51;i++){
+        long_game.push_back("g1f3");
+        long_game.push_back("g8f6");
+        long_game.push_back("f3g1");
+        long_game.push_back("f6g8");
+    }
+    long_game.resize(102);
+    std::vector<std::string> start(long_game.begin(),long_game.begin()+2);
+    CHECK_EQ(PlanSync(long_game,start),SYNC_TAKEBACK);
+    start.pop_back();
+    CHECK_EQ(PlanSync(long_game,start),SYNC_NEW_GAME);
     CHECK_EQ(PlanSync(long_game,split("d2d4 d7d5")),SYNC_NEW_GAME);
+    CHECK_EQ(PlanSync(game,split("d2d4 d7d5")),SYNC_TAKEBACK);
 }
 
 // Parses an analysis row, "" if it is not one; else "cp|mate N pv...",
