@@ -259,6 +259,50 @@ class UciTest(unittest.TestCase):
         finally:
             e.close()
 
+    def test_uci_elo(self):
+        """UCI_LimitStrength with UCI_Elo sets a fixed speed; switched off,
+        the speed of the Cycles option applies again."""
+        e = Engine()
+        try:
+            e.send('uci')
+            _, before = e.expect('uciok', 10)
+            self.assertIn('option name UCI_LimitStrength type check default false',
+                          before)
+            self.assertIn('option name UCI_Elo type spin default 1400 min 1150 '
+                          'max 1650', before)
+            for bad in ('1149', '1651', 'strong'):
+                e.send('setoption name UCI_Elo value ' + bad)
+                line, _ = e.expect('info string', 5)
+                self.assertIn('UCI_Elo must be 1150 to 1650', line)
+            e.send('setoption name UCI_LimitStrength value yes')
+            line, _ = e.expect('info string', 5)
+            self.assertIn('UCI_LimitStrength must be true or false', line)
+            moves = ['a2a3', 'h7h6', 'h2h3', 'a7a6']   # out of book
+
+            def depth():
+                e.send('position startpos moves ' + ' '.join(moves))
+                e.ready()
+                e.send('go movetime 2000')
+                line, before = e.expect('bestmove', 15)
+                self.assertTrue(Board(moves).plausible(line.split()[1]), line)
+                return max([int(l.split()[2]) for l in before
+                            if l.startswith('info depth ')] or [0])
+
+            # UCI_Elo alone changes nothing
+            e.send('setoption name UCI_Elo value 1150')
+            fast = depth()
+            e.send('setoption name UCI_LimitStrength value true')
+            weak = depth()
+            e.send('setoption name UCI_Elo value 1650')
+            strong = depth()
+            e.send('setoption name UCI_LimitStrength value false')
+            again = depth()
+            self.assertGreater(strong, weak)
+            self.assertGreater(fast, weak)
+            self.assertGreater(again, weak)
+        finally:
+            e.close()
+
     def test_infinite_and_stop(self):
         e = self.engine
         moves = ['a2a4', 'h7h5', 'h2h4', 'a7a5']

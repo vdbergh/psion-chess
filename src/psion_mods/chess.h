@@ -54,6 +54,14 @@ namespace psion {
     // and reading Psion's slow down. 0 for full speed (cycles 0).
     unsigned int CyclesLatency(unsigned int cycles);
 
+    // UCI_Elo: the strength on the CCRL Blitz scale (2'+1"), from
+    // MIN_ELO to MAX_ELO, and the fixed speed (cycles per ms) that gives
+    // it.
+    const int MIN_ELO = 1150;
+    const int MAX_ELO = 1650;
+    const int DEFAULT_ELO = 1400;
+    unsigned int EloCycles(int elo);
+
     // "setoption name NAME [value VALUE]": name and value may contain
     // spaces. False if there is no name.
     bool ParseSetOption(const std::vector<std::string> &tokens,

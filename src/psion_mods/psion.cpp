@@ -975,6 +975,30 @@ namespace psion {
             say("Cycles: max\n");
         }
     }
+
+    // UCI_LimitStrength and UCI_Elo: a fixed speed for the strength asked
+    // for. Switched off, the speed asked for with Cycles (or --cycles,
+    // remembered when one of these options is first set) applies again.
+    static bool limit_strength = false;
+    static int uci_elo = DEFAULT_ELO;
+    static bool base_speed_known = false;
+    static unsigned int base_cycles; // 0 for "max"
+
+    static void remember_base_speed() {
+        if (!base_speed_known) {
+            base_cycles = CPU_CycleAutoAdjust ? 0 : (unsigned int)CPU_CycleMax;
+            base_speed_known = true;
+        }
+    }
+
+    static void apply_speed() {
+        if (limit_strength) {
+            say("UCI_Elo %d: ", uci_elo);
+            set_cycles(EloCycles(uci_elo));
+        } else if (base_speed_known) {
+            set_cycles(base_cycles);
+        }
+    }
     // Pause after a key action before the screen is consulted again.
     const unsigned int ACTION_GAP_MS = 300;
     // Psion thinks at least this long, also when the time for the move
@@ -1178,6 +1202,9 @@ namespace psion {
                      "max %u\n",
                      DEFAULT_MOVE_OVERHEAD_MS, MAX_MOVE_OVERHEAD_MS);
             uci_send("option name Cycles type string default max\n");
+            uci_send("option name UCI_LimitStrength type check default false\n");
+            uci_send("option name UCI_Elo type spin default %d min %d max %d\n",
+                     DEFAULT_ELO, MIN_ELO, MAX_ELO);
             uci_send("uciok\n");
         } else if (cmd == "isready") {
             if (uci.search != SEARCH_NONE) {
@@ -1252,13 +1279,38 @@ namespace psion {
                 char *end;
                 long v = strtol(value.c_str(), &end, 10);
                 if (SameOptionName(value, "max")) {
-                    set_cycles(0);
+                    base_cycles = 0;
+                    base_speed_known = true;
+                    apply_speed();
                 } else if (value.empty() || *end || v < 1 ||
                            v > (long)MAX_CYCLES) {
                     uci_send("info string Cycles must be max or 1 to %u\n",
                              MAX_CYCLES);
                 } else {
-                    set_cycles((unsigned int)v);
+                    base_cycles = (unsigned int)v;
+                    base_speed_known = true;
+                    apply_speed();
+                }
+            } else if (SameOptionName(name, "UCI_LimitStrength")) {
+                if (SameOptionName(value, "true") ||
+                    SameOptionName(value, "false")) {
+                    remember_base_speed();
+                    limit_strength = SameOptionName(value, "true");
+                    apply_speed();
+                } else {
+                    uci_send("info string UCI_LimitStrength must be true or "
+                             "false\n");
+                }
+            } else if (SameOptionName(name, "UCI_Elo")) {
+                char *end;
+                long v = strtol(value.c_str(), &end, 10);
+                if (value.empty() || *end || v < MIN_ELO || v > MAX_ELO) {
+                    uci_send("info string UCI_Elo must be %d to %d\n",
+                             MIN_ELO, MAX_ELO);
+                } else {
+                    remember_base_speed();
+                    uci_elo = (int)v;
+                    apply_speed();
                 }
             }
         } else if (cmd == "debug") {

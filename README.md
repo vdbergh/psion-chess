@@ -105,6 +105,14 @@ Options:
   as well, which the engine allows for in its time use, on top of
   `Move Overhead`: about 0.1 s per move at 3000, 1.3 s at 1000 and 5 s at
   300 (measured on an i5-1135G7).
+- `UCI_LimitStrength` (default false) and `UCI_Elo` (1150 to 1650,
+  default 1400): play at a given strength on the CCRL Blitz scale, by
+  running the emulated PC at a fixed speed: about 2,400 cycles for 1150,
+  100,000 for 1614 and 134,000 for 1650 (86 Elo per doubling; see
+  [Strength](#strength)). This overrides `Cycles`; switched off, the
+  `Cycles` speed applies again. The scale was measured at 2'+1"; at other
+  time controls the strength differs somewhat. A host too slow for the
+  speed asked for plays weaker.
 
 With a clock Psion thinks for 1/30 of the remaining time plus 3/4 of the
 increment, or for 1/60 of the remaining time without an increment (with
@@ -240,6 +248,33 @@ Against micro-Max, 48.5% of the moves pondered on were played.
 
   In the second list the difference between pondering and not pondering
   is 64 ± 44 Elo (Ordo, from all 500 games, as independent games).
+- For `UCI_Elo`, Psion at fixed speeds against two weaker engines on the
+  CCRL Blitz list, TSCP 1.83b (1611) and Sargon 1978 1.01b (1167), at
+  120+1 with `8moves_v3.pgn`, 300 games per match, four at a time. CCRL
+  plays on an i7-4770K and scales the time control to each tester's
+  machine by Stockfish 10's `bench`; here that gives about 2.1 million
+  nodes per second (four at a time) against an estimated 1.6 million on
+  the 4770K, so the opponents had about 1.3 times their CCRL time, worth
+  some 25 Elo, and their ratings are raised by that much. Psion at a
+  fixed speed does not depend on the host, as long as the host keeps up.
+  Rated with Ordo, with TSCP, Sargon and micro-Max as loose anchors
+  (± 21):
+
+  | Psion | Opponent | Score | Rating | Error |
+  |---|---|---|---|---|
+  | 2,500 cycles | Sargon | 43.5% | 1139 | ± 51 |
+  | 16,000 cycles | TSCP and Sargon | 20.0% and 79.0% | 1409 | ± 40 |
+  | 100,000 cycles | TSCP | 43.3% | 1597 | ± 50 |
+  | 187,000 cycles set, about 120,000 reached\* | TSCP | 52.7% (295 games) | 1663 | ± 50 |
+  | `max` (the micro-Max match above) | micro-Max | 29.2% | 1723 | ± 55 |
+
+  A line through the first three gives Elo = 1614 + 86 × log2(cycles /
+  100,000), which `UCI_Elo` uses; the other two fit it within their
+  errors (`max` is about 190,000 to 230,000 cycles here).
+
+  \* With four games at a time the i5-1135G7 could not keep up with
+  187,000 cycles in long searches: the search depth reached corresponds
+  to about 120,000. It does keep up with 100,000.
 - Psion has no transposition table: during a search only about 4 KB of
   memory changes, in small areas such as move lists, and nothing that
   fills up as the search proceeds. Every search starts afresh, which

@@ -525,6 +525,20 @@ static void test_cycles_latency(){
     }
 }
 
+static void test_elo_cycles(){
+    CHECK_EQ(EloCycles(1614),100000u);
+    CHECK_EQ(EloCycles(1614-86),50000u);
+    // the range
+    CHECK_EQ(EloCycles(MIN_ELO),2376u);
+    CHECK_EQ(EloCycles(MAX_ELO),133663u);
+    CHECK_EQ(EloCycles(0),EloCycles(MIN_ELO));
+    CHECK_EQ(EloCycles(3000),EloCycles(MAX_ELO));
+    // increasing
+    for(int e=MIN_ELO;e<MAX_ELO;e++){
+        CHECK(EloCycles(e)<EloCycles(e+1));
+    }
+}
+
 static void test_set_option(){
     std::string name,value;
     CHECK(ParseSetOption(split("setoption name Move Overhead value 270"),name,value));
@@ -898,6 +912,7 @@ int main(){
     test_think_time();
     test_set_option();
     test_cycles_latency();
+    test_elo_cycles();
     test_parse_position();
     test_parse_fen();
     test_same_start();
