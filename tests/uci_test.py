@@ -346,6 +346,20 @@ class UciTest(unittest.TestCase):
         e.send('go ponder' + clock)
         e.send('stop')
         bestmove(e, 2)
+        # As Polyglot after a ponder miss: stop, and at once the move
+        # played and go, before the bestmove for the stop. Both searches
+        # answer, the second for the new position.
+        moves = moves + [move, 'd2d4']
+        e.send('position startpos moves ' + ' '.join(moves))
+        e.send('go ponder' + clock)
+        e.silent(1)
+        e.send('stop')
+        moves = moves[:-1] + ['e2e4']
+        e.send('position startpos moves ' + ' '.join(moves))
+        e.send('go movetime 500')
+        bestmove(e, 2)
+        move = bestmove(e, 10)
+        self.assertTrue(Board(moves).plausible(move), move)
 
     def test_info(self):
         """Psion's analysis display is reported as info lines."""

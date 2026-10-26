@@ -89,6 +89,9 @@ millisecond instead of as fast as possible (see [Speed](#speed)), e.g.
 `uci`, `isready`, `ucinewgame`, `position startpos|fen ... [moves ...]`, `go`
 (`wtime`, `btime`, `winc`, `binc`, `movestogo`, `movetime`, `infinite`,
 `ponder`), `ponderhit`, `stop`, `setoption`, `debug on|off` and `quit`.
+A `position` and `go` that arrive while a search is still running, e.g.
+right after `stop` as Polyglot sends them after a ponder miss, are
+carried out once that search has sent its `bestmove`.
 
 Options:
 

@@ -1187,12 +1187,31 @@ namespace psion {
         }
     }
 
-    static void UciCommand(const char *line) {
+    // Commands kept back until the search has ended. A GUI may send the
+    // next "position" and "go" right after "stop" (Polyglot does, after a
+    // ponder miss), before the stopped search has sent its bestmove. The
+    // commands after them wait too, to keep their order.
+    static std::vector<std::string> deferred_commands;
+
+    // A "position" or "go" waits while a search is running.
+    static bool must_wait(const std::vector<std::string> &tokens) {
+        return !tokens.empty() &&
+               (tokens[0] == "position" || tokens[0] == "go") &&
+               uci.search != SEARCH_NONE;
+    }
+
+    // from_queue: a command from deferred_commands, now due.
+    static void UciCommand(const char *line, bool from_queue = false) {
         std::vector<std::string> tokens = Tokenize(line);
         if (tokens.empty()) {
             return;
         }
         const std::string &cmd = tokens[0];
+        if (!from_queue && cmd != "quit" &&
+            (!deferred_commands.empty() || must_wait(tokens))) {
+            deferred_commands.push_back(line);
+            return;
+        }
         if (cmd == "uci") {
             uci_mode = true;
             uci_send("id name Psion Chess 1985\n");
@@ -1662,7 +1681,8 @@ namespace psion {
             memcpy(uci.search_board, known.board, sizeof(uci.search_board));
             uci.search_white = white_to_move();
         }
-        uci_done = uci.search == SEARCH_NONE && !uci.readyok_pending;
+        uci_done = uci.search == SEARCH_NONE && !uci.readyok_pending &&
+                   deferred_commands.empty();
     }
 
     // While Psion waits for the GUI (it is not searching), the emulation is
@@ -1780,8 +1800,14 @@ namespace psion {
     void ProcessConsole() {
         std::string line;
         bool eof = false;
+        if (uci_mode && !deferred_commands.empty() &&
+            !must_wait(Tokenize(deferred_commands.front().c_str()))) {
+            line = deferred_commands.front();
+            deferred_commands.erase(deferred_commands.begin());
+            UciCommand(line.c_str(), true);
         // In the interactive mode, moves are only read on the user's turn.
-        if ((uci_mode || !game_state.thinking) && read_input_line(line, eof)) {
+        } else if ((uci_mode || !game_state.thinking) &&
+                   read_input_line(line, eof)) {
             std::string move(line);
             move.erase(move.find_last_not_of(" \r\n") + 1);
             if (uci_mode || line.compare(0, 3, "uci") == 0) {
