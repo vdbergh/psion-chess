@@ -447,3 +447,8 @@ copyright; the graphics and input/output were written by Psion. In
 October 2026 he gave permission for his part to be freely distributable.
 Psion's part needs permission from its rights holders, which we do not
 have, so Psion Chess is still not included here.
+
+PSION is a trademark of its owner. This project is not affiliated with,
+endorsed by or sponsored by the owner of the PSION trademark or by
+Psion's successors; the name is used only to identify the original 1985
+program it runs.
