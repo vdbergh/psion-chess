@@ -295,6 +295,27 @@ class UciTest(unittest.TestCase):
             weak = depth()
             e.send('setoption name UCI_Elo value 1650')
             strong = depth()
+            # A ponder miss at the lowest speed: the move pondered on and
+            # Psion's reply are taken back once each, though at this speed
+            # the takeback takes longer to show than the pause after a key
+            # (in a game of some length).
+            board = ['g1f3', 'd7d5', 'c2c4', 'c7c6', 'b2b3', 'g8f6', 'c1b2',
+                     'c8f5', 'g2g3', 'e7e6', 'f1g2', 'h7h6', 'e1g1', 'f8d6']
+            # set up at full speed first
+            e.send('setoption name UCI_LimitStrength value false')
+            e.send('position startpos moves ' + ' '.join(board + ['f3d4']))
+            e.ready()
+            e.send('setoption name UCI_LimitStrength value true')
+            e.send('setoption name UCI_Elo value 1150')
+            e.send('go ponder wtime 300000 btime 300000')
+            e.silent(2)
+            e.send('stop')
+            bestmove(e, 10)
+            e.send('position startpos moves ' + ' '.join(board))
+            e.send('go movetime 200')
+            move = bestmove(e, 15)
+            self.assertNotEqual(move, '0000')
+            self.assertTrue(Board(board).plausible(move), move)
             e.send('setoption name UCI_LimitStrength value false')
             again = depth()
             self.assertGreater(strong, weak)

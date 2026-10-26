@@ -714,6 +714,7 @@ namespace psion {
 
     // Set while takebacks are on their way: the number of moves left then.
     static int takeback_to = -1;
+    static unsigned int takeback_since;
 
     // Set while the adapter sets up setup_start in Psion's set-up mode.
     static bool setting_up = false;
@@ -1504,6 +1505,7 @@ namespace psion {
         std::vector<std::string> &moves = game_state.moves;
         size_t n = moves.size() - CommonMoves(moves, uci.target);
         takeback_to = (int)(moves.size() - n);
+        takeback_since = GetTicks();
         for (size_t i = 0; i < n; i++) {
             press(KBD_t);
         }
@@ -1643,7 +1645,13 @@ namespace psion {
                 uci.inflight_since = now;
                 break;
             case SYNC_TAKEBACK:
-                take_back();
+                // Not again while the last takeback is under way: at a low
+                // speed it can take longer than ACTION_GAP_MS to show, and
+                // more plies would go.
+                if (takeback_to < 0 ||
+                    now - takeback_since > MOVE_TIMEOUT_MS) {
+                    take_back();
+                }
                 break;
             case SYNC_NEW_GAME:
                 if (uci.target_start.standard) {
