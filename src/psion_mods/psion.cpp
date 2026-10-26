@@ -1031,6 +1031,8 @@ namespace psion {
         std::string last_analysis; // analysis row last seen
         std::string info_move;     // first move of the last info pv
         std::string info_ponder;   // ... and the second, to ponder on
+        bool info_mate;            // the score of the last info pv:
+        int info_score;            // mate in moves or centipawns
         size_t info_depth;         // longest pv in this search
         size_t sync_progress_size; // moves played when last checked
         unsigned int sync_progress_ticks;
@@ -1067,8 +1069,15 @@ namespace psion {
         game_state.thinking = false;
         // Stopped by MOVE-NOW, Psion plays the best move found so far, which
         // it may not have displayed yet: then the last pv is not the move.
+        // Each iteration starts by showing the previous best move, and a
+        // new best one beats the last score shown: a lower bound for the
+        // move (exact for an underpromotion, which Psion shows as a queen).
         if (!uci.info_move.empty() && move != uci.info_move && move != "0000") {
-            uci_send("info pv %s\n", move.c_str());
+            uci_send("info depth %u time %u score %s %d lowerbound pv %s\n",
+                     (unsigned int)uci.info_depth,
+                     GetTicks() - uci.thinking_start,
+                     uci.info_mate ? "mate" : "cp", uci.info_score,
+                     move.c_str());
         }
         if (move == uci.info_move && !uci.info_ponder.empty()) {
             uci_send("bestmove %s ponder %s\n", move.c_str(),
@@ -1343,6 +1352,8 @@ namespace psion {
         uci_send("%s\n", info.c_str());
         uci.info_move = a.pv[0];
         uci.info_ponder = a.pv.size() > 1 ? a.pv[1] : "";
+        uci.info_mate = a.mate;
+        uci.info_score = a.score;
     }
 
     // Sets up uci.target_start in Psion's set-up mode: F3, then the keys

@@ -313,12 +313,18 @@ class UciTest(unittest.TestCase):
         infos = [l.split() for l in before if l.startswith('info ')]
         self.assertTrue(infos, before)
         # The last pv starts with the move played: if Psion did not
-        # display its line, "info pv MOVE" says so much.
+        # display its line, a line with the move alone and the last score
+        # as a lower bound says so much.
         self.assertEqual(infos[-1][infos[-1].index('pv') + 1],
                          line.split()[1], infos)
-        if infos[-1][:2] == ['info', 'pv']:
-            self.assertEqual(len(infos[-1]), 3, infos)
-            infos.pop()
+        if 'lowerbound' in infos[-1]:
+            bound = infos.pop()
+            self.assertTrue(infos, before)
+            self.assertEqual(bound[:2] + bound[3:4] + bound[5:8],
+                             infos[-1][:2] + infos[-1][3:4] + infos[-1][5:8],
+                             bound)
+            self.assertEqual(bound[8:10], ['lowerbound', 'pv'], bound)
+            self.assertEqual(len(bound), 11, bound)
         self.assertTrue(infos, before)
         depth = 0
         for info in infos:

@@ -348,7 +348,12 @@ whose codes are unknown (see above), and as the reference for `memscan`.
   that change before drawing new ones) and if its moves are legal on the
   board (castling rights are not checked). Promotions are shown without
   the piece: the first of queen, knight, rook and bishop with which the
-  rest of the line is legal is assumed.
+  rest of the line is legal is assumed. Psion shows a line at the start
+  of each iteration (for the previous best move) and for each better
+  move. Stopped before it could show its line, it plays the new best
+  move: then a last `info` line gives that move alone, with the last
+  score shown as a lower bound, e.g.
+  `info depth 7 time 2950 score cp -10 lowerbound pv f3e5`.
 - `2` sets 2-player mode, in which moves for both sides can be entered.
 - `c` (Compute) starts a search, `m` (Move now) ends it when the time
   allocated to the move is used up.
