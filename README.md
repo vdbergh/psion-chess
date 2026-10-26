@@ -395,3 +395,9 @@ lichess-bot uses it.
 The emulator is DOSBox (GPL, see `COPYING` and `AUTHORS`), reduced to
 what Psion needs. Psion Chess itself is copyrighted by its authors; it is
 not part of this repository and not covered by that licence.
+
+Richard Lang wrote the chess engine of Psion Chess and kept its
+copyright; the graphics and input/output were written by Psion. In
+October 2026 he gave permission for his part to be freely distributable.
+Psion's part needs permission from its rights holders, which we do not
+have, so Psion Chess is still not included here.
