@@ -434,7 +434,9 @@ and Psion replies to them; diagnostics then go to stdout. Environment variables 
 `tools/find_state.py` searches such snapshots for side-to-move flags and
 counters; `tools/match.py` plays two engines against each other;
 `tools/lichess_check.py` checks the engine with python-chess, the way
-lichess-bot uses it.
+lichess-bot uses it. `tools/lichess-bot-update.sh`, run daily by the workflow
+`lichess-bot-update.yml`, opens an issue when upstream lichess-bot is
+newer than the version the Lichess bot runs (`deploy/lichess-bot.txt`).
 
 ## Licence
 
