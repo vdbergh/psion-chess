@@ -987,11 +987,19 @@ namespace psion {
             CPU_CycleAutoAdjust = false;
             CPU_CycleMax = (Bit32s)cycles;
         }
+        // DOSBox goes on measuring the load at a fixed speed. Back to auto,
+        // the idle time at a low speed would multiply the cycles (by up to
+        // 10 after each search), until a millisecond of emulation takes
+        // seconds.
+        DOSBOX_ResetTicks();
     }
 
     // on: Psion has started a search; off: it is told to move, or done.
     static void search_speed(bool on) {
         if (on != search_speed_on) {
+            say("Speed switch to %s at %d cycles (%s)\n",
+                on ? "search" : "full", (int)CPU_CycleMax,
+                CPU_CycleAutoAdjust ? "auto" : "fixed");
             search_speed_on = on;
             dosbox_cycles(on ? search_cycles : 0);
         }

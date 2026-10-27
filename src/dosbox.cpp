@@ -249,7 +249,8 @@ void DOSBOX_SetNormalLoop() {
 
 /* Psion: after the emulation was paused (while waiting for input),
    restart the timing as if nothing happened, so that the pause is neither
-   caught up nor counted by the auto-adjustment of the cycles. */
+   caught up nor counted by the auto-adjustment of the cycles. Also when the
+   speed is switched: the time at the other speed must not count either. */
 void DOSBOX_ResetTicks(void) {
 	ticksLast = GetTicks();
 	ticksAdded = 0;
