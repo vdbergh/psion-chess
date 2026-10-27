@@ -376,6 +376,15 @@ contents, because some rows blink. The adapter uses:
 The board read from the screen is used only to identify promoted pieces
 whose codes are unknown (see above), and as the reference for `memscan`.
 
+Reading the screen is the only way to get its text: Psion runs in CGA
+mode 6 (640x200, two colours) and draws its text itself, as pixels,
+without the BIOS. It is not a bottleneck. The OCR runs only when DOSBox
+hands over a frame that has changed, and takes about 0.3 ms per frame.
+DOSBox's drawing of the CGA screen into the frame is cheap too. During a
+16-second search on an i5-1135G7, the drawing took 0.10 s and the OCR
+0.016 s (56 frames), against 18.4 s of CPU time for the whole program:
+about 0.6%. Nearly all the time goes to emulating the CPU.
+
 ### Controlling Psion
 
 - Level: set to 11 (4 minutes per move) at start-up, so Psion moves
