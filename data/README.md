@@ -16,3 +16,8 @@ should then contain:
 The case of the file names does not matter.
 
 To keep the files elsewhere, set `PSION_DIR` to their directory.
+
+Why the files are not included: Richard Lang, who wrote the chess
+engine, allows his part to be distributed freely, but nobody could give
+permission for Psion's part (the graphics and input/output). See the
+Licence section of the main README.

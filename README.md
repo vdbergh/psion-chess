@@ -454,8 +454,10 @@ not part of this repository and not covered by that licence.
 Richard Lang wrote the chess engine of Psion Chess and kept its
 copyright; the graphics and input/output were written by Psion. In
 October 2026 he gave permission for his part to be freely distributable.
-Psion's part needs permission from its rights holders, which we do not
-have, so Psion Chess is still not included here.
+Psion's part needs permission from its rights holder. Zebra Technologies,
+Psion's successor, could not confirm in October 2026 whether it still
+holds these rights, and the current owner of the PSION trademark does
+not hold them. So Psion Chess is still not included here.
 
 PSION is a trademark of its owner. This project is not affiliated with,
 endorsed by or sponsored by the owner of the PSION trademark or by
