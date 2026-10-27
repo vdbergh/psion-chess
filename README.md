@@ -63,6 +63,11 @@ and exits.
     uci
     id name Psion Chess 1985
     id author Richard Lang
+    option name Ponder type check default false
+    option name Move Overhead type spin default 94 min 0 max 5000
+    option name Cycles type string default max
+    option name UCI_LimitStrength type check default false
+    option name UCI_Elo type spin default 1400 min 1150 max 1650
     uciok
     isready
     readyok
@@ -71,9 +76,9 @@ and exits.
     bestmove c7c5
     position startpos moves g2g4 a7a6 h2h4 h7h6
     go movetime 2000
-    info depth 5 time 87 score cp -40 pv g1f3 g8f6 d2d4 f6g4 e2e4
-    info depth 5 time 104 score cp 10 pv e2e4 d7d5 b1c3 d5e4 c3e4
-    bestmove e2e4
+    info depth 5 time 98 score cp -10 pv e2e4 d7d5 b1c3 g8f6 f2f3
+    info depth 7 time 364 score cp -20 pv e2e4 d7d5 e4e5 d5d4 f1c4 b8c6 f2f4
+    bestmove e2e4 ponder d7d5
 
 Only UCI output is written by default. With `--verbose` (or `-v`), or
 after the UCI command `debug on`, the engine also writes diagnostics to
