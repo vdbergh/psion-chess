@@ -1,16 +1,38 @@
+// Reading Psion's screen: the text and the pieces on the board.
+//
+// Psion runs in CGA mode 6 (640x200, two colours), which DOSBox renders
+// doubled into a 640x400 frame of 32-bit pixels. Psion draws its own text
+// with the IBM BIOS 8x8 font; there is no text in memory to read.
+
 #include "psion.h"
+#include "ocr.h"
 
 #include <inttypes.h>
 
-#define SQUARE_WIDTH 40
-#define SQUARE_HEIGHT 18
-#define SQUARE_X 318
-#define SQUARE_Y 16
-#define SQUARE_TYPES_NUM 26
-
 namespace psion {
+
+    // The 200 lines of the CGA screen; frame row 2L + 1 shows line L.
+    const int LINES = SCREEN_HEIGHT / 2;
+
+    static bool lit(const unsigned char *frame, int line, int x) {
+        return frame[SCREEN_BPP * ((2 * line + 1) * SCREEN_WIDTH + x)] != 0;
+    }
+
+    // ---- Text ----
+
+    // The top of the screen (the banner) is drawn 2 lines lower than the
+    // 8-line grid of the rest: there, line L is read as line L - 2 of the
+    // grid (so lines 0 and 1 are dropped and lines 37 and 38 of the grid
+    // stay blank).
+    const int BANNER_LINES = 39;
+    const int BANNER_SHIFT = 2;
+    // The board, which is no text, covers these columns and lines.
+    const int BOARD_FIRST_COLUMN = 39;
+    const int BOARD_FIRST_LINE = 39;
+    const int BOARD_LAST_LINE = 184;
+
     // clang-format off
-    unsigned char font8x8[] = {
+    static const unsigned char font8x8[128 * 8] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // 00
 	0x7E, 0x81, 0xA5, 0x81, 0xBD, 0x99, 0x81, 0x7E,  // 01  white smiley
 	0x7E, 0xFF, 0xDB, 0xFF, 0xC3, 0xE7, 0xFF, 0x7E,  // 02  black smiley
@@ -142,25 +164,67 @@ namespace psion {
     };
     // clang-format on
 
-    uint64_t font8x8_64[0x80];
+    // Each glyph as 64 bits: its top row in the high byte, the leftmost
+    // pixel of a row in the high bit, like a cell read from the screen.
+    static uint64_t glyphs[128];
 
-    struct square {
-        uint32_t crc32;
-        char piece;
-    };
-    struct square square_font[SQUARE_TYPES_NUM] = {
-        {0x16a2a27a, '.'}, {0x00000000, '.'}, {0x1a302ba3, 'P'},
-        {0xed437a52, 'P'}, {0xfbe1d828, 'p'}, {0x0c9289d9, 'p'},
-        {0xa791212d, 'N'}, {0x83b9d12b, 'N'}, {0x951b7351, 'n'},
-        {0xb1338357, 'n'}, {0x543f7dc7, 'B'}, {0x692251d1, 'B'},
-        {0x7f80f3ab, 'b'}, {0x429ddfbd, 'b'}, {0xa64ecda0, 'R'},
-        {0xd6c5cc9e, 'R'}, {0xc0676ee4, 'r'}, {0xb0ec6fda, 'r'},
-        {0x7d825247, 'Q'}, {0xb56cdf44, 'Q'}, {0xa3ce7d3e, 'q'},
-        {0x6b20f03d, 'q'}, {0x3489c4e9, 'K'}, {0x432c2d6b, 'K'},
-        {0x558e8f11, 'k'}, {0x222b6693, 'k'}};
+    // A cell matches a character only if every pixel matches its glyph;
+    // anything else (e.g. inverse video) reads as a space.
+    void ocr(char txt_buf[TEXT_HEIGHT][TEXT_WIDTH],
+             const unsigned char *frame) {
+        uint64_t cells[TEXT_HEIGHT][TEXT_WIDTH] = {{0}};
+        int line, row, column, x, c;
+        for (line = 0; line < LINES; line++) {
+            int grid = line < BANNER_LINES ? line - BANNER_SHIFT : line;
+            if (grid < 0) {
+                continue;
+            }
+            row = grid / 8;
+            if (row >= TEXT_HEIGHT) {
+                break;
+            }
+            for (column = 0; column < TEXT_WIDTH; column++) {
+                if (column >= BOARD_FIRST_COLUMN && line >= BOARD_FIRST_LINE &&
+                    line <= BOARD_LAST_LINE) {
+                    break;
+                }
+                uint64_t byte = 0;
+                for (x = 8 * column; x < 8 * column + 8; x++) {
+                    byte = (byte << 1) | (lit(frame, line, x) ? 1 : 0);
+                }
+                cells[row][column] |= byte << (8 * (7 - grid % 8));
+            }
+        }
+        for (row = 0; row < TEXT_HEIGHT; row++) {
+            for (column = 0; column < TEXT_WIDTH; column++) {
+                txt_buf[row][column] = ' ';
+                for (c = 32; c < 128; c++) {
+                    if (glyphs[c] == cells[row][column]) {
+                        txt_buf[row][column] = (char)c;
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
+    // ---- Pieces ----
+
+    // The squares: file a is on the left, rank 1 at the bottom, whose
+    // lowest line is BOARD_BOTTOM_LINE. A square is 39 pixels wide (the
+    // 40th column is the line between squares) and SQUARE_HEIGHT lines high.
+    const int SQUARE_X = 318;
+    const int SQUARE_WIDTH = 40;
+    const int SQUARE_PIXELS = SQUARE_WIDTH - 1;
+    const int SQUARE_HEIGHT = 18;
+    const int BOARD_BOTTOM_LINE = 183;
+
+    // The cursor's corners, which can be on any square: their pixels are
+    // left out, so a square reads the same with or without the cursor.
+    // The rows go from the bottom of the square up (the shape is
+    // symmetric).
     // clang-format off
-    const unsigned char cursor[SQUARE_HEIGHT][SQUARE_WIDTH-1]= {
+    static const unsigned char cursor[SQUARE_HEIGHT][SQUARE_PIXELS] = {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,
@@ -182,123 +246,40 @@ namespace psion {
     };
     // clang-format on
 
-    inline bool GetPixel(unsigned char *buf, int width, int x, int y) {
-        return buf[4 * (width * 2 * y + x)] != 0;
-    }
-    void print_pixels(unsigned char *buf, int hoffset) {
-        int i, j;
-        if (hoffset + SCREEN_WIDTH / 4 > SCREEN_WIDTH) {
-            hoffset = 3 * SCREEN_WIDTH / 4;
-        }
-        for (j = 0; j < SCREEN_HEIGHT / 2; j += 1) {
-            for (i = hoffset; i < hoffset + SCREEN_WIDTH / 4; i += 1) {
-                if (GetPixel(buf, SCREEN_WIDTH, i, j)) {
-                    printf("o");
-                } else {
-                    printf(".");
-                }
-            }
-            printf("\n");
-        }
-    }
-
-    void print_txt(char txt_buf[TEXT_HEIGHT][TEXT_WIDTH]) {
-        int x_txt, y_txt;
-
-        for (y_txt = 0; y_txt < TEXT_HEIGHT; y_txt++) {
-            for (x_txt = 0; x_txt < TEXT_WIDTH; x_txt++) {
-                printf("%c", txt_buf[y_txt][x_txt]);
-            }
-            printf("\n");
-        }
-    }
-
-    void ocr(char txt_buf[TEXT_HEIGHT][TEXT_WIDTH], unsigned char *buf) {
-        int x, y;
-        int xy_s;
-        int x_txt, y_txt;
-        int xy_txt_s;
-        int i;
-        uint64_t txt_buf64[TEXT_WIDTH * TEXT_HEIGHT];
-        for (y_txt = 0; y_txt < TEXT_HEIGHT; y_txt++) {
-            for (x_txt = 0; x_txt < TEXT_WIDTH; x_txt++) {
-                xy_txt_s = y_txt * TEXT_WIDTH + x_txt;
-                txt_buf64[xy_txt_s] = 0ULL;
-                txt_buf[y_txt][x_txt] = ' ';
-            }
-        }
-        for (y = 0; y < SCREEN_HEIGHT; y += 2) {
-            for (x = 0; x < SCREEN_WIDTH; x += 1) {
-                int x_pix, y_pix;
-                if (x >= 312 && y >= 30 && y <= 320) {
-                    // chess board!
-                    continue;
-                }
-                xy_s = (SCREEN_HEIGHT - y - 1) * SCREEN_WIDTH + x;
-                x_pix = x / 8;
-                y_pix = y / 2;
-                if (y_pix > 4 * SCREEN_HEIGHT / 2 / 5) {
-                    // the banner is slightly off grid
-                    y_pix += 2;
-                }
-                x_txt = x_pix;
-                y_txt = y_pix / 8;
-                xy_txt_s = y_txt * TEXT_WIDTH + x_txt;
-                if (buf[4 * xy_s] != 0 && y_txt < TEXT_HEIGHT) {
-                    txt_buf64[xy_txt_s] |= 1ULL
-                                           << ((7 - x % 8) + 8 * ((y_pix) % 8));
-                }
-            }
-        }
-        for (y_txt = 0; y_txt < TEXT_HEIGHT; y_txt++) {
-            for (x_txt = 0; x_txt < TEXT_WIDTH; x_txt++) {
-                xy_txt_s = y_txt * TEXT_WIDTH + x_txt;
-                for (i = 32; i <= 127; i++) {
-                    if (font8x8_64[i] == txt_buf64[xy_txt_s]) {
-                        txt_buf[TEXT_HEIGHT - 1 - y_txt][x_txt] = (char)i;
-                    }
-                }
-            }
-        }
-    }
-
-    void init_font8x8_64() {
-        int i, j;
-        for (i = 0; i <= 0x7f; i++) {
-            font8x8_64[i] = 0L;
-            for (j = 0; j <= 7; j++) {
-                font8x8_64[i] <<= 8L;
-                font8x8_64[i] += font8x8[8 * i + j];
-            }
-        }
-    }
-
-    uint32_t crc32_square(unsigned char *buf, int file, int row) {
-        int x, y;
-        int xy_s;
-        int x_left, x_right, y_lower, y_upper;
+    // Squares are recognised by a CRC-32 of their pixels (bottom line
+    // first, each line from the left), taken from the screen: an empty
+    // light and dark square, and each piece on a light and a dark square.
+    struct SquareImage {
         uint32_t crc32;
-        unsigned char bit;
-        x_left = SQUARE_X + file * SQUARE_WIDTH;
-        x_right = SQUARE_X + (file + 1) * SQUARE_WIDTH - 1;
-        y_lower = 2 * (SQUARE_Y + row * SQUARE_HEIGHT);
-        y_upper = 2 * (SQUARE_Y + (row + 1) * SQUARE_HEIGHT);
+        char piece;
+    };
+    static const SquareImage square_images[] = {
+        {0x16a2a27a, '.'}, {0x00000000, '.'}, {0x1a302ba3, 'P'},
+        {0xed437a52, 'P'}, {0xfbe1d828, 'p'}, {0x0c9289d9, 'p'},
+        {0xa791212d, 'N'}, {0x83b9d12b, 'N'}, {0x951b7351, 'n'},
+        {0xb1338357, 'n'}, {0x543f7dc7, 'B'}, {0x692251d1, 'B'},
+        {0x7f80f3ab, 'b'}, {0x429ddfbd, 'b'}, {0xa64ecda0, 'R'},
+        {0xd6c5cc9e, 'R'}, {0xc0676ee4, 'r'}, {0xb0ec6fda, 'r'},
+        {0x7d825247, 'Q'}, {0xb56cdf44, 'Q'}, {0xa3ce7d3e, 'q'},
+        {0x6b20f03d, 'q'}, {0x3489c4e9, 'K'}, {0x432c2d6b, 'K'},
+        {0x558e8f11, 'k'}, {0x222b6693, 'k'}};
+    const int SQUARE_IMAGES =
+        (int)(sizeof(square_images) / sizeof(square_images[0]));
 
-        crc32 = 0;
-        for (y = y_lower; y < y_upper; y += 2) {
-            for (x = x_left; x < x_right; x += 1) {
-                xy_s = (SCREEN_HEIGHT - y - 1) * SCREEN_WIDTH + x;
-                if (buf[4 * xy_s] != 0 &&
-                    !((y == 2 * SQUARE_Y) &&
-                      (file % 2 == 0)) && // some fiddling with the border
-                    cursor[(y - y_lower) / 2][x - x_left] !=
-                        1 // ignore cursor pixels
-                ) {
-                    bit = 1;
-                } else {
-                    bit = 0;
-                }
-                bit ^= (crc32 & 0x1);
+    static uint32_t square_crc32(const unsigned char *frame, int file,
+                                 int rank) {
+        uint32_t crc32 = 0;
+        int i, j;
+        for (i = 0; i < SQUARE_HEIGHT; i++) {
+            int line = BOARD_BOTTOM_LINE - rank * SQUARE_HEIGHT - i;
+            for (j = 0; j < SQUARE_PIXELS; j++) {
+                int x = SQUARE_X + file * SQUARE_WIDTH + j;
+                // The board's bottom edge, under a1, c1, e1 and g1, is
+                // left out too.
+                bool edge = rank == 0 && i == 0 && file % 2 == 0;
+                unsigned int bit =
+                    lit(frame, line, x) && !edge && !cursor[i][j] ? 1 : 0;
+                bit ^= crc32 & 1;
                 crc32 >>= 1;
                 if (bit) {
                     crc32 ^= 0xEDB88320;
@@ -308,16 +289,16 @@ namespace psion {
         return crc32;
     }
 
-    void ocr_board(char board[8][8], unsigned char *buf) {
-        int f, r, i;
-        uint32_t crc32;
-        for (f = 0; f < 8; f++) {
-            for (r = 0; r < 8; r++) {
-                crc32 = crc32_square(buf, f, r);
-                board[f][r] = '*';
-                for (i = 0; i < SQUARE_TYPES_NUM; i++) {
-                    if (square_font[i].crc32 == crc32) {
-                        board[f][r] = square_font[i].piece;
+    // An unknown image (e.g. a square flashing) reads as '*'.
+    void ocr_board(char board[8][8], const unsigned char *frame) {
+        int file, rank, i;
+        for (file = 0; file < 8; file++) {
+            for (rank = 0; rank < 8; rank++) {
+                uint32_t crc32 = square_crc32(frame, file, rank);
+                board[file][rank] = '*';
+                for (i = 0; i < SQUARE_IMAGES; i++) {
+                    if (square_images[i].crc32 == crc32) {
+                        board[file][rank] = square_images[i].piece;
                         break;
                     }
                 }
@@ -325,18 +306,14 @@ namespace psion {
         }
     }
 
-    void print_board(char board[8][8]) {
-        int f, r;
-        for (r = 0; r < 8; r++) {
-            for (f = 0; f < 8; f++) {
-                printf("%c", board[f][7 - r]);
-            }
-            printf("\n");
-        }
-    }
-
     void init_ocr() {
-        init_font8x8_64();
+        int c, j;
+        for (c = 0; c < 128; c++) {
+            glyphs[c] = 0;
+            for (j = 0; j < 8; j++) {
+                glyphs[c] = (glyphs[c] << 8) | font8x8[8 * c + j];
+            }
+        }
     }
 
 } // namespace psion

@@ -16,8 +16,8 @@ namespace psion {
     const int SCREEN_BPP = 4;
 
     // Game state read directly from Psion's memory. board uses the same
-    // convention as ocr_board(): board[file][rank], 'a1' is board[0][0],
-    // "PNBRQK" for White, lower case for Black, '.' for empty.
+    // convention as ocr_board() (ocr.h): board[file][rank], 'a1' is
+    // board[0][0], "PNBRQK" for White, lower case for Black, '.' for empty.
     struct PsionState {
         char board[8][8];          // '?' where the code is not known
         unsigned char codes[8][8]; // Psion's square codes
@@ -45,12 +45,6 @@ namespace psion {
 
     bool Psion_Init(DOS_Shell *d);
     void IO_Init();
-    void ocr(char txt_buf[TEXT_HEIGHT][TEXT_WIDTH], unsigned char *buf);
-    void print_pixels(unsigned char *buf, int hoffset);
-    void print_txt(char txt_buf[TEXT_HEIGHT][TEXT_WIDTH]);
-    void ocr_board(char board[8][8], unsigned char *buf);
-    void print_board(char board[8][8]);
-    void print_pixels(unsigned char *buf, int hoffset);
 
 } // namespace psion
 
