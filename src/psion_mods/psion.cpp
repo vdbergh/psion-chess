@@ -96,12 +96,12 @@ namespace psion {
         pending.erase(0, end + 1);
     }
 
-    // Diagnostics go to stdout in the interactive modes. In UCI mode,
-    // where stdout is reserved for the protocol, they go to stderr, and
-    // only with --verbose (or "debug on").
+    // Diagnostics, only with --verbose (or "debug on"). They go to stdout
+    // in the interactive modes; in UCI mode, where stdout is reserved for
+    // the protocol, to stderr.
     static void say(const char *format, ...) {
         static std::string pending;
-        if (uci_mode && !verbose) {
+        if (!verbose) {
             return;
         }
         char buf[4096];

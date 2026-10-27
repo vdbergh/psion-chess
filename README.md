@@ -427,7 +427,9 @@ whose codes are unknown (see above), and as the reference for `memscan`.
 ## Other modes and tools
 
 Without the `uci` command the program reads moves like `e2e4` from stdin,
-and Psion replies to them; diagnostics then go to stdout. Environment variables for experiments:
+and Psion replies to them; with `--verbose` the diagnostics (the moves and
+the board after each move) then go to stdout. Environment variables for
+experiments:
 
 | Variable | Effect |
 |---|---|
