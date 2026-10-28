@@ -114,6 +114,14 @@ namespace psion {
     // with which the rest of the line is possible is added then.
     bool CheckPv(const Board board, bool white, std::vector<std::string> &pv);
 
+    // Replaces the first move of pv (checked with CheckPv), a promotion, by
+    // move: the same promotion to the piece Psion played. The later
+    // promotions are guessed again. False (and pv unchanged) if the whole
+    // line is no longer possible then.
+    bool CorrectPromotion(const Board board, bool white,
+                          std::vector<std::string> &pv,
+                          const std::string &move);
+
     enum SyncAction {
         SYNC_DONE,      // game equals target
         SYNC_SEND_MOVE, // enter target[game.size()]

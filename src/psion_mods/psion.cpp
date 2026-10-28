@@ -1090,6 +1090,7 @@ namespace psion {
         std::string last_analysis; // analysis row last seen
         std::string info_move;     // first move of the last info pv
         std::string info_ponder;   // ... and the second, to ponder on
+        std::vector<std::string> info_pv; // ... and all of it
         bool info_mate;            // the score of the last info pv:
         int info_score;            // mate in moves or centipawns
         size_t info_depth;         // longest pv in this search
@@ -1127,17 +1128,38 @@ namespace psion {
         search_speed(false);
         uci.search = SEARCH_NONE;
         game_state.thinking = false;
-        // Stopped by MOVE-NOW, Psion plays the best move found so far, which
-        // it may not have displayed yet: then the last pv is not the move.
-        // Each iteration starts by showing the previous best move, and a
-        // new best one beats the last score shown: a lower bound for the
-        // move (exact for an underpromotion, which Psion shows as a queen).
         if (!uci.info_move.empty() && move != uci.info_move && move != "0000") {
-            uci_send("info depth %u time %u score %s %d lowerbound pv %s\n",
+            std::string info;
+            char buf[80];
+            snprintf(buf, sizeof(buf), "info depth %u time %u score %s %d",
                      (unsigned int)uci.info_depth,
                      GetTicks() - uci.thinking_start,
-                     uci.info_mate ? "mate" : "cp", uci.info_score,
-                     move.c_str());
+                     uci.info_mate ? "mate" : "cp", uci.info_score);
+            info = buf;
+            std::vector<std::string> pv = uci.info_pv;
+            if (move.size() == 5 && uci.info_move.size() == 5 &&
+                move.compare(0, 4, uci.info_move, 0, 4) == 0 &&
+                CorrectPromotion(uci.search_board, uci.search_white, pv,
+                                 move)) {
+                // Psion shows a promotion without the piece, and the one
+                // guessed was not the one played: the same line and score,
+                // with the right piece, if all of the line still works.
+                info += " pv";
+                for (size_t i = 0; i < pv.size(); i++) {
+                    info += " " + pv[i];
+                }
+                uci.info_move = move;
+                uci.info_ponder = pv.size() > 1 ? pv[1] : "";
+            } else {
+                // Stopped by MOVE-NOW, Psion plays the best move found so
+                // far, which it may not have displayed yet (also when the
+                // line shown does not work with the piece it promotes to).
+                // Each iteration starts by showing the previous best move,
+                // and a new best one beats the last score shown: a lower
+                // bound.
+                info += " lowerbound pv " + move;
+            }
+            uci_send("%s\n", info.c_str());
         }
         if (move == uci.info_move && !uci.info_ponder.empty()) {
             uci_send("bestmove %s ponder %s\n", move.c_str(),
@@ -1456,6 +1478,7 @@ namespace psion {
         uci_send("%s\n", info.c_str());
         uci.info_move = a.pv[0];
         uci.info_ponder = a.pv.size() > 1 ? a.pv[1] : "";
+        uci.info_pv = a.pv;
         uci.info_mate = a.mate;
         uci.info_score = a.score;
     }
@@ -1717,6 +1740,7 @@ namespace psion {
             uci.last_analysis = analysis_row; // from an earlier search
             uci.info_move.clear();
             uci.info_ponder.clear();
+            uci.info_pv.clear();
             uci.info_depth = 0;
             uci.movenow_sent = false;
             uci.saw_program = false;

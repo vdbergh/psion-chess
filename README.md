@@ -400,12 +400,16 @@ about 0.6%. Nearly all the time goes to emulating the CPU.
   that change before drawing new ones) and if its moves are legal on the
   board (castling rights are not checked). Promotions are shown without
   the piece: the first of queen, knight, rook and bishop with which the
-  rest of the line is legal is assumed. Psion shows a line at the start
-  of each iteration (for the previous best move) and for each better
-  move. Stopped before it could show its line, it plays the new best
-  move: then a last `info` line gives that move alone, with the last
-  score shown as a lower bound, e.g.
-  `info depth 7 time 2950 score cp -10 lowerbound pv f3e5`.
+  rest of the line is legal is assumed. If Psion then plays the
+  promotion to another piece, a last `info` line repeats the line and
+  its score with the piece played, if all of the line is still legal
+  with it (later promotions are guessed again). Psion shows a line at
+  the start of each iteration (for the previous best move) and for each
+  better move. Stopped before it could show its line, it plays the new
+  best move: then a last `info` line gives that move alone, with the
+  last score shown as a lower bound, e.g.
+  `info depth 7 time 2950 score cp -10 lowerbound pv f3e5`. So does a
+  promotion with which the line shown does not work.
 - `2` sets 2-player mode, in which moves for both sides can be entered.
 - `c` (Compute) starts a search, `m` (Move now) ends it when the time
   allocated to the move is used up.

@@ -805,6 +805,47 @@ static std::string check_pv(const char *diagram, bool white, const char *line){
     return r;
 }
 
+// The checked line from a diagram with its first move replaced by move;
+// "" if the line does not work then.
+static std::string correct_promotion(const char *diagram, bool white,
+				     const char *line, const char *move){
+    Board b;
+    make_board(b,diagram);
+    std::vector<std::string> pv=split(line);
+    if(!CheckPv(b,white,pv)){
+	return "not checked";
+    }
+    if(!CorrectPromotion(b,white,pv,move)){
+	return "";
+    }
+    std::string r;
+    for(size_t i=0;i<pv.size();i++){
+	r+=(i?" ":"")+pv[i];
+    }
+    return r;
+}
+
+static void test_correct_promotion(){
+    const char *promo=
+	"........" "..P....." "........" ".......k"
+	"........" "........" "......p." "K.......";
+    // the line with the piece played, if all of it works with that piece
+    CHECK_EQ(correct_promotion(promo,true,"c7c8 h5g5 c8b7 g5f4","c7c8b"),
+	     "c7c8b h5g5 c8b7 g5f4");
+    CHECK_EQ(correct_promotion(promo,true,"c7c8","c7c8r"),"c7c8r");
+    CHECK_EQ(correct_promotion(promo,true,"c7c8 h5g5 a1b2","c7c8n"),
+	     "c7c8n h5g5 a1b2");
+    CHECK_EQ(correct_promotion(promo,true,"c7c8 h5g5 c8h8","c7c8n"),"");
+    // later promotions are guessed again
+    CHECK_EQ(correct_promotion(promo,true,"c7c8 g2g1 c8c1 g1e3","c7c8r"),
+	     "c7c8r g2g1q c8c1 g1e3");
+    const char *knight=
+	"........" ".......P" "........" "........"
+	"........" ".KQ....." "....p..." "...k....";
+    CHECK_EQ(correct_promotion(knight,false,"e2e1 h7h8 e1f3 h8h1 d1e2","e2e1b"),
+	     "");
+}
+
 static void test_check_pv(){
     const char *start=
 	"rnbqkbnr" "pppppppp" "........" "........"
@@ -910,6 +951,7 @@ int main(){
     test_plan_sync();
     test_parse_analysis();
     test_check_pv();
+    test_correct_promotion();
     printf("%d checks, %d failures\n",checks,failures);
     return failures?1:0;
 }

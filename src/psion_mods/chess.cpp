@@ -455,6 +455,21 @@ namespace psion {
         return check_pv_from(board, white, pv, 0);
     }
 
+    bool CorrectPromotion(const Board board, bool white,
+                          std::vector<std::string> &pv,
+                          const std::string &move) {
+        std::vector<std::string> line(pv);
+        line[0] = move;
+        for (size_t i = 1; i < line.size(); i++) {
+            line[i] = line[i].substr(0, 4); // the pieces were guessed
+        }
+        if (!CheckPv(board, white, line)) {
+            return false;
+        }
+        pv = line;
+        return true;
+    }
+
     std::vector<std::string> Tokenize(const char *line) {
         std::vector<std::string> tokens;
         const char *c = line;
