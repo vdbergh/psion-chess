@@ -948,9 +948,9 @@ namespace psion {
 
     // The "Move Overhead" option: the time a move costs on the clock
     // besides Psion's thinking (key delays, MOVE_STABLE_MS and polling, the
-    // GUI, the network). The default is what a move cost with lichess-bot
-    // on a PC in Belgium: 94 ms (median of 429 moves).
-    const unsigned int DEFAULT_MOVE_OVERHEAD_MS = 94;
+    // GUI, the network). The default is about the median of what a move
+    // costs with the engine alone, on an i5-1135G7: 32 ms.
+    const unsigned int DEFAULT_MOVE_OVERHEAD_MS = 30;
     const unsigned int MAX_MOVE_OVERHEAD_MS = 5000;
     static unsigned int move_overhead_ms = DEFAULT_MOVE_OVERHEAD_MS;
     // The "Cycles" option: "max" (as fast as the host allows) or a fixed

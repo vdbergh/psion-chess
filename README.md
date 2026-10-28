@@ -64,7 +64,7 @@ and exits.
     id name Psion Chess 1985
     id author Richard Lang
     option name Ponder type check default false
-    option name Move Overhead type spin default 94 min 0 max 5000
+    option name Move Overhead type spin default 30 min 0 max 5000
     option name Cycles type string default max
     option name UCI_LimitStrength type check default false
     option name UCI_Elo type spin default 1400 min 1150 max 1650
@@ -101,10 +101,15 @@ carried out once that search has sent its `bestmove`.
 Options:
 
 - `Ponder`: for GUIs that only let an engine ponder if it offers it.
-- `Move Overhead` (ms, default 94): what a move costs on the clock besides
-  Psion's thinking: entering it, the GUI, the network. The default is the
-  median with lichess-bot on a PC in Belgium. Increase it if the engine
-  loses on time, e.g. with a slow connection to the server.
+- `Move Overhead` (ms, default 30): what a move costs on the clock besides
+  Psion's thinking: entering it, the GUI, the network. The default is
+  about the median of what a move costs on an i5-1135G7 with the engine
+  alone: with the overhead set to 0, `position` (with the opponent's
+  move) and `go movetime 300` took a median of 32 ms more than the
+  300 ms until `bestmove` (23 to 37 ms for 28 of 31 moves). So an
+  "instant move" (`go movetime 0`) takes about 80 ms: 50 ms of thinking
+  (the minimum) and 30 ms of overhead. Increase it if the engine loses
+  on time, which typically happens in fast games over a slow network.
 - `Cycles` (default `max`): the speed of the emulated PC, `max` for as
   fast as the host allows or a fixed number of instructions per
   millisecond, e.g. `300` for roughly an original IBM PC (see
