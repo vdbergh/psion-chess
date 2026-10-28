@@ -101,14 +101,14 @@ carried out once that search has sent its `bestmove`.
 Options:
 
 - `Ponder`: for GUIs that only let an engine ponder if it offers it.
-- `Move Overhead` (ms, default 30): what a move costs on the clock besides
-  Psion's thinking: Psion playing it once told to, the GUI, the network
-  (see below for how it is used). The default is about the median on an
-  i5-1135G7 with the engine alone: with the overhead set to 0, `position`
-  (with the opponent's move) and `go movetime 300` took a median of 32 ms
-  more than the 300 ms until `bestmove` (23 to 37 ms for 28 of 31 moves).
-  Increase it if the engine loses on time, which typically happens in
-  fast games over a slow network.
+- `Move Overhead` (ms, default 30): the estimated time from telling
+  Psion to move until the opponent has the move: Psion playing it and
+  the adapter reporting it, plus sending it to the opponent via the GUI
+  or the network. How this option is used is explained in more detail
+  in the [Time allocation](#time-allocation) section below. The default
+  of 30 ms covers the engine's own part, measured on an unloaded
+  i5-1135G7. Increase `Move Overhead` if the engine loses on time, for
+  example when playing fast games over a slow network.
 - `Cycles` (default `max`): the speed of the emulated PC, `max` for as
   fast as the host allows or a fixed number of instructions per
   millisecond, e.g. `300` for roughly an original IBM PC (see
@@ -126,33 +126,83 @@ Options:
   time controls the strength differs somewhat. A host too slow for the
   speed asked for plays weaker.
 
-The time for a move is `movetime`, or with a clock 1/30 of the remaining
-time plus 3/4 of the increment, or 1/60 of the remaining time without an
-increment (with `movestogo`: 1/movestogo). In sudden death a smaller
-share keeps the fixed cost of each move from making long games end on
-time. Counted from `go` (from `ponderhit` after a ponder hit), Psion is
-told to move at
+### Time allocation
 
-    max(time for the move - move overhead, setup + 50 ms)
+The basic time allocation per move is either given by the `movetime`
+parameter of the `go` command or else by
 
-and `bestmove` follows about 30 ms later (on an i5-1135G7), so that the
-move takes the time for it. Setup is the time until the position is on
-Psion's board and it starts thinking, which it then does for at least
-50 ms. The position is set up as soon as `position` arrives, but GUIs
-usually send `go` right after it, while the opponent's move is still
-being entered (about 40 ms), and their clock runs from `go`. A GUI that
-sends `isready` before `go`, as fastchess does, gets `readyok` once the
-position is set up: then setup is 0. On an i5-1135G7, with the default
-overhead:
+    min(1/n * remaining_time + 3/4 * increment, 3/4 * remaining_time)
 
-| | With `isready` first | Without |
+where `remaining_time` is given by the appropriate `wtime`/`btime`
+parameter, `increment` by `winc`/`binc`, and `n` by the `movestogo`
+parameter, if present. Otherwise `n` is 30 if the increment is non-zero
+and 60 otherwise. (Without `movetime` or a clock, e.g. `go depth`, the
+allocation is 5 seconds; see [Limitations](#limitations).)
+
+There are several complications, however, that have to be dealt with:
+
+- Many GUIs send `position` and `go` together, a few microseconds apart.
+  So entering the opponent's move (about 40 ms) has barely begun when
+  `go` arrives. This is even worse if a new position has to be set up
+  via `position fen`. This "setup time", i.e. the time still needed to
+  set up the position *after the `go` command is received*, is counted
+  from `go` as well, so it comes out of the allocated time. For GUIs or
+  match runners (such as fastchess) that send `isready` after the
+  `position` command, this setup time is of course zero.
+- The adapter makes sure that Psion thinks at least 50 ms, for otherwise
+  Psion plays very weak moves.
+- Once Psion is told to move, it takes some time to play the move and
+  for the adapter to report it (about 30 ms on an i5-1135G7), and then
+  the move still has to reach the opponent via the GUI or the network.
+  This time is estimated by the `Move Overhead` option, and has to be
+  subtracted from the allocated time as well.
+
+The result is that after receiving `go`, Psion is told to move at
+
+    setup_time + max(allocated_time - setup_time - move_overhead, 50 ms)
+
+which can also be written more compactly as
+
+    max(allocated_time - move_overhead, setup_time + 50 ms)
+
+The actual time a move takes is then
+
+    max(allocated_time - move_overhead, setup_time + 50 ms) + real_overhead
+
+where `real_overhead` is the time the move really takes from then on.
+Assuming that `move_overhead` and `real_overhead` coincide, this
+simplifies to
+
+    max(allocated_time, setup_time + move_overhead + 50 ms)
+
+With the default `move_overhead` of 30 ms and a setup time of 40 ms this
+becomes
+
+    max(allocated_time, 120 ms)
+
+On the other hand, for a GUI that sends `isready` first, the setup time
+is zero, so that we get
+
+    max(allocated_time, 80 ms)
+
+The following table summarizes this: the time a move takes by the
+formulas, and in parentheses the median measured on an i5-1135G7.
+
+| | With `isready` | Without |
 |---|---|---|
-| `go movetime 0` | about 80 ms | about 120 ms |
-| `go movetime 100` | 100 ms | about 120 ms |
+| `go movetime 0` | 80 ms (81) | 120 ms (121) |
+| `go movetime 100` | 100 ms (100) | 120 ms (120) |
+| `go movetime 120` | 120 ms | 120 ms |
+| `go movetime 150` | 150 ms | 150 ms (151) |
 
-From about 150 ms on, the time is kept either way: `go movetime 1000`
-without `isready` took 995 to 1005 ms. Psion can also move earlier: from
-its book, or when it finds the move at once (a mate).
+Note that Psion can also move earlier: from its book, or when it finds
+the move at once (a mate).
+
+The case of `ponderhit` is similar, with the time counted from
+`ponderhit` instead of `go`, except that Psion has been thinking all
+along: the setup time is zero and the 50 ms minimum plays no part
+(unless `ponderhit` comes before the move pondered on has even been
+entered).
 
 ### Limitations
 
@@ -191,13 +241,12 @@ its book, or when it finds the move at once (a mate).
   the second move of Psion's principal variation, so there is none after
   a book move or a move found at once. While pondering, the engine uses
   a CPU core all the time.
-- Entering the opponent's move and reporting the engine's take about 0.1
-  seconds per move. This time is taken from the engine's own clock, so
-  very fast time controls leave little time for thinking. (A GUI that
-  sends `isready` before `go`, like fastchess, starts the clock after the
-  opponent's move has been entered.)
-- After `ucinewgame`, or when the GUI's move list diverges by more than four
-  plies, the game is replayed from the start (about 0.13 s per ply).
+- Entering the opponent's move and reporting the engine's take about
+  70 ms per move on an i5-1135G7. This time is taken from the engine's
+  own clock, so very fast time controls leave little time for thinking
+  (see [Time allocation](#time-allocation)).
+- After `ucinewgame`, or when the GUI's move list diverges by more than
+  100 plies, the game is replayed from the start (about 0.35 s per ply).
 - Psion applies its own draw rules and may announce a draw (e.g. by
   repetition) that the GUI does not see. Psion then stops accepting moves,
   so if the GUI continues the game, it is replayed in a new game.
