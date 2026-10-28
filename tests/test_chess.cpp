@@ -440,7 +440,7 @@ static void test_parse_go(){
     CHECK(!go.btime_given);
     CHECK_EQ(go.winc,0);
     CHECK_EQ(go.movestogo,0);
-    CHECK_EQ(go.movetime,0);
+    CHECK(!go.movetime_given);
     CHECK(!go.infinite);
     go=ParseGo(split("go wtime 60000 btime 50000 winc 1000 binc 2000 movestogo 20"));
     CHECK_EQ(go.wtime,60000);
@@ -458,7 +458,11 @@ static void test_parse_go(){
     CHECK_EQ(go.winc,0);
     CHECK_EQ(go.binc,0);
     go=ParseGo(split("go movetime 1500"));
+    CHECK(go.movetime_given);
     CHECK_EQ(go.movetime,1500);
+    go=ParseGo(split("go movetime 0"));
+    CHECK(go.movetime_given);
+    CHECK_EQ(go.movetime,0);
     CHECK(ParseGo(split("go infinite")).infinite);
     go=ParseGo(split("go ponder wtime 30000 btime 1000"));
     CHECK(go.ponder);
@@ -489,6 +493,12 @@ static void test_think_time(){
     // never less than 50 ms
     go=ParseGo(split("go wtime 100 btime 100"));
     CHECK_EQ(ThinkTime(go,true,400),50u);
+    // movetime 0: the minimum, not the default of 5 s
+    go=ParseGo(split("go movetime 0"));
+    CHECK_EQ(ThinkTime(go,true,30),50u);
+    // no time at all (depth, nodes, mate): the default
+    go=ParseGo(split("go depth 5"));
+    CHECK_EQ(ThinkTime(go,true,30),4970u);
     // the time used up (negative or 0): the minimum, not the default
     go=ParseGo(split("go wtime -20 btime 0"));
     CHECK_EQ(ThinkTime(go,true,94),50u);

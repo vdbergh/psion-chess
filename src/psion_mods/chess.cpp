@@ -501,7 +501,7 @@ namespace psion {
     GoParams ParseGo(const std::vector<std::string> &tokens) {
         GoParams go;
         size_t i;
-        go.wtime_given = go.btime_given = false;
+        go.wtime_given = go.btime_given = go.movetime_given = false;
         go.wtime = go.btime = 0;
         go.winc = go.binc = go.movestogo = go.movetime = 0;
         go.infinite = go.ponder = false;
@@ -522,6 +522,7 @@ namespace psion {
                 go.movestogo = v;
             } else if (t == "movetime") {
                 go.movetime = v;
+                go.movetime_given = true;
             } else if (t == "infinite") {
                 go.infinite = true;
             } else if (t == "ponder") {
@@ -541,8 +542,8 @@ namespace psion {
         if (go.infinite) {
             return 0;
         }
-        if (go.movetime > 0) {
-            t = go.movetime;
+        if (go.movetime_given) {
+            t = go.movetime; // 0: as little as possible
         } else if (clock) {
             // In sudden death a smaller share: the overhead of a move is
             // a fixed cost, so the remaining time must last for many moves.

@@ -37,7 +37,8 @@ namespace psion {
         int wtime, btime;
         int winc, binc;
         int movestogo; // 0 if not given
-        int movetime;  // 0 if not given
+        bool movetime_given;
+        int movetime;
         bool infinite; // until "stop"
         bool ponder;   // until "ponderhit" or "stop"
     };
