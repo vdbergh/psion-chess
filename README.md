@@ -531,8 +531,9 @@ about 0.6%. Nearly all the time goes to emulating the CPU.
 
 Without the `uci` command the program reads moves like `e2e4` from stdin,
 and Psion replies to them; with `--verbose` the diagnostics (the moves and
-the board after each move) then go to stdout. Environment variables for
-experiments:
+the board after each move) then go to stdout. Moves typed while Psion
+thinks are played once it has moved; `quit` ends the program at once.
+Environment variables for experiments:
 
 | Variable | Effect |
 |---|---|

@@ -1947,6 +1947,20 @@ namespace psion {
         }
     }
 
+    // In the interactive mode, lines read while Psion thinks: they are
+    // carried out on the user's turn (except "quit").
+    static std::vector<std::string> held_lines;
+
+    static void interactive_line(const std::string &line) {
+        std::string move(line);
+        move.erase(move.find_last_not_of(" \r\n") + 1);
+        if (line.compare(0, 3, "uci") == 0) {
+            UciCommand(line.c_str());
+        } else if (IsMoveString(move)) {
+            SendUciMove(move);
+        }
+    }
+
     void ProcessConsole() {
         std::string line;
         bool eof = false;
@@ -1955,15 +1969,20 @@ namespace psion {
             line = deferred_commands.front();
             deferred_commands.erase(deferred_commands.begin());
             UciCommand(line.c_str(), true);
-        // In the interactive mode, moves are only read on the user's turn.
-        } else if ((uci_mode || !game_state.thinking) &&
-                   read_input_line(line, eof)) {
-            std::string move(line);
-            move.erase(move.find_last_not_of(" \r\n") + 1);
-            if (uci_mode || line.compare(0, 3, "uci") == 0) {
+        } else if (!uci_mode && !game_state.thinking && !held_lines.empty()) {
+            line = held_lines.front();
+            held_lines.erase(held_lines.begin());
+            interactive_line(line);
+        } else if (read_input_line(line, eof)) {
+            std::vector<std::string> tokens = Tokenize(line.c_str());
+            if (uci_mode) {
                 UciCommand(line.c_str());
-            } else if (IsMoveString(move)) {
-                SendUciMove(move);
+            } else if (tokens.size() == 1 && tokens[0] == "quit") {
+                exit(0);
+            } else if (game_state.thinking) {
+                held_lines.push_back(line);
+            } else {
+                interactive_line(line);
             }
         } else if (eof && uci_mode) {
             exit(0);
