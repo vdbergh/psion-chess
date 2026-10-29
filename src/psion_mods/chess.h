@@ -50,6 +50,19 @@ namespace psion {
     unsigned int ThinkTime(const GoParams &go, bool white,
                            unsigned int overhead);
 
+    // Psion thinks at least this long, also when the time for the move
+    // was used up before it could start (e.g. setting up the position).
+    const unsigned int MIN_THINK_MS = 50;
+    // At most this much of the time still needed after "go" to set up the
+    // position comes out of the time for the move: a longer setup (a FEN,
+    // a replay) would leave hardly any time to think.
+    const unsigned int MAX_SETUP_MS = 200;
+
+    // When to press MOVE-NOW, in ms from "go" (or "ponderhit"), with
+    // think_ms from ThinkTime() and Psion thinking from setup_ms on:
+    // setup + max(think - min(setup, MAX_SETUP_MS), MIN_THINK_MS).
+    unsigned int MoveNowTime(unsigned int think_ms, unsigned int setup_ms);
+
     // UCI_Elo: the strength on the CCRL Blitz scale (2'+1"), from
     // MIN_ELO to MAX_ELO, and the fixed speed (cycles per ms) that gives
     // it.

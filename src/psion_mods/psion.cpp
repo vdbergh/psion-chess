@@ -1084,9 +1084,6 @@ namespace psion {
     }
     // Pause after a key action before the screen is consulted again.
     const unsigned int ACTION_GAP_MS = 300;
-    // Psion thinks at least this long, also when the time for the move
-    // was used up before it could start (e.g. setting up the position).
-    const unsigned int MIN_THINK_MS = 50;
     const unsigned int MOVE_TIMEOUT_MS = 5000;
     // Without a sign of thinking this long after 'c', a game over shown is
     // taken to be the reason.
@@ -1155,6 +1152,14 @@ namespace psion {
         vfprintf(stdout, format, args);
         va_end(args);
         fflush(stdout);
+    }
+
+    // How long after "go" (or "ponderhit") Psion started to think: 0 if
+    // it was thinking already, as after a ponder hit.
+    static unsigned int setup_time() {
+        return uci.thinking_start > uci.search_start
+                   ? uci.thinking_start - uci.search_start
+                   : 0;
     }
 
     static unsigned int last_key_ticks() {
@@ -1667,8 +1672,8 @@ namespace psion {
                          game_over_result().c_str());
                 report_move("0000");
             } else if (!uci.movenow_sent && uci.think_ms &&
-                       now - uci.search_start >= uci.think_ms &&
-                       now - uci.thinking_start >= MIN_THINK_MS) {
+                       now - uci.search_start >=
+                           MoveNowTime(uci.think_ms, setup_time())) {
                 search_speed(false);
                 press(KBD_m);
                 uci.movenow_sent = true;

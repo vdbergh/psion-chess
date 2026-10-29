@@ -473,6 +473,22 @@ static void test_parse_go(){
     CHECK_EQ(ParseGo(split("go wtime")).wtime,0);
 }
 
+static void test_move_now_time(){
+    // a normal setup comes out of the time for the move
+    CHECK_EQ(MoveNowTime(970,0),970u);
+    CHECK_EQ(MoveNowTime(970,40),970u);
+    CHECK_EQ(MoveNowTime(970,200),970u);
+    // but at most 200 ms of it: then Psion still thinks the rest
+    CHECK_EQ(MoveNowTime(970,300),1070u);
+    CHECK_EQ(MoveNowTime(970,3000),3770u);
+    // at least 50 ms of thinking after the setup
+    CHECK_EQ(MoveNowTime(70,40),90u);
+    CHECK_EQ(MoveNowTime(50,0),50u);
+    CHECK_EQ(MoveNowTime(50,3000),3050u);
+    // no overflow
+    CHECK_EQ(MoveNowTime(UINT_MAX,UINT_MAX),UINT_MAX);
+}
+
 static void test_think_time(){
     GoParams go=ParseGo(split("go movetime 2000"));
     CHECK_EQ(ThinkTime(go,true,400),1600u);
@@ -951,6 +967,7 @@ int main(){
     test_tokenize();
     test_parse_go();
     test_think_time();
+    test_move_now_time();
     test_set_option();
     test_elo_cycles();
     test_parse_position();
