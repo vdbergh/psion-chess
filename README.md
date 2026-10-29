@@ -39,10 +39,10 @@ installed without it at first, its existing prefix (`~/.wine`) cannot run
 
 ### Prebuilt executables
 
-Released versions can be downloaded from the repository's *Releases*
-page. In addition, every push is built by GitHub Actions: the packages are
-on the run's page under *Actions*, *Artifacts* (for 90 days, and only when
-logged in to GitHub).
+Released versions can be downloaded from the repository's [*Releases*
+page](https://github.com/vdbergh/psion-chess/releases). In addition, every
+push is built by GitHub Actions: the packages are on the run's page under
+*Actions*, *Artifacts* (for 90 days, and only when logged in to GitHub).
 
 - `psion-chess-linux-x86_64`: a statically linked executable that runs on
   any x86-64 Linux.
