@@ -11,6 +11,9 @@ protocol, so that it can be used from any chess GUI or match runner.
 The adapter does not modify the chess program. It reads the game from the
 emulated machine's memory and plays moves by pressing keys, as a user would.
 
+Psion Chess is currently playing online at Lichess. It can be challenged at
+[https://lichess.org/@/psion-chess](https://lichess.org/@/psion-chess).
+
 ## Building
 
 Requirements: Linux on x86-64, g++ and GNU make. No other libraries.
