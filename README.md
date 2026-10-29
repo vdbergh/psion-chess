@@ -149,11 +149,11 @@ There are several complications, however, that have to be dealt with:
   from `go` as well, so it comes out of the allocated time. For GUIs or
   match runners (such as fastchess) that send `isready` after the
   `position` command, this setup time is of course zero.
-- But at most 200 ms of the setup time comes out of the allocated time.
-  Setting up a new position from scratch, from a FEN or by replaying the
-  moves (e.g. after `ucinewgame`), takes much longer (0.6 to 0.9 s for a
-  FEN on an i5-1135G7) and would otherwise leave Psion hardly any time
-  to think. Such a move takes the rest longer than its allocation.
+- But the adapter ensures that at most 200 ms of the setup time comes
+  out of the allocated time. Setting up a new position from scratch,
+  from a FEN or by replaying the moves (e.g. after `ucinewgame`), takes
+  much longer (0.6 to 0.9 s for a FEN on an i5-1135G7) and would otherwise
+  leave Psion hardly any time to think.
 - The adapter makes sure that Psion thinks at least 50 ms, for otherwise
   Psion plays very weak moves.
 - Once Psion is told to move, it takes some time to play the move and
