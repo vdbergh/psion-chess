@@ -249,7 +249,14 @@ entered).
   100 plies, the game is replayed from the start (about 0.35 s per ply).
 - Psion applies its own draw rules and may announce a draw (e.g. by
   repetition) that the GUI does not see. Psion then stops accepting moves,
-  so if the GUI continues the game, it is replayed in a new game.
+  so if the GUI continues the game, it is replayed in a new game. Asked
+  for a move in a position it considers over (a draw by repetition or by
+  the fifty-move rule, mate or stalemate), the engine answers
+  `bestmove 0000` at once, after
+  `info string Game over (Psion shows DRAW)` (or `CHECKMATE`,
+  `STALEMATE`). A position that cannot be set up is reported the same
+  way (`info string Invalid FEN`, `info string Cannot set up the
+  position`). Asking for a move then is a GUI bug.
 
 ### Speed
 
@@ -445,6 +452,7 @@ contents, because some rows blink. The adapter uses:
 | Row | Used for |
 |---|---|
 | 6 | `PLAYER PLAYER`: 2-player mode is on. |
+| 20 | `SET-UP POSITION`: set-up mode; `DRAW`, `CHECKMATE` or `STALEMATE` instead of `YOUR MOVE`: Psion considers the game over (only as long as the board is the one shown with the text, which stays a little after a takeback). |
 | 22 | The status line: level 11 (`LEVEL 11  4 Min`), easy mode (`LEVEL E`), `ANALYSIS ON`. |
 | 24 | The analysis display (see below), and the `PROMOTE TO` and `ILLEGAL` prompts. |
 

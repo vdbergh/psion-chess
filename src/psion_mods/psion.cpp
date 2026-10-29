@@ -720,6 +720,7 @@ namespace psion {
     static bool setting_up = false;
     static StartPosition setup_start;
     static bool in_setup_mode();
+    static bool game_over_shown();
 
     // Track the game through Psion's memory. Returns true and sets move
     // when a new move has been played.
@@ -789,9 +790,11 @@ namespace psion {
         // the corrected ply) is unreliable but the board is not. So track
         // the game through board changes, counting plies from the last state
         // read while the engine was idle.
+        // Once Psion has announced the end of the game, its ply counter goes
+        // back one ply (with the side to move) on the same board.
         if (have_known &&
             memcmp(cur.board, known.board, sizeof(cur.board)) == 0 &&
-            (game_state.thinking ||
+            (game_state.thinking || game_over_shown() ||
              (cur.ply == known.ply &&
               cur.white_to_move == known.white_to_move))) {
             return false;
@@ -845,6 +848,51 @@ namespace psion {
     // Row 20: "SET-UP POSITION  WHITE" (or BLACK) in set-up mode.
     static bool in_setup_mode() {
         return screen_rows[20].find("SET-UP POSITION") != std::string::npos;
+    }
+
+    static bool game_over_text(const std::string &r) {
+        return r.compare(0, 5, "DRAW ") == 0 ||
+               r.compare(0, 10, "CHECKMATE ") == 0 ||
+               r.compare(0, 10, "STALEMATE ") == 0;
+    }
+
+    // The board in memory when Psion showed the result: the text stays on
+    // the screen a little after a takeback, so it counts only as long as
+    // the board is the same. Psion flashes the kings then, which makes
+    // every other read fail: the board is read once one works, unless a
+    // key was pressed since the text appeared.
+    static Board game_over_board;
+    static bool game_over_board_set = false;
+    static bool game_over_board_wanted = false;
+    static unsigned int game_over_since = 0;
+    static unsigned int last_key_ticks();
+
+    static void read_game_over_board() {
+        PsionState cur;
+        if (!game_over_board_wanted) {
+            return;
+        }
+        if (last_key_ticks() > game_over_since) {
+            game_over_board_wanted = false;
+        } else if (ReadGameState(cur) && !cur.unknown) {
+            memcpy(game_over_board, cur.board, sizeof(Board));
+            game_over_board_set = true;
+            game_over_board_wanted = false;
+        }
+    }
+
+    // "DRAW", "CHECKMATE" or "STALEMATE".
+    static std::string game_over_result() {
+        return screen_rows[20].substr(0, screen_rows[20].find(' '));
+    }
+
+    // Psion considers the game over in the position on its board: it
+    // shows the result instead of "YOUR MOVE", and does not search.
+    static bool game_over_shown() {
+        read_game_over_board();
+        return game_over_text(screen_rows[20]) && game_over_board_set &&
+               have_known &&
+               memcmp(known.board, game_over_board, sizeof(Board)) == 0;
     }
 
     // Row 6 names the players: "PLAYER PLAYER" in 2-player mode.
@@ -1040,6 +1088,9 @@ namespace psion {
     // was used up before it could start (e.g. setting up the position).
     const unsigned int MIN_THINK_MS = 50;
     const unsigned int MOVE_TIMEOUT_MS = 5000;
+    // Without a sign of thinking this long after 'c', a game over shown is
+    // taken to be the reason.
+    const unsigned int GAME_OVER_MS = 300;
     const int MAX_RETRIES = 3;
     const int MAX_TWO_PLAYER_PRESSES = 5;
     const unsigned int SYNC_TIMEOUT_MS = 20000;
@@ -1104,6 +1155,10 @@ namespace psion {
         vfprintf(stdout, format, args);
         va_end(args);
         fflush(stdout);
+    }
+
+    static unsigned int last_key_ticks() {
+        return uci.last_action;
     }
 
     static void press(KBD_KEYS k) {
@@ -1604,9 +1659,16 @@ namespace psion {
             if (!two_player_mode()) {
                 uci.saw_program = true;
             }
-            if (!uci.movenow_sent && uci.think_ms &&
-                now - uci.search_start >= uci.think_ms &&
-                now - uci.thinking_start >= MIN_THINK_MS) {
+            if (!uci.saw_program && game_over_shown() &&
+                now - uci.thinking_start >= GAME_OVER_MS) {
+                // The result was shown too late for UciStep to see it
+                // before the search: Psion ignored the 'c'.
+                uci_send("info string Game over (Psion shows %s)\n",
+                         game_over_result().c_str());
+                report_move("0000");
+            } else if (!uci.movenow_sent && uci.think_ms &&
+                       now - uci.search_start >= uci.think_ms &&
+                       now - uci.thinking_start >= MIN_THINK_MS) {
                 search_speed(false);
                 press(KBD_m);
                 uci.movenow_sent = true;
@@ -1730,6 +1792,17 @@ namespace psion {
             uci.go_pending = false;
             uci_send("bestmove 0000\n");
         }
+        if (uci.go_pending && game_over_shown()) {
+            // No move to play: answered at once (or once "stop" comes)
+            // instead of after a search Psion would not do.
+            uci.go_pending = false;
+            uci.info_move.clear();
+            uci.info_ponder.clear();
+            uci.info_pv.clear();
+            uci_send("info string Game over (Psion shows %s)\n",
+                     game_over_result().c_str());
+            report_move("0000");
+        }
         if (uci.go_pending) {
             uci.go_pending = false;
             search_speed(true);
@@ -1792,6 +1865,11 @@ namespace psion {
         for (i = 0; i < (unsigned int)TEXT_HEIGHT; i++) {
             std::string row(txt_buf[i], TEXT_WIDTH);
             if (row.find_first_not_of(' ') != std::string::npos) {
+                if (i == 20 && row != screen_rows[i]) {
+                    game_over_board_set = false;
+                    game_over_board_wanted = game_over_text(row);
+                    game_over_since = GetTicks();
+                }
                 screen_rows[i] = row;
             }
         }
@@ -1829,6 +1907,7 @@ namespace psion {
             return;
         }
         last_poll = GetTicks();
+        read_game_over_board();
         if (!PollGameState(move)) {
             return;
         }

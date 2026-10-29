@@ -531,6 +531,25 @@ class UciTest(unittest.TestCase):
             'h7g8n', 'f6g8', 'a2a4', 'b7b5', 'a4b5', 'a7a6', 'b5a6', 'c8b7',
             'a6a7', 'b7c6', 'a7b8q'], timeout=60)
 
+    def test_game_over(self):
+        """In a position Psion considers over (mate, stalemate) there is no
+        move: bestmove 0000 at once, not after a search that never starts."""
+        e = self.engine
+        for position in ('position startpos moves f2f3 e7e5 g2g4 d8h4',
+                         'position fen 7k/5Q2/6K1/8/8/8/8/8 b - - 0 1'):
+            e.send('ucinewgame')
+            e.send(position)
+            e.ready()
+            start = time.time()
+            e.send('go wtime 60000 btime 60000')
+            line, before = e.expect('bestmove', 10)
+            self.assertEqual(line, 'bestmove 0000', position)
+            self.assertLess(time.time() - start, 1.0, position)
+            self.assertTrue(any(l.startswith('info string Game over')
+                                for l in before), before)
+        e.send('ucinewgame')
+        self.search(['a2a3', 'h7h6', 'h2h3', 'a7a6'])
+
     def test_draw_claim(self):
         # Psion announces a draw (by its own repetition rule) when it plays
         # b2a1 here, flashing the kings; it then ignores '2' until a new
