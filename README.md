@@ -216,57 +216,36 @@ entered).
 
 ### Limitations
 
-- FEN positions are set up with Psion's set-up mode (see below). Castling
-  rights are kept: Psion treats a king or rook typed in set-up mode as
-  moved, so those with rights are left where they stand in the start
-  position. Castling rights whose king or rook is not on its square are
-  ignored, and Chess960 rights are not supported. An en passant capture
-  is possible: the position before the pawn's double step is set up, and
-  the step is then played. The move counters of a FEN are ignored, so
-  Psion's 50-move rule counts from the FEN (the GUI still applies the rule
-  itself).
-- `info` lines have the time searched (since Psion started to think, so
-  without entering the opponent's move), a score and a principal
-  variation, but no node count. Psion does not show the search depth
-  either; the depth given is the length of the longest principal
-  variation so far in the search. The score
-  has a resolution of 10 centipawns. Book moves and moves found
-  instantly come without `info`.
-- A mate is shown by Psion as a score of 99.9; the number of moves to mate
-  is derived from the length of the principal variation.
-- `go depth`/`nodes`/`mate` are not supported; such searches take 5 seconds.
+- `go depth`/`nodes`/`mate` are not supported; these result in a fallback
+  search of 5 s.
+- Chess960 is not supported.
+- The move counters of a FEN are ignored, so Psion's 50-move rule counts
+  from the FEN (the GUI should still apply the rule itself).
+- Limitations of `info` lines:
+  - There is no node count.
+  - The depth given is the length of the longest principal variation so
+    far in the search, as Psion does not show its search depth.
+  - The score has a resolution of 10 centipawns.
+  - The number of moves to a mate is derived from the length of the
+    principal variation.
+  - Book moves and moves found instantly come without `info`.
 - Psion searches to a fixed maximum depth and moves as soon as it is
   reached, whatever the time left. In a locked pawn ending, with few moves
   per ply, this takes under a second, so Psion moves almost at once even at
   long time controls (in Fine's position 70 it moves after about 1 second
   with 10 seconds to think). The depth limit is part of Psion's program and
   is left as it is.
-- Pondering is done by the adapter, not with Psion's own pondering (see
-  easy mode below): after `go ponder` the move to ponder on is entered and
-  Psion searches as for `go infinite`; after `ponderhit` the time for the
-  move counts from then on, while Psion goes on with its search. After
-  `stop` (the opponent played another move) the adapter takes back that
-  move and Psion's reply, which costs about 0.05 seconds of the engine's
-  clock. The move to ponder on (`bestmove ... ponder ...`) is
-  the second move of Psion's principal variation, so there is none after
-  a book move or a move found at once. While pondering, the engine uses
-  a CPU core all the time.
+- The move to ponder on (`bestmove ... ponder ...`) is the second move of
+  Psion's principal variation, so there is none after a book move or a
+  move found at once. A ponder miss costs about 0.05 seconds of the
+  engine's clock.
 - Entering the opponent's move and reporting the engine's take about
   70 ms per move on an i5-1135G7. This time is taken from the engine's
   own clock, so very fast time controls leave little time for thinking
   (see [Time allocation](#time-allocation)).
-- After `ucinewgame`, or when the GUI's move list diverges by more than
-  100 plies, the game is replayed from the start (about 0.35 s per ply).
-- Psion applies its own draw rules and may announce a draw (e.g. by
-  repetition) that the GUI does not see. Psion then stops accepting moves,
-  so if the GUI continues the game, it is replayed in a new game. Asked
-  for a move in a position it considers over (a draw by repetition or by
-  the fifty-move rule, mate or stalemate), the engine answers
-  `bestmove 0000` at once, after
-  `info string Game over (Psion shows DRAW)` (or `CHECKMATE`,
-  `STALEMATE`). A position that cannot be set up is reported the same
-  way (`info string Invalid FEN`, `info string Cannot set up the
-  position`). Asking for a move then is a GUI bug.
+- There have been instances where Psion apparently incorrectly announced
+  a draw, resulting in a refusal to play on (the adapter replies
+  `bestmove 0000` in this case). This is being investigated.
 
 ### Speed
 
@@ -417,7 +396,8 @@ next one, and retries a few times if a key had no effect.
 Psion keeps no node count, and its search depth is not found in memory
 or on the screen. So `info` lines have no `nodes` or `nps`, the depth is
 the length of the longest principal variation seen, and the time is
-measured by the adapter itself.
+measured by the adapter itself: from when Psion started to think, so
+without entering the opponent's move.
 
 ### Psion's memory
 
@@ -487,31 +467,31 @@ about 0.6%. Nearly all the time goes to emulating the CPU.
 - `e` switches easy mode on: Psion does not think on the opponent's
   time. (Pondering, too, can hang in such positions.)
 - `a` switches analysis mode on: while Psion thinks, the bottom row shows
-  its score (in pawns, for the side to move) and principal variation,
-  e.g. `-00.4 E2-E4 D7-D5 B1-C3 D5xE4`. These become `info` lines. A row
-  is used once it has not changed for 50 ms (Psion erases the characters
-  that change before drawing new ones) and if its moves are legal on the
-  board (castling rights are not checked). Promotions are shown without
-  the piece: the first of queen, knight, rook and bishop with which the
-  rest of the line is legal is assumed. If Psion then plays the
-  promotion to another piece, a last `info` line repeats the line and
-  its score with the piece played, if all of the line is still legal
-  with it (later promotions are guessed again). Psion shows a line at
-  the start of each iteration (for the previous best move) and for each
-  better move. Stopped before it could show its line, it plays the new
-  best move: then a last `info` line gives that move alone, with the
-  last score shown as a lower bound, e.g.
-  `info depth 7 time 2950 score cp -10 lowerbound pv f3e5`. So does a
-  promotion with which the line shown does not work.
+  its score (in pawns, for the side to move) and principal variation, e.g.
+  `-00.4 E2-E4 D7-D5 B1-C3 D5xE4`, with 99.9 for a mate. These become
+  `info` lines. A row is used once it has not changed for 50 ms (Psion
+  erases the characters that change before drawing new ones) and if its
+  moves are legal on the board (castling rights are not checked).
+  Promotions are shown without the piece: the first of queen, knight, rook
+  and bishop with which the rest of the line is legal is assumed. If Psion
+  then plays the promotion to another piece, a last `info` line repeats
+  the line and its score with the piece played, if all of the line is
+  still legal with it (later promotions are guessed again). Psion shows a
+  line at the start of each iteration (for the previous best move) and for
+  each better move. Stopped before it could show its line, it plays the
+  new best move: then a last `info` line gives that move alone, with the
+  last score shown as a lower bound, e.g. `info depth 7 time 2950 score cp
+  -10 lowerbound pv f3e5`. So does a promotion with which the line shown
+  does not work.
 - `2` sets 2-player mode, in which moves for both sides can be entered.
 - `c` (Compute) starts a search, `m` (Move now) ends it when the time
   allocated to the move is used up.
 - `t` takes back one ply, `$` starts a new game. Several plies are taken
   back with one `t` each, pressed at once; the position they lead to is
   accepted as soon as it is in memory. Up to 100 plies are taken back
-  this way (in well under a second); beyond that, or from another start
-  position, a new game is started and the moves are entered again, which
-  takes about 0.35 s a ply.
+  this way (in well under a second); beyond that, from another start
+  position, or after `ucinewgame`, a new game is started and the moves
+  are entered again, which takes about 0.35 s a ply.
 - F3 enters and leaves set-up mode. For a FEN, the adapter starts a new
   game and enters set-up mode. Without castling rights it empties the
   board (`e`); with castling rights it keeps the start position, empties
@@ -521,7 +501,21 @@ about 0.6%. Nearly all the time goes to emulating the CPU.
   the colour last set up. The kings come last, so that the board in
   memory is not taken for a position before it is complete. A new game
   first, for the start position, and because entered with Black to move,
-  Psion leaves set-up mode with an invalid side to move.
+  Psion leaves set-up mode with an invalid side to move. Psion treats a
+  king or rook typed in set-up mode as moved, which is why those with
+  castling rights are left where they stand; castling rights whose king
+  or rook is not on its square are ignored. For an en passant square, the
+  position before the pawn's double step is set up, and the step is then
+  played.
+- Pondering is done by the adapter, not with Psion's own pondering (see
+  easy mode above): after `go ponder` the move to ponder on is entered and
+  Psion searches as for `go infinite`; after `ponderhit` the time for the
+  move counts from then on, while Psion goes on with its search. After
+  `stop` (the opponent played another move) the adapter takes back that
+  move and Psion's reply.
+- After announcing a draw by its own rules (e.g. by repetition), Psion
+  stops accepting moves; if the GUI continues the game, it is replayed in
+  a new game.
 - Moves are entered by moving the cursor; F3 F3 (into and out of set-up
   mode) resets it to a known square.
 - While Psion waits for the GUI, the emulation is stopped until the next
