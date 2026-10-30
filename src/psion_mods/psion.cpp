@@ -621,8 +621,8 @@ namespace psion {
         return true;
     }
 
-    // A memory state is accepted once it has been unchanged for this long;
-    // while the engine searches, memory changes far more often.
+    // A memory state is accepted once it has been unchanged for this long
+    // if no single move explains it (a new game, set-up mode, a resync).
     const unsigned int STABLE_MS = 200;
     // ... or this long if it differs from the last one by a complete move.
     // (Psion's board does not change during a search, but while Psion

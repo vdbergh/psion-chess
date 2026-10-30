@@ -370,13 +370,18 @@ piece it typed at the promotion prompt or from the screen. Bit `04` (and
 for White); a king or rook typed in set-up mode is marked as moved there,
 while the board at `28AC` still shows it as unmoved.
 
-The adapter reads these every 10 ms. It accepts a memory state once it
-has been unchanged for 200 ms (while Psion searches, memory changes much
-more often) and derives each move from the change of the board. While
-Psion searches its own move, the adapter counts the plies itself instead
-of trusting the side-to-move byte. If no legal move explains a change,
-it resynchronizes to the state in memory. Reads that fail are ignored:
-Psion flashes the kings when it announces a draw or mate.
+The adapter reads these every 10 ms and derives each move from the change
+of the board. It accepts a memory state once it has been unchanged for a
+while: 20 ms if it differs from the last one by a single move (the usual
+case, also for the position a takeback leads to), and 200 ms for any other
+change, such as a new game, the position after set-up mode or a
+resynchronization. The states Psion passes through while it plays a move,
+such as a piece lifted, are not taken for positions. While Psion searches
+its own move, its board does not change, but its side-to-move byte is
+unreliable: the adapter counts the plies itself instead. If no legal move
+explains a change, it resynchronizes to the state in memory. Reads that
+fail are ignored: Psion flashes the kings when it announces a draw or
+mate.
 
 ### The screen
 
