@@ -137,6 +137,39 @@ is the start position.
   time controls the strength differs somewhat. A host too slow for the
   speed asked for plays weaker.
 
+### Limitations
+
+- `go depth`/`nodes`/`mate` are not supported; these result in a fallback
+  search of 5 s.
+- Chess960 is not supported.
+- The move counters of a FEN are ignored, so Psion's 50-move rule counts
+  from the FEN (the GUI should still apply the rule itself).
+- Limitations of `info` lines:
+  - There is no node count.
+  - The depth given is the length of the longest principal variation so
+    far in the search, as Psion does not show its search depth.
+  - The score has a resolution of 10 centipawns.
+  - The number of moves to a mate is derived from the length of the
+    principal variation.
+  - Book moves and moves found instantly come without `info`.
+- Psion searches to a fixed maximum depth and moves as soon as it is
+  reached, whatever the time left. In a locked pawn ending, with few moves
+  per ply, this takes under a second, so Psion moves almost at once even at
+  long time controls (in Fine's position 70 it moves after about 1 second
+  with 10 seconds to think). The depth limit is part of Psion's program and
+  is left as it is.
+- The move to ponder on (`bestmove ... ponder ...`) is the second move of
+  Psion's principal variation, so there is none after a book move or a
+  move found at once. A ponder miss costs about 0.05 seconds of the
+  engine's clock.
+- Entering the opponent's move and reporting the engine's take about
+  70 ms per move on an i5-1135G7. This time is taken from the engine's
+  own clock, so very fast time controls leave little time for thinking
+  (see [Time allocation](#time-allocation)).
+- There have been instances where Psion apparently incorrectly announced
+  a draw, resulting in a refusal to play on (the adapter replies
+  `bestmove 0000` in this case). This is being investigated.
+
 ### Time allocation
 
 The basic time allocation per move is either given by the `movetime`
@@ -221,39 +254,6 @@ The case of `ponderhit` is similar, with the time counted from
 along: the setup time is zero and the 50 ms minimum plays no part
 (unless `ponderhit` comes before the move pondered on has even been
 entered).
-
-### Limitations
-
-- `go depth`/`nodes`/`mate` are not supported; these result in a fallback
-  search of 5 s.
-- Chess960 is not supported.
-- The move counters of a FEN are ignored, so Psion's 50-move rule counts
-  from the FEN (the GUI should still apply the rule itself).
-- Limitations of `info` lines:
-  - There is no node count.
-  - The depth given is the length of the longest principal variation so
-    far in the search, as Psion does not show its search depth.
-  - The score has a resolution of 10 centipawns.
-  - The number of moves to a mate is derived from the length of the
-    principal variation.
-  - Book moves and moves found instantly come without `info`.
-- Psion searches to a fixed maximum depth and moves as soon as it is
-  reached, whatever the time left. In a locked pawn ending, with few moves
-  per ply, this takes under a second, so Psion moves almost at once even at
-  long time controls (in Fine's position 70 it moves after about 1 second
-  with 10 seconds to think). The depth limit is part of Psion's program and
-  is left as it is.
-- The move to ponder on (`bestmove ... ponder ...`) is the second move of
-  Psion's principal variation, so there is none after a book move or a
-  move found at once. A ponder miss costs about 0.05 seconds of the
-  engine's clock.
-- Entering the opponent's move and reporting the engine's take about
-  70 ms per move on an i5-1135G7. This time is taken from the engine's
-  own clock, so very fast time controls leave little time for thinking
-  (see [Time allocation](#time-allocation)).
-- There have been instances where Psion apparently incorrectly announced
-  a draw, resulting in a refusal to play on (the adapter replies
-  `bestmove 0000` in this case). This is being investigated.
 
 ### Speed
 
