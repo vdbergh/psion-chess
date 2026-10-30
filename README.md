@@ -334,6 +334,17 @@ Psion is controlled only through simulated keypresses. The adapter checks
 the effect of each key, in memory or on the screen, before it presses the
 next one, and retries a few times if a key had no effect.
 
+UCI is stateless: each `position` command gives the whole game. Psion,
+on the other hand, keeps one game on its board, and the adapter is not
+stateless internally: it compares the GUI's position with Psion's game
+and changes the board incrementally whenever possible. Usually it only
+enters the opponent's new move; otherwise it takes moves back (up to 100
+plies) and enters the new ones. Only for another start position, a longer
+takeback or `ucinewgame` does it start a new game (see [Controlling
+Psion](#controlling-psion)). To the GUI this is invisible, apart from the
+time it takes: a `go` without a new `position`, for example, first takes
+back the move Psion has just played.
+
 Psion keeps no node count, and its search depth is not found in memory
 or on the screen. So `info` lines have no `nodes` or `nps`, the depth is
 the length of the longest principal variation seen, and the time is
