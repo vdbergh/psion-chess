@@ -21,6 +21,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        # With the tags, for the version (git describe).
+        with:
+          fetch-depth: 0
 
       # Statically linked, so that the executable runs on any x86-64 Linux.
       - name: Build
@@ -51,6 +54,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        # With the tags, for the version (git describe).
+        with:
+          fetch-depth: 0
 
       # A slow mirror can stall apt for good: give up and retry instead.
       - name: Install MinGW-w64

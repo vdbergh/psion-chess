@@ -38,7 +38,12 @@ override CPPFLAGS += -DHAVE_CONFIG_H -I$(CONFIG_DIR) -Iinclude
 SRCS := src/dosbox.cpp $(wildcard src/*/*.cpp)
 OBJS := $(SRCS:%.cpp=$(BUILD)/%.o)
 
-.PHONY: all windows check integration clean
+# The adapter's version for --version: the git tag, plus the commits since
+# it, e.g. v1.18-3-g2d7a9cd. version.h is rewritten only when it changes.
+VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo unknown)
+VERSION_H = $(BUILD)/version.h
+
+.PHONY: all windows check integration clean FORCE
 
 all: $(EXE)
 
@@ -47,6 +52,14 @@ windows:
 
 $(EXE): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+
+$(VERSION_H): FORCE
+	@mkdir -p $(dir $@)
+	@echo '#define PSION_VERSION "$(VERSION)"' > $@.tmp
+	@cmp -s $@.tmp $@ && rm $@.tmp || mv $@.tmp $@
+
+$(BUILD)/src/psion_mods/psionmain.o: $(VERSION_H)
+$(BUILD)/src/psion_mods/psionmain.o: override CPPFLAGS += -I$(BUILD)
 
 $(BUILD)/%.o: %.cpp
 	@mkdir -p $(dir $@)

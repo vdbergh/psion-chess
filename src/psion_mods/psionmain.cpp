@@ -31,6 +31,7 @@
 #include "mapper.h"
 #include "control.h"
 #include "psion.h"
+#include "version.h"
 
 // Stubs for what the SDL front end (sdl_main.cpp, sdl_mapper.cpp) provides.
 
@@ -139,36 +140,56 @@ void GFX_ShowMsg(char const *format, ...) {
 
 void restart_program(std::vector<std::string> &parameters) {}
 
+static void usage(FILE *f) {
+    fprintf(f, "usage: psion [options]\n"
+               "\n"
+               "  -V, --verbose   write diagnostics to stderr\n"
+               "  -c, --cycles N  run the emulated PC at N instructions per ms\n"
+               "  -v, --version   print the version and exit\n"
+               "  -h, --help      print this help and exit\n");
+}
+
 int main(int argc, char *argv[]) {
-    CommandLine com_line(argc, argv);
-    if (com_line.FindExist("--verbose", true) ||
-        com_line.FindExist("-v", true)) {
-        psion::SetVerbose(true);
+    // DOSBox's own command line parsing ignores case, so -v and -V would be
+    // the same: the options are parsed here, and DOSBox gets none.
+    int cycles = 0;
+    for (int i = 1; i < argc; i++) {
+        std::string arg(argv[i]);
+        if (arg == "-h" || arg == "--help") {
+            usage(stdout);
+            return 0;
+        } else if (arg == "-v" || arg == "--version") {
+            printf("Psion Chess UCI adapter %s\n", PSION_VERSION);
+            return 0;
+        } else if (arg == "-V" || arg == "--verbose") {
+            psion::SetVerbose(true);
+        } else if (arg == "-c" || arg == "--cycles") {
+            // For tests: run the emulated PC at a fixed speed, in
+            // instructions per millisecond, instead of as fast as possible.
+            char *end;
+            long n = i + 1 < argc ? strtol(argv[++i], &end, 10) : 0;
+            if (n <= 0 || *end || n > 1000000) {
+                fprintf(stderr, "psion: %s needs a number of cycles from 1 "
+                                "to 1000000\n", arg.c_str());
+                return 2;
+            }
+            cycles = (int)n;
+        } else {
+            fprintf(stderr, "psion: invalid option: %s\n\n", argv[i]);
+            usage(stderr);
+            return 2;
+        }
     }
+    CommandLine com_line(1, argv);
     Config myconf(&com_line);
     control = &myconf;
     DOSBOX_Init();
-    // For tests: run the emulated PC at a fixed speed, in instructions per
-    // millisecond, instead of as fast as possible.
-    int cycles;
-    if (com_line.FindInt("--cycles", cycles, true) && cycles > 0) {
+    if (cycles) {
         char line[32];
         snprintf(line, sizeof(line), "cycles=%d", cycles);
         control->GetSection("dosbox")->HandleInputline(line);
     }
     psion::IO_Init();
-    if (control->cmdline->FindExist("-version") ||
-        control->cmdline->FindExist("--version")) {
-        printf("\nDOSBox version %s, copyright 2002-2013 DOSBox Team.\n\n",
-               VERSION);
-        printf("DOSBox is written by the DOSBox Team (See AUTHORS file))\n");
-        printf(
-            "DOSBox comes with ABSOLUTELY NO WARRANTY.  This is free software,\n");
-        printf(
-            "and you are welcome to redistribute it under certain conditions;\n");
-        printf("please read the COPYING file thoroughly before doing so.\n\n");
-        return 0;
-    }
     LOG_MSG("DOSBox version %s", VERSION);
     LOG_MSG("Copyright 2002-2013 DOSBox Team, published under GNU GPL.");
     LOG_MSG("Psion Chess (1985)");

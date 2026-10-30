@@ -582,6 +582,31 @@ class QuitTest(unittest.TestCase):
         self.assertEqual(e.proc.wait(10), 0)
         e.close()
 
+    def run_options(self, *args):
+        return subprocess.run(shlex.split(PSION) + list(args),
+                              stdin=subprocess.DEVNULL, capture_output=True,
+                              timeout=10)
+
+    def test_version(self):
+        for option in ('--version', '-v'):
+            out = self.run_options(option)
+            self.assertEqual(out.returncode, 0)
+            self.assertRegex(out.stdout.decode(),
+                             r'^Psion Chess UCI adapter \S+\r?\n$')
+
+    def test_help(self):
+        for option in ('--help', '-h'):
+            out = self.run_options(option)
+            self.assertEqual(out.returncode, 0)
+            for name in ('--verbose', '--cycles', '--version', '--help'):
+                self.assertIn(name, out.stdout.decode())
+
+    def test_invalid_option(self):
+        for args in (('-x',), ('--cycles',), ('-c', '0')):
+            out = self.run_options(*args)
+            self.assertEqual(out.returncode, 2)
+            self.assertIn('psion: ', out.stderr.decode())
+
     def test_quiet(self):
         """Without --verbose nothing but UCI is written, until "debug on"."""
         e = Engine(args=(), stderr=subprocess.PIPE)

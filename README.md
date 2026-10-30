@@ -83,14 +83,20 @@ and exits.
     info depth 7 time 364 score cp -20 pv e2e4 d7d5 e4e5 d5d4 f1c4 b8c6 f2f4
     bestmove e2e4 ponder d7d5
 
-Only UCI output is written by default. With `--verbose` (or `-v`), or
-after the UCI command `debug on`, the engine also writes diagnostics to
-stderr: the moves and board after each move, start-up messages, etc.
+### Command line options
 
-`--cycles N` runs the emulated PC at a fixed speed of N instructions per
-millisecond instead of as fast as possible (see [Speed](#speed)), e.g.
-`--cycles 300` for roughly an original IBM PC, from start-up on; the
-`Cycles` option does the same from a GUI.
+- `-V`, `--verbose`: besides the UCI output, write diagnostics to stderr:
+  the moves and board after each move, start-up messages, etc. The UCI
+  command `debug on` does the same.
+- `-c N`, `--cycles N`: run the emulated PC at a fixed speed of N
+  instructions per millisecond instead of as fast as possible (see
+  [Speed](#speed)), e.g. `--cycles 300` for roughly an original IBM PC,
+  from start-up on; the `Cycles` option does the same from a GUI.
+- `-v`, `--version`: print the version of the adapter, e.g. `Psion Chess
+  UCI adapter v1.18`, and exit. Built from a commit after a release tag,
+  the version also has the number of commits since the tag and the commit,
+  e.g. `v1.18-5-g2d7a9cd`.
+- `-h`, `--help`: list these options and exit.
 
 ### Supported UCI commands
 
