@@ -181,6 +181,25 @@ class UciTest(unittest.TestCase):
         self.assertGreater(used, 1.0)
         self.assertLess(used, 2.5)
 
+    def test_go_again(self):
+        """A "go" without a new "position" searches the same position
+        again, not the one after the move just played."""
+        moves = ['a2a3', 'h7h6', 'h2h3', 'a7a6', 'b2b3']   # out of book
+        self.search(moves)
+        for _ in range(2):
+            self.engine.send('go movetime 500')
+            move = bestmove(self.engine, 15)
+            self.assertTrue(Board(moves).plausible(move), move)
+
+    def test_ucinewgame_go(self):
+        """"ucinewgame" sets up the start position: a "go" right after it
+        searches that."""
+        self.search(['a2a3', 'h7h6', 'h2h3', 'a7a6', 'b2b3'])
+        self.engine.send('ucinewgame')
+        self.engine.send('go movetime 500')
+        move = bestmove(self.engine, 15)
+        self.assertTrue(Board().plausible(move), move)
+
     def test_clock(self):
         moves = ['b2b3', 'g7g6', 'g2g3', 'b7b6']
         self.engine.send('position startpos moves ' + ' '.join(moves))

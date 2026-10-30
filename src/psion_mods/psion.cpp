@@ -1106,6 +1106,7 @@ namespace psion {
         bool setup_keys_done; // Psion has taken the set-up keys
         bool new_game;        // ucinewgame: press '$' before setting
                               // up the next position
+        bool move_added;      // Psion's move was added to the target
         bool readyok_pending;
         bool go_pending;
         SearchState search;
@@ -1251,6 +1252,7 @@ namespace psion {
         uci.two_player_pending = uci.saw_program;
         if (uci.has_target && !uci.unsupported) {
             uci.target.push_back(move);
+            uci.move_added = true;
         }
         // Psion may have just drawn the analysis line for this move (e.g.
         // a mate it found at once): report that first.
@@ -1265,6 +1267,14 @@ namespace psion {
 
     static void UciGo(const std::vector<std::string> &tokens) {
         GoParams go = ParseGo(tokens);
+        if (uci.move_added) {
+            // A "go" without a new "position": the GUI's position is still
+            // the one before Psion's last move, which is taken back.
+            uci.move_added = false;
+            uci.target.pop_back();
+            uci.sync_progress_size = game_state.moves.size();
+            uci.sync_progress_ticks = GetTicks();
+        }
         if (uci.has_target && uci.unsupported) {
             uci_send("bestmove 0000\n");
             return;
@@ -1296,6 +1306,7 @@ namespace psion {
         uci.unsupported = !req.supported;
         uci.target_start = req.start;
         uci.target = req.moves;
+        uci.move_added = false;
         uci.retries = 0;
         if (!req.supported) {
             uci_send("info string %s\n", req.error.c_str());
@@ -1305,14 +1316,17 @@ namespace psion {
     // Commands kept back until the search has ended. A GUI may send the
     // next "position" and "go" right after "stop" (Polyglot does, after a
     // ponder miss), before the stopped search has sent its bestmove. The
-    // commands after them wait too, to keep their order.
+    // commands after them wait too, to keep their order, except those for
+    // the current search ("stop", "ponderhit").
     static std::vector<std::string> deferred_commands;
 
-    // A "position" or "go" waits while a search is running.
+    // A "position", "go" or "ucinewgame" waits while a search is running
+    // or about to start.
     static bool must_wait(const std::vector<std::string> &tokens) {
         return !tokens.empty() &&
-               (tokens[0] == "position" || tokens[0] == "go") &&
-               uci.search != SEARCH_NONE;
+               (tokens[0] == "position" || tokens[0] == "go" ||
+                tokens[0] == "ucinewgame") &&
+               (uci.search != SEARCH_NONE || uci.go_pending);
     }
 
     // from_queue: a command from deferred_commands, now due.
@@ -1322,7 +1336,8 @@ namespace psion {
             return;
         }
         const std::string &cmd = tokens[0];
-        if (!from_queue && cmd != "quit" &&
+        if (!from_queue && cmd != "quit" && cmd != "stop" &&
+            cmd != "ponderhit" &&
             (!deferred_commands.empty() || must_wait(tokens))) {
             deferred_commands.push_back(line);
             return;
@@ -1350,7 +1365,17 @@ namespace psion {
                 uci.readyok_pending = true;
             }
         } else if (cmd == "ucinewgame") {
+            // A new game in Psion ('$'), in the start position, which is
+            // then also the position a "go" searches.
             uci.new_game = true;
+            uci.sync_progress_size = game_state.moves.size();
+            uci.sync_progress_ticks = GetTicks();
+            uci.has_target = true;
+            uci.unsupported = false;
+            uci.target_start = StandardStart();
+            uci.target.clear();
+            uci.move_added = false;
+            uci.retries = 0;
         } else if (cmd == "position") {
             if (uci.search == SEARCH_NONE) {
                 UciPosition(tokens);

@@ -105,9 +105,11 @@ and exits.
 `ponder`), `ponderhit`, `stop`, `setoption`, `debug on|off` and `quit`.
 A `position` and `go` that arrive while a search is still running, e.g.
 right after `stop` as Polyglot sends them after a ponder miss, are
-carried out once that search has sent its `bestmove`.
+carried out once that search has sent its `bestmove`. A `go` without a
+new `position` searches the same position again; after `ucinewgame`, that
+is the start position.
 
-Options:
+### UCI options
 
 - `Ponder`: for GUIs that only let an engine ponder if it offers it.
 - `Move Overhead` (ms, default 30): the estimated time from telling
@@ -367,7 +369,7 @@ Against micro-Max, 48.5% of the moves pondered on were played.
   handicapped by the emulation: the emulated PC is much slower than a
   native program on the same machine.
 
-## How it works
+## Implementation
 
 `src/psion_mods/` holds everything that is not DOSBox:
 
