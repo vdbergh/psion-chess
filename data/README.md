@@ -1,7 +1,7 @@
 # Psion Chess files
 
-Psion Chess itself is not part of this repository. Download it from
-Classic DOS Games, which lists it as freeware:
+Psion Chess itself is not part of this repository. Download it for example
+from Classic DOS Games:
 
 https://www.classicdosgames.com/game/Psion_Chess.html
 
