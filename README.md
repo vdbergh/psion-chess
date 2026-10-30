@@ -25,6 +25,8 @@ Psion's files are read from `data/` next to the executable; set `PSION_DIR`
 to use another directory. Without them the engine reports where it looked
 and exits.
 
+### Sample GUI engine dialog
+
     $ ./psion
     uci
     id name Psion Chess 1985
