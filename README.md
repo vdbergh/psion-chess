@@ -131,7 +131,8 @@ is the start position.
   (see [Time allocation](#time-allocation)).
 - There have been instances where Psion apparently incorrectly announced
   a draw, resulting in a refusal to play on (the adapter replies
-  `bestmove 0000` in this case). This is being investigated.
+  `bestmove 0000` in this case, preceded by an appropriate diagnostic
+  message). This is being investigated.
 
 ### Speed
 
