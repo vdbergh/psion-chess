@@ -14,48 +14,11 @@ emulated machine's memory and plays moves by pressing keys, as a user would.
 Psion Chess is currently playing online at Lichess. It can be challenged at
 [https://lichess.org/@/psion-chess](https://lichess.org/@/psion-chess).
 
-## Building
-
-Requirements: Linux on x86-64, g++ and GNU make. No other libraries.
-
-Psion Chess itself is not included: see [data/README.md](data/README.md)
-for where to download it.
-
-    make            # builds ./psion
-    make check      # unit tests (a second)
-    make integration  # UCI tests against ./psion (about two minutes)
-
-### Windows
-
-The Windows version is cross-compiled on Linux with MinGW-w64 (package
-`g++-mingw-w64-i686` on Debian/Ubuntu). It is a 32-bit executable, which
-also runs on 64-bit Windows: the 64-bit recompiler of this DOSBox version
-only supports the Linux calling convention.
-
-    make windows                       # builds ./psion.exe
-    make check TARGET=windows          # unit tests, under Wine
-    make integration TARGET=windows    # UCI tests, under Wine
-
-The tests need Wine with 32-bit support (`wine32:i386`). If Wine was
-installed without it at first, its existing prefix (`~/.wine`) cannot run
-32-bit programs; use a new one, e.g. `export WINEPREFIX=~/.wine32`.
-
-### Prebuilt executables
-
-Released versions can be downloaded from the repository's [*Releases*
-page](https://github.com/vdbergh/psion-chess/releases). In addition, every
-push is built by GitHub Actions: the packages are on the run's page under
-*Actions*, *Artifacts* (for 90 days, and only when logged in to GitHub).
-
-- `psion-chess-linux-x86_64`: a statically linked executable that runs on
-  any x86-64 Linux.
-- `psion-chess-windows-x86`: `psion.exe` for Windows. The integration tests
-  pass with it under Wine and, in GitHub Actions, on Windows Server 2022
-  and 2025.
-
-Unpack the package and add Psion's files to its `data/` directory.
-
 ## Running
+
+Download a [prebuilt executable](#prebuilt-executables) or
+[build](#building) one, and add Psion's files (see
+[data/README.md](data/README.md)).
 
 Use `./psion` (`psion.exe` on Windows) as the engine command in your GUI.
 Psion's files are read from `data/` next to the executable; set `PSION_DIR`
@@ -170,6 +133,24 @@ is the start position.
   a draw, resulting in a refusal to play on (the adapter replies
   `bestmove 0000` in this case). This is being investigated.
 
+### Speed
+
+The emulated PC runs as fast as the host allows (DOSBox's `cycles=max`).
+On an Intel Core i5-1135G7 this is about 187,000 cycles per millisecond
+during a search, i.e. roughly 190 million 8086 instructions per second;
+an original IBM PC (8088, 4.77 MHz) managed about 0.3 million.
+
+For comparison, Richard Lang's program won the 1987 World Microcomputer
+Chess Championship on a 68020 at 12 MHz, about 2 million instructions
+per second, so the engine runs some 60 to 120 times faster. This is only
+a rough figure: the 1987 program was the 68000-family version, not this
+8086 one, and a 68020 instruction (32-bit) does more work than an 8086
+one (16-bit, segmented memory), so the real advantage is somewhat
+smaller. At about 90 times the speed, a second here is worth a minute
+and a half then: in a 3+2 blitz game (about 6 seconds a move) the engine
+effectively thinks longer than at a tournament rate of 40 moves in 2
+hours (3 minutes a move).
+
 ### Time allocation
 
 The basic time allocation per move is either given by the `movetime`
@@ -254,24 +235,6 @@ The case of `ponderhit` is similar, with the time counted from
 along: the setup time is zero and the 50 ms minimum plays no part
 (unless `ponderhit` comes before the move pondered on has even been
 entered).
-
-### Speed
-
-The emulated PC runs as fast as the host allows (DOSBox's `cycles=max`).
-On an Intel Core i5-1135G7 this is about 187,000 cycles per millisecond
-during a search, i.e. roughly 190 million 8086 instructions per second;
-an original IBM PC (8088, 4.77 MHz) managed about 0.3 million.
-
-For comparison, Richard Lang's program won the 1987 World Microcomputer
-Chess Championship on a 68020 at 12 MHz, about 2 million instructions
-per second, so the engine runs some 60 to 120 times faster. This is only
-a rough figure: the 1987 program was the 68000-family version, not this
-8086 one, and a 68020 instruction (32-bit) does more work than an 8086
-one (16-bit, segmented memory), so the real advantage is somewhat
-smaller. At about 90 times the speed, a second here is worth a minute
-and a half then: in a 3+2 blitz game (about 6 seconds a move) the engine
-effectively thinks longer than at a tournament rate of 40 moves in 2
-hours (3 minutes a move).
 
 ### Strength
 
@@ -368,6 +331,47 @@ Against micro-Max, 48.5% of the moves pondered on were played.
   costs it most in endgames. Compared with native engines it is also
   handicapped by the emulation: the emulated PC is much slower than a
   native program on the same machine.
+
+## Building
+
+Requirements: Linux on x86-64, g++ and GNU make. No other libraries.
+
+Psion Chess itself is not included: see [data/README.md](data/README.md)
+for where to download it.
+
+    make            # builds ./psion
+    make check      # unit tests (a second)
+    make integration  # UCI tests against ./psion (about two minutes)
+
+### Windows
+
+The Windows version is cross-compiled on Linux with MinGW-w64 (package
+`g++-mingw-w64-i686` on Debian/Ubuntu). It is a 32-bit executable, which
+also runs on 64-bit Windows: the 64-bit recompiler of this DOSBox version
+only supports the Linux calling convention.
+
+    make windows                       # builds ./psion.exe
+    make check TARGET=windows          # unit tests, under Wine
+    make integration TARGET=windows    # UCI tests, under Wine
+
+The tests need Wine with 32-bit support (`wine32:i386`). If Wine was
+installed without it at first, its existing prefix (`~/.wine`) cannot run
+32-bit programs; use a new one, e.g. `export WINEPREFIX=~/.wine32`.
+
+### Prebuilt executables
+
+Released versions can be downloaded from the repository's [*Releases*
+page](https://github.com/vdbergh/psion-chess/releases). In addition, every
+push is built by GitHub Actions: the packages are on the run's page under
+*Actions*, *Artifacts* (for 90 days, and only when logged in to GitHub).
+
+- `psion-chess-linux-x86_64`: a statically linked executable that runs on
+  any x86-64 Linux.
+- `psion-chess-windows-x86`: `psion.exe` for Windows. The integration tests
+  pass with it under Wine and, in GitHub Actions, on Windows Server 2022
+  and 2025.
+
+Unpack the package and add Psion's files to its `data/` directory.
 
 ## Implementation
 
