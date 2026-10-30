@@ -18,12 +18,8 @@ Psion Chess is currently playing online at Lichess. It can be challenged at
 
 Download a [prebuilt executable](#prebuilt-executables) or
 [build](#building) one, and add Psion's files (see
-[data/README.md](data/README.md)).
-
-Use `./psion` (`psion.exe` on Windows) as the engine command in your GUI.
-Psion's files are read from `data/` next to the executable; set `PSION_DIR`
-to use another directory. Without them the engine reports where it looked
-and exits.
+[data/README.md](data/README.md)). Then use `./psion` (`psion.exe` on
+Windows) as the engine command in your GUI.
 
 ### Sample GUI engine dialog
 

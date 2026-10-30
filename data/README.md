@@ -17,6 +17,9 @@ The case of the file names does not matter.
 
 To keep the files elsewhere, set `PSION_DIR` to their directory.
 
+If the adapter does not find Psion's files it will report where
+it looked and exit.
+
 Why the files are not included: Richard Lang, who wrote the chess
 engine, allows his part to be distributed freely, but nobody could give
 permission for Psion's part (the graphics and input/output). See the
