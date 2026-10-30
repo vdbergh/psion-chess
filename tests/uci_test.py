@@ -356,6 +356,26 @@ class UciTest(unittest.TestCase):
         move = bestmove(e, 2)
         self.assertTrue(Board(moves).plausible(move), move)
 
+    def test_stop_for_waiting_go(self):
+        """A "stop" after a waiting "go" stops that search, not the one
+        before it."""
+        e = self.engine
+        first = ['a2a4', 'h7h5', 'h2h4', 'a7a5']
+        second = first + ['b2b3']
+        e.send('position startpos moves ' + ' '.join(first))
+        e.send('go infinite')
+        e.silent(2)
+        # All at once: the second "stop" comes before the first search has
+        # sent its bestmove.
+        e.send('stop')
+        e.send('position startpos moves ' + ' '.join(second))
+        e.send('go infinite')
+        e.send('stop')
+        move = bestmove(e, 5)
+        self.assertTrue(Board(first).plausible(move), move)
+        move = bestmove(e, 10)
+        self.assertTrue(Board(second).plausible(move), move)
+
     def test_ponder(self):
         e = self.engine
         moves = ['a2a4', 'h7h5', 'h2h4', 'a7a5', 'b1c3']
@@ -625,6 +645,19 @@ class QuitTest(unittest.TestCase):
             out = self.run_options(*args)
             self.assertEqual(out.returncode, 2)
             self.assertIn('psion: ', out.stderr.decode())
+
+    def test_go_without_position(self):
+        """Before any "position", every "go" searches the start position."""
+        e = Engine()
+        try:
+            e.send('uci')
+            e.expect('uciok', 10)
+            for _ in range(2):
+                e.send('go movetime 300')
+                move = bestmove(e, 15)
+                self.assertTrue(Board().plausible(move), move)
+        finally:
+            e.close()
 
     def test_quiet(self):
         """Without --verbose nothing but UCI is written, until "debug on"."""

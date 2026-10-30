@@ -64,11 +64,8 @@ Windows) as the engine command in your GUI.
 `uci`, `isready`, `ucinewgame`, `position startpos|fen ... [moves ...]`, `go`
 (`wtime`, `btime`, `winc`, `binc`, `movestogo`, `movetime`, `infinite`,
 `ponder`), `ponderhit`, `stop`, `setoption`, `debug on|off` and `quit`.
-A `position` and `go` that arrive while a search is still running, e.g.
-right after `stop` as Polyglot sends them after a ponder miss, are
-carried out once that search has sent its `bestmove`. A `go` without a
-new `position` searches the same position again; after `ucinewgame`, that
-is the start position.
+How the engine handles the gray areas of the protocol is described under
+[Quirks](#quirks).
 
 ### UCI options
 
@@ -558,6 +555,35 @@ The case of `ponderhit` is similar, with the time counted from
 along: the setup time is zero and the 50 ms minimum plays no part
 (unless `ponderhit` comes before the move pondered on has even been
 entered).
+
+### Quirks
+
+How the engine handles what the UCI protocol leaves open or forbids:
+
+- `go` without a new `position` searches the same position again, also
+  after a search: the move Psion has just played is taken back first.
+  Before any `position`, and after `ucinewgame`, that is the start
+  position.
+- `position`, `go` and `ucinewgame` that arrive during a search, or while
+  a `go` is still setting up its position, wait until that search has
+  sent its `bestmove`; so do the commands after them, to keep their order.
+  Polyglot, for example, sends `position` and `go` right after `stop`
+  after a ponder miss, without waiting for the `bestmove`.
+- `stop` and `ponderhit` apply to the current search at once, also when
+  other commands wait, unless a `go` waits: then they apply to the
+  search of that `go`. `quit` always takes effect at once, and `isready`
+  during a search is answered at once (unless commands wait before it).
+- `stop` before the search has started (the position is still being set
+  up): after `go ponder` the answer is `bestmove 0000` at once; otherwise
+  Psion searches briefly once it can.
+- `go` in a position Psion considers over (mate, stalemate, or a draw by
+  repetition or the fifty-move rule) is answered at once with
+  `bestmove 0000`, after `info string Game over (Psion shows DRAW)` (or
+  `CHECKMATE`, `STALEMATE`). After `go infinite` or `go ponder` the
+  answer comes with `stop` or `ponderhit`, as for any move found early.
+- A position that cannot be set up is reported with `info string Invalid
+  FEN` or `info string Cannot set up the position`, and a `go` in it is
+  answered with `bestmove 0000`.
 
 ## Other modes and tools
 

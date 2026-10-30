@@ -1267,6 +1267,15 @@ namespace psion {
 
     static void UciGo(const std::vector<std::string> &tokens) {
         GoParams go = ParseGo(tokens);
+        if (!uci.has_target) {
+            // No "position" yet: the start position.
+            uci.has_target = true;
+            uci.unsupported = false;
+            uci.target_start = StandardStart();
+            uci.target.clear();
+            uci.sync_progress_size = game_state.moves.size();
+            uci.sync_progress_ticks = GetTicks();
+        }
         if (uci.move_added) {
             // A "go" without a new "position": the GUI's position is still
             // the one before Psion's last move, which is taken back.
@@ -1316,9 +1325,20 @@ namespace psion {
     // Commands kept back until the search has ended. A GUI may send the
     // next "position" and "go" right after "stop" (Polyglot does, after a
     // ponder miss), before the stopped search has sent its bestmove. The
-    // commands after them wait too, to keep their order, except those for
-    // the current search ("stop", "ponderhit").
+    // commands after them wait too, to keep their order, except "stop" and
+    // "ponderhit" while no "go" waits: they are for the current search.
     static std::vector<std::string> deferred_commands;
+
+    static bool go_deferred() {
+        for (size_t i = 0; i < deferred_commands.size(); i++) {
+            std::vector<std::string> tokens =
+                Tokenize(deferred_commands[i].c_str());
+            if (!tokens.empty() && tokens[0] == "go") {
+                return true;
+            }
+        }
+        return false;
+    }
 
     // A "position", "go" or "ucinewgame" waits while a search is running
     // or about to start.
@@ -1336,8 +1356,9 @@ namespace psion {
             return;
         }
         const std::string &cmd = tokens[0];
-        if (!from_queue && cmd != "quit" && cmd != "stop" &&
-            cmd != "ponderhit" &&
+        bool for_search = (cmd == "stop" || cmd == "ponderhit") &&
+                          !go_deferred();
+        if (!from_queue && cmd != "quit" && !for_search &&
             (!deferred_commands.empty() || must_wait(tokens))) {
             deferred_commands.push_back(line);
             return;
