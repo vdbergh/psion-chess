@@ -15,7 +15,8 @@ should then contain:
 
 The case of the file names does not matter.
 
-To keep the files elsewhere, set `PSION_DIR` to their directory.
+To install the files elsewhere, point the environment variable `PSION_DIR`
+to their directory.
 
 If the adapter does not find Psion's files it will report where
 it looked and exit.
