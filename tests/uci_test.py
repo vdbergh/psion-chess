@@ -565,6 +565,33 @@ class UciTest(unittest.TestCase):
                       '(Psion shows DRAW)' % moves[102], before)
         self.assertLess(time.time() - start, 20)
 
+    def test_fifty_move_rule_after_fen(self):
+        # Psion's fifty-move count starts from the FEN, whose counters are
+        # ignored: set up with castling rights (from the start position,
+        # not an empty board), it still searches after 99 reversible plies
+        # and ends the game after 100.
+        fen = ('r1bqk2r/pppppppp/2n2n2/8/8/2N2N2/PPPPPPPP/R1BQK2R w KQkq - '
+               '90 1')
+        moves = (
+            'h1f1 h8g8 c3d5 c6a5 d5f4 g8f8 f4h5 f8g8 f1g1 f6e4 h5f4 g8h8 f4h5 '
+            'a8b8 h5f4 e4g3 f4h3 e8f8 h3f4 h8g8 f4d5 a5b3 d5e3 b3d4 g1f1 d4b3 '
+            'f1h1 b8a8 h1f1 b3a5 a1b1 a5c4 e3g4 d8e8 g4e5 g3f5 f1h1 g8h8 e5c6 '
+            'c4b6 f3g1 f5d6 c6e5 e8d8 e5c4 d6e4 c4e5 f8e8 e1f1 b6d5 e5c4 h8g8 '
+            'g1h3 d5b4 f1e1 a8b8 h3g5 e4g3 c4e5 g3e4 e5d3 e4d6 d3f4 b4a6 f4d3 '
+            'd6b5 d3b4 a6c5 b4a6 e8f8 g5h3 b5c3 b1a1 c5b3 h3f4 c3d5 f4h5 g8h8 '
+            'e1f1 b3c5 h5f6 d8e8 h1g1 d5c3 f6g8 c3e4 a1b1 e8d8 f1e1 c5e6 a6b4 '
+            'e6d4 g8h6 e4f6 b4d3 d4e6 h6g8 f8e8 d3f4 e6f8').split()
+        e = self.engine
+        e.send('position fen %s moves %s' % (fen, ' '.join(moves[:99])))
+        e.send('go movetime 300')
+        line, _ = e.expect('bestmove', 60)
+        self.assertNotEqual(line, 'bestmove 0000')
+        e.send('position fen %s moves %s' % (fen, ' '.join(moves)))
+        e.send('go movetime 300')
+        line, before = e.expect('bestmove', 60)
+        self.assertEqual(line, 'bestmove 0000')
+        self.assertIn('info string Game over (Psion shows DRAW)', before)
+
     def fen_search(self, fen, timeout=30):
         """Set up the FEN position, search; return the move and the lines
         before it."""
