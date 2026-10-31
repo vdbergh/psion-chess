@@ -23,11 +23,10 @@ should then contain:
 
 The case of the file names does not matter.
 
-Before running Psion, the adapter checks that each file has the SHA-256
-below (from `psion213.zip`), and refuses to run it if one is missing or
-different. Psion runs in an old version of DOSBox, so a changed download
-could hold a DOS program that breaks out of the emulator. To check a
-download by hand, run `sha256sum *` in this directory:
+To avoid running unverified software, the adapter checks that each file
+has the SHA-256 below (from `psion213.zip`) before running Psion, and
+refuses to run it if one is missing or different. To check a download by
+hand, run `sha256sum *` in this directory:
 
     df1691734fe9f1082bca3f5513380807104aa4cc9b68ae97ce2bbff74221660c  Chess.exe
     238a2f23bb9ad36c9b3bc620b91b127899fd7b8a5ef299db1786e482cac67e6a  Chess1.ovl
@@ -45,9 +44,6 @@ download by hand, run `sha256sum *` in this directory:
 
 To install the files elsewhere, point the environment variable `PSION_DIR`
 to their directory.
-
-If the adapter does not find Psion's files it will report where
-it looked and exit.
 
 Why the files are not included: Richard Lang, who wrote the chess
 engine, allows his part to be distributed freely, but nobody could give

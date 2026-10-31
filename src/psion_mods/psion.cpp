@@ -301,8 +301,7 @@ namespace psion {
                 dir.c_str());
             exit(1);
         }
-        // Only the known files: the emulator is old, and a changed
-        // download could hold a program that breaks out of it.
+        // Only the known files, to avoid running unverified software.
         std::string error;
         if (!CheckFiles(dir, PSION_FILES, PSION_FILE_COUNT, error)) {
             fprintf(stderr,
