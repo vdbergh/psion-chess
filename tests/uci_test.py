@@ -541,6 +541,30 @@ class UciTest(unittest.TestCase):
         line, _ = e.expect('bestmove', 30)
         self.assertNotEqual(line, 'bestmove 0000')
 
+    def test_fifty_move_rule_during_entry(self):
+        # 1. e4 e5 and 110 plies without a capture or pawn move (and no
+        # repetition): Psion ends the game at the fifty-move rule (ply 102)
+        # and takes no more moves, which is reported at once.
+        moves = (
+            'e2e4 e7e5 d1h5 f8e7 e1d1 g8h6 h5f5 e7f6 g1f3 b8c6 f5g5 f6e7 b1c3 '
+            'e7f6 c3e2 h6g8 g5g3 e8e7 f3d4 g8h6 d1e1 h8g8 g3g5 a8b8 d4f3 d8f8 '
+            'g5f4 c6d4 e1d1 d4c6 f4e3 c6b4 e3f4 e7e8 e2c3 g8h8 f3g5 b8a8 f4f3 '
+            'h6g4 f3h3 f8e7 h3f3 a8b8 f1a6 b4d5 a6c4 d5b4 h1e1 h8g8 c3e2 e7d6 '
+            'e2g1 d6e7 f3a3 b4a6 c4b5 e7e6 b5a4 g4h6 a3e3 b8a8 g1f3 g8h8 e1h1 '
+            'h6g8 a1b1 g8h6 e3b6 a8b8 b6b3 e6c4 b3b6 c4c5 b6b4 c5c4 b4c5 h6g8 '
+            'g5e6 c4b4 c5a5 g8h6 b1a1 f6g5 f3g1 b4a3 a5d5 a6b4 d5c5 b4a6 e6f4 '
+            'a6b4 g1e2 b4d3 f4h3 h6f5 e2f4 f5h4 c5c6 g5d8 a4b5 a3b3 c6b6 b8a8 '
+            'h3g5 h8g8 g5h3 b3c3 f4e6 h4g6 e6d4 d8f6').split()
+        e = self.engine
+        start = time.time()
+        e.send('position startpos moves ' + ' '.join(moves))
+        e.send('go movetime 500')
+        line, before = e.expect('bestmove', 60)
+        self.assertEqual(line, 'bestmove 0000')
+        self.assertIn('info string Psion does not accept %s: game over '
+                      '(Psion shows DRAW)' % moves[102], before)
+        self.assertLess(time.time() - start, 20)
+
     def fen_search(self, fen, timeout=30):
         """Set up the FEN position, search; return the move and the lines
         before it."""
