@@ -336,7 +336,7 @@ namespace psion {
                 return false;
             }
             n = in[pos] | in[pos + 1] << 8;
-            if ((in[pos + 2] | in[pos + 3] << 8) != (~n & 0xffff)) {
+            if ((size_t)(in[pos + 2] | in[pos + 3] << 8) != (~n & 0xffff)) {
                 return false;
             }
             pos += 4;

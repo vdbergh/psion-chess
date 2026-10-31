@@ -1736,7 +1736,14 @@ namespace psion {
                 uci.sync_progress_size = moves.size();
                 uci.sync_progress_ticks = now;
             } else if (now - uci.sync_progress_ticks > SYNC_TIMEOUT_MS) {
-                uci_send("info string Cannot set up the position\n");
+                // The same message as when the retries run out first.
+                if ((uci.inflight || uci.retries > 0) &&
+                    moves.size() < uci.target.size()) {
+                    uci_send("info string Psion does not accept %s\n",
+                             uci.target[moves.size()].c_str());
+                } else {
+                    uci_send("info string Cannot set up the position\n");
+                }
                 uci.unsupported = true;
                 return;
             }

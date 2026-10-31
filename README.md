@@ -475,9 +475,9 @@ about 0.6%. Nearly all the time goes to emulating the CPU.
   move counts from then on, while Psion goes on with its search. After
   `stop` (the opponent played another move) the adapter takes back that
   move and Psion's reply.
-- After announcing a draw by its own rules (e.g. by repetition), Psion
-  stops accepting moves; if the GUI continues the game, it is replayed in
-  a new game.
+- After announcing a draw or mate, Psion stops accepting moves. In that
+  case the adapter replies to `go` commands with `bestmove 0000`, preceded
+  by an appropriate diagnostic message.
 - Moves are entered by moving the cursor; F3 F3 (into and out of set-up
   mode) resets it to a known square.
 - While Psion waits for the GUI, the emulation is stopped until the next
@@ -596,8 +596,11 @@ How the engine handles what the UCI protocol leaves open or forbids:
   `bestmove 0000`, after `info string Game over (Psion shows DRAW)` (or
   `CHECKMATE`, `STALEMATE`). After `go infinite` or `go ponder` the
   answer comes with `stop` or `ponderhit`, as for any move found early.
-- A position that cannot be set up is reported with `info string Invalid
-  FEN` or `info string Cannot set up the position`, and a `go` in it is
+- A position with an illegal move is reported at once with `info string
+  Illegal move a2a4` (with `(checkmate)` or `(stalemate)` if the game
+  was already over before it), one that cannot be set up with `info
+  string Invalid FEN`, `info string Psion does not accept e1g1` or `info
+  string Cannot set up the position`. A `go` in such a position is
   answered with `bestmove 0000`.
 
 ## Other modes and tools

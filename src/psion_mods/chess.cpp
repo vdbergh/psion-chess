@@ -735,6 +735,111 @@ namespace psion {
         return true;
     }
 
+    // Whether m is legal on board b (white to move), with the castling
+    // rights left (a part of "KQkq") and en passant possible to the file
+    // ep_file (-1: none).
+    static bool legal_move(const Board b, bool white,
+                           const std::string &castling, int ep_file,
+                           const std::string &m) {
+        int ff = m[0] - 'a', fr = m[1] - '1', tf = m[2] - 'a',
+            tr = m[3] - '1';
+        char p = b[ff][fr], t = b[tf][tr], kind = (char)toupper(p);
+        Board after;
+        if (p == '.' || (isupper(p) != 0) != white ||
+            (t != '.' && (isupper(t) != 0) == white) ||
+            !piece_can_move(b, ff, fr, tf, tr)) {
+            return false;
+        }
+        if (kind == 'K' && abs(tf - ff) == 2) {
+            char right = tf > ff ? 'K' : 'Q';
+            if (castling.find(white ? right : (char)tolower(right)) ==
+                std::string::npos) {
+                return false;
+            }
+        }
+        if (kind == 'P' && ff != tf && t == '.' && tf != ep_file) {
+            return false;
+        }
+        if ((kind == 'P' && (tr == 0 || tr == 7)) != (m.size() == 5)) {
+            return false; // a promotion needs its piece, others have none
+        }
+        memcpy(after, b, sizeof(after));
+        make_move(after, m);
+        return !in_check(after, white);
+    }
+
+    static bool has_legal_move(const Board b, bool white,
+                               const std::string &castling, int ep_file) {
+        int ff, fr, tf, tr;
+        for (ff = 0; ff < 8; ff++) {
+            for (fr = 0; fr < 8; fr++) {
+                char p = b[ff][fr];
+                if (p == '.' || (isupper(p) != 0) != white) {
+                    continue;
+                }
+                for (tf = 0; tf < 8; tf++) {
+                    for (tr = 0; tr < 8; tr++) {
+                        std::string m;
+                        m += (char)('a' + ff);
+                        m += (char)('1' + fr);
+                        m += (char)('a' + tf);
+                        m += (char)('1' + tr);
+                        if (toupper(p) == 'P' && (tr == 0 || tr == 7)) {
+                            m += 'q';
+                        }
+                        if (legal_move(b, white, castling, ep_file, m)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    // Whether moves are legal from start. If not, error says which move
+    // is not, and why when the game was already over.
+    static bool check_game(const StartPosition &start,
+                           const std::vector<std::string> &moves,
+                           std::string &error) {
+        Board b;
+        bool white = start.standard || start.white;
+        std::string castling = start.standard ? "KQkq" : start.castling;
+        int ep_file = -1;
+        size_t i, j;
+        BoardAfter(start, moves, 0, b);
+        for (i = 0; i < moves.size(); i++) {
+            const std::string &m = moves[i];
+            if (!legal_move(b, white, castling, ep_file, m)) {
+                error = "Illegal move " + m;
+                if (!has_legal_move(b, white, castling, ep_file)) {
+                    error += in_check(b, white) ? " (checkmate)"
+                                                : " (stalemate)";
+                }
+                return false;
+            }
+            int ff = m[0] - 'a', fr = m[1] - '1', tr = m[3] - '1';
+            ep_file = toupper(b[ff][fr]) == 'P' && abs(tr - fr) == 2 ? ff : -1;
+            // A king or rook leaving its square, or a rook taken there,
+            // ends the right.
+            static const char *squares[4] = {"e1h1", "e1a1", "e8h8", "e8a8"};
+            for (j = 0; j < 4; j++) {
+                const char *sq = squares[j];
+                if (m.compare(0, 2, sq, 2) == 0 ||
+                    m.compare(0, 2, sq + 2, 2) == 0 ||
+                    m.compare(2, 2, sq + 2, 2) == 0) {
+                    size_t k = castling.find("KQkq"[j]);
+                    if (k != std::string::npos) {
+                        castling.erase(k, 1);
+                    }
+                }
+            }
+            make_move(b, m);
+            white = !white;
+        }
+        return true;
+    }
+
     PositionRequest ParsePosition(const std::vector<std::string> &tokens) {
         PositionRequest req;
         size_t i = 2;
@@ -763,6 +868,11 @@ namespace psion {
                 }
                 req.moves.push_back(tokens[i]);
             }
+        }
+        if (!check_game(req.start, req.moves, req.error)) {
+            req.moves.clear();
+            req.start = StandardStart();
+            return req;
         }
         req.supported = true;
         return req;

@@ -570,12 +570,12 @@ static void test_parse_position(){
     PositionRequest req=ParsePosition(split("position startpos"));
     CHECK(req.supported);
     CHECK(req.moves.empty());
-    req=ParsePosition(split("position startpos moves e2e4 e7e5 e7e8q"));
+    req=ParsePosition(split("position startpos moves e2e4 e7e5 g1f3"));
     CHECK(req.supported);
     CHECK_EQ(req.moves.size(),(size_t)3);
     if(req.moves.size()==3){
 	CHECK_EQ(req.moves[0],std::string("e2e4"));
-	CHECK_EQ(req.moves[2],std::string("e7e8q"));
+	CHECK_EQ(req.moves[2],std::string("g1f3"));
     }
     req=ParsePosition(split("position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 moves d2d4"));
     CHECK(req.supported);
@@ -589,6 +589,73 @@ static void test_parse_position(){
     CHECK(!req.supported);
     req=ParsePosition(split("position nonsense"));
     CHECK(!req.supported);
+}
+
+// The error for the moves after the FEN (or startpos), "" if legal.
+static std::string position_error(const char *position){
+    PositionRequest req=ParsePosition(split(position));
+    if(!req.supported){
+	CHECK(req.moves.empty());
+	CHECK(req.start.standard);
+    }
+    return req.supported?"":req.error;
+}
+
+static void test_illegal_moves(){
+    // After a mate or stalemate, with the reason.
+    CHECK_EQ(position_error("position startpos moves f2f3 e7e5 g2g4 d8h4 a2a4"),
+	     "Illegal move a2a4 (checkmate)");
+    CHECK_EQ(position_error("position startpos moves f2f3 e7e5 g2g4 d8h4"),"");
+    CHECK_EQ(position_error("position fen 7k/5Q2/6K1/8/8/8/8/8 b - - 0 1 moves h8g8"),
+	     "Illegal move h8g8 (stalemate)");
+    // Not the side to move, no piece, own piece taken, the wrong way.
+    CHECK_EQ(position_error("position startpos moves e7e5"),"Illegal move e7e5");
+    CHECK_EQ(position_error("position startpos moves e3e4"),"Illegal move e3e4");
+    CHECK_EQ(position_error("position startpos moves d1d2"),"Illegal move d1d2");
+    CHECK_EQ(position_error("position startpos moves g1g3"),"Illegal move g1g3");
+    CHECK_EQ(position_error("position startpos moves e2e5"),"Illegal move e2e5");
+    // Leaving the king in check, or not getting out of it.
+    CHECK_EQ(position_error("position fen 4k3/8/8/8/8/8/4r3/4K3 w - - 0 1 moves e1e2"),"");
+    CHECK_EQ(position_error("position fen 4k3/8/8/8/8/8/4r3/4K3 w - - 0 1 moves e1d2"),
+	     "Illegal move e1d2");
+    CHECK_EQ(position_error("position fen 4k3/8/8/8/8/8/4r3/4K3 w - - 0 1 moves e1f2"),
+	     "Illegal move e1f2");
+    CHECK_EQ(position_error("position fen 4k3/4r3/8/8/8/8/4B3/4K3 w - - 0 1 moves e2d3"),
+	     "Illegal move e2d3");
+    // Promotions need their piece; other moves have none.
+    CHECK_EQ(position_error("position fen 4k3/P7/8/8/8/8/8/4K3 w - - 0 1 moves a7a8n"),"");
+    CHECK_EQ(position_error("position fen 4k3/P7/8/8/8/8/8/4K3 w - - 0 1 moves a7a8"),
+	     "Illegal move a7a8");
+    CHECK_EQ(position_error("position startpos moves e2e4q"),"Illegal move e2e4q");
+    // Castling: with the right only, lost by a king or rook move or a
+    // capture of the rook.
+    const char *fen="position fen r3k2r/8/8/8/8/8/8/R3K2R w Kq - 0 1 moves ";
+    CHECK_EQ(position_error((std::string(fen)+"e1g1 e8c8").c_str()),"");
+    CHECK_EQ(position_error((std::string(fen)+"e1c1").c_str()),"Illegal move e1c1");
+    CHECK_EQ(position_error((std::string(fen)+"h1h2 e8c8 h2h1 a7a6 e1g1").c_str()),
+	     "Illegal move a7a6"); // there is no pawn: a8 is the rook
+    CHECK_EQ(position_error((std::string(fen)+"h1h2 e8c8 h2h1 c8b8 e1g1").c_str()),
+	     "Illegal move e1g1");
+    CHECK_EQ(position_error((std::string(fen)+"e1f1 a8a7 f1e1 a7a8 e1g1").c_str()),
+	     "Illegal move e1g1");
+    CHECK_EQ(position_error((std::string(fen)+"h1h7 a8a1 e1g1").c_str()),
+	     "Illegal move e1g1");
+    CHECK_EQ(position_error("position fen r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1 moves a1a8 e8c8"),
+	     "Illegal move e8c8");
+    // Not out of, through or into check.
+    CHECK_EQ(position_error("position fen r3k2r/8/8/8/8/8/8/R3K1rR w KQkq - 0 1 moves e1g1"),
+	     "Illegal move e1g1");
+    CHECK_EQ(position_error("position fen r3k2r/8/8/8/8/8/5r2/R3K2R w KQkq - 0 1 moves e1g1"),
+	     "Illegal move e1g1");
+    CHECK_EQ(position_error("position fen r3k2r/8/8/8/8/8/6r1/R3K2R w KQkq - 0 1 moves e1g1"),
+	     "Illegal move e1g1");
+    // En passant only right after the double move.
+    CHECK_EQ(position_error("position startpos moves e2e4 a7a6 e4e5 d7d5 e5d6"),"");
+    CHECK_EQ(position_error("position startpos moves e2e4 d7d5 e4e5 a7a6 e5d6"),
+	     "Illegal move e5d6");
+    CHECK_EQ(position_error("position fen 4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1 moves e5d6"),"");
+    CHECK_EQ(position_error("position fen 4k3/8/8/3pP3/8/8/8/4K3 w - - 0 1 moves e5d6"),
+	     "Illegal move e5d6");
 }
 
 static void test_parse_fen(){
@@ -1194,6 +1261,7 @@ int main(){
     test_set_option();
     test_elo_cycles();
     test_parse_position();
+    test_illegal_moves();
     test_parse_fen();
     test_same_start();
     test_setup_keys();

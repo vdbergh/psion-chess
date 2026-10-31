@@ -496,7 +496,7 @@ class UciTest(unittest.TestCase):
         self.assertTrue(Board(moves).plausible(move), move)
 
     def test_fen_castling_rights(self):
-        # Castling with the right, and Psion refusing it without.
+        # Castling with the right, and refused without.
         fen = 'r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w Kq - 0 1 moves '
         self.fen_search(fen + 'e1g1 e8c8')
         e = self.engine
@@ -504,7 +504,24 @@ class UciTest(unittest.TestCase):
         e.send('go movetime 500')
         line, before = e.expect('bestmove', 30)
         self.assertEqual(line, 'bestmove 0000')
-        self.assertIn('info string Psion does not accept e1c1', before)
+        self.assertIn('info string Illegal move e1c1', before)
+
+    def test_move_after_mate(self):
+        # Refused at once, always with the same message (it used to take
+        # 5 s, with one of two messages).
+        e = self.engine
+        start = time.time()
+        e.send('position startpos moves f2f3 e7e5 g2g4 d8h4 a2a4')
+        e.send('go movetime 500')
+        line, before = e.expect('bestmove', 30)
+        self.assertEqual(line, 'bestmove 0000')
+        self.assertIn('info string Illegal move a2a4 (checkmate)', before)
+        self.assertLess(time.time() - start, 2)
+        # The engine still plays.
+        e.send('position startpos moves e2e4')
+        e.send('go movetime 300')
+        line, _ = e.expect('bestmove', 30)
+        self.assertNotEqual(line, 'bestmove 0000')
 
     def fen_search(self, fen, timeout=30):
         """Set up the FEN position, search; return the move and the lines
