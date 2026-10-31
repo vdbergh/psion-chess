@@ -1,8 +1,9 @@
 # Builds the engine for Linux and Windows, runs the unit tests and uploads
 # ready-to-use packages. The UCI integration tests need Psion Chess itself,
 # which is not part of the repository: it is downloaded from Classic DOS
-# Games (see data/README.md), checked against its SHA-256 and cached. It is
-# only used for the tests, never put into an artifact or a release.
+# Games (see data/README.md), cached, and installed with "psion -d", which
+# checks its SHA-256. It is only used for the tests, never put into an
+# artifact or a release.
 
 name: CI
 
@@ -127,12 +128,11 @@ jobs:
         if: steps.psion-cache.outputs.cache-hit != 'true'
         run: curl -fsSL --retry 3 -o psion213.zip "$PSION_ZIP_URL"
 
-      - name: Unpack Psion Chess
+      # From the cached zip: PSION_ZIP_URL overrides the download URL.
+      - name: Install Psion Chess
         run: |
-          $PYTHON -c "import hashlib, sys
-          digest = hashlib.sha256(open('psion213.zip', 'rb').read()).hexdigest()
-          sys.exit(digest != '$PSION_ZIP_SHA256' and 'psion213.zip: wrong SHA-256 ' + digest)"
-          $PYTHON -m zipfile -e psion213.zip "$PACKAGE/data"
+          echo y | PSION_ZIP_URL="file://$PWD/psion213.zip" "$PACKAGE/psion" -d
+          echo y | "$PACKAGE/psion" -d | grep -q "already installed"
 
       - name: Integration tests
         run: $PYTHON -I tests/uci_test.py "$PWD/$PACKAGE/psion"
@@ -145,8 +145,8 @@ jobs:
           path: tests/uci_test.log
 
   # Runs the Windows build on Windows: the unit tests, a start-up check
-  # (without Psion's files the engine must report them missing), then the
-  # UCI integration tests with Psion's files; on the oldest and the newest
+  # (without Psion's files the engine must report them missing), installing
+  # Psion's files with psion -d, then the UCI integration tests; on the oldest and the newest
   # Windows that GitHub offers (Windows Server only).
   test-windows:
     needs: build-windows
@@ -195,12 +195,13 @@ jobs:
         if: steps.psion-cache.outputs.cache-hit != 'true'
         run: curl -fsSL --retry 3 -o psion213.zip "$PSION_ZIP_URL"
 
-      - name: Unpack Psion Chess
+      # From the cached zip, with Windows' own curl: PSION_ZIP_URL overrides
+      # the download URL.
+      - name: Install Psion Chess
         run: |
-          $PYTHON -c "import hashlib, sys
-          digest = hashlib.sha256(open('psion213.zip', 'rb').read()).hexdigest()
-          sys.exit(digest != '$PSION_ZIP_SHA256' and 'psion213.zip: wrong SHA-256 ' + digest)"
-          $PYTHON -m zipfile -e psion213.zip "$PACKAGE/data"
+          url="file:///$(cygpath -m "$PWD/psion213.zip")"
+          echo y | PSION_ZIP_URL="$url" "$PACKAGE/psion.exe" -d
+          echo y | "$PACKAGE/psion.exe" -d | grep -q "already installed"
 
       - name: Integration tests
         run: $PYTHON -I source/tests/uci_test.py "$PACKAGE/psion.exe"

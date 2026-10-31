@@ -1,6 +1,7 @@
 # Tests for the Psion adapter.
 #
-#   make check        unit tests of the chess and UCI logic (fast)
+#   make check        unit tests of the chess and UCI logic and the file
+#                     check and unzipping (fast)
 #   make integration  UCI tests against the real program (about two minutes)
 #
 # With TARGET=windows, the tests are built for Windows and run under Wine.
@@ -26,11 +27,14 @@ endif
 check: $(TEST_CHESS)
 	$(RUN) ./$(TEST_CHESS)
 
-$(TEST_CHESS): test_chess.cpp $(SRC)/chess.cpp $(SRC)/chess.h
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -I$(SRC) -o $@ test_chess.cpp $(SRC)/chess.cpp
+$(TEST_CHESS): test_chess.cpp $(SRC)/chess.cpp $(SRC)/chess.h \
+		$(SRC)/psionfiles.cpp $(SRC)/psionfiles.h
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -I$(SRC) -o $@ test_chess.cpp \
+		$(SRC)/chess.cpp $(SRC)/psionfiles.cpp
 
 integration:
 	python3 -I uci_test.py "$(PSION)"
 
 clean:
 	rm -f test_chess test_chess.exe uci_test.log
+	rm -rf psionfiles_test.tmp

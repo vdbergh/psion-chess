@@ -28,6 +28,7 @@
 
 #include "dosbox.h"
 #include "video.h"
+#include "psionfiles.h"
 #include "mapper.h"
 #include "control.h"
 #include "psion.h"
@@ -145,6 +146,8 @@ static void usage(FILE *f) {
                "\n"
                "  -V, --verbose   write diagnostics to stderr\n"
                "  -c, --cycles N  run the emulated PC at N instructions per ms\n"
+               "  -d, --download  download and install Psion Chess (asks "
+               "first)\n"
                "  -v, --version   print the version and exit\n"
                "  -h, --help      print this help and exit\n");
 }
@@ -161,6 +164,8 @@ int main(int argc, char *argv[]) {
         } else if (arg == "-v" || arg == "--version") {
             printf("Psion Chess UCI adapter %s\n", PSION_VERSION);
             return 0;
+        } else if (arg == "-d" || arg == "--download") {
+            return psion::DownloadPsionFiles();
         } else if (arg == "-V" || arg == "--verbose") {
             psion::SetVerbose(true);
         } else if (arg == "-c" || arg == "--cycles") {

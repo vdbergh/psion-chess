@@ -17,9 +17,11 @@ Psion Chess is currently playing online at Lichess. It can be challenged at
 ## Running
 
 Download a [prebuilt executable](#prebuilt-executables) or
-[build](#building) one, and add Psion's files (see
-[data/README.md](data/README.md)). Then use `./psion` (`psion.exe` on
-Windows) as the engine command in your GUI.
+[build](#building) one, and add Psion's files: `./psion -d` downloads and
+installs them (see [data/README.md](data/README.md)). Then use `./psion`
+(`psion.exe` on Windows) as the engine command in your GUI. The adapter checks the
+SHA-256 of each of Psion's files first, and does not run Psion if one
+is missing or differs from the original download.
 
 ### Sample GUI engine dialog
 
@@ -53,6 +55,12 @@ Windows) as the engine command in your GUI.
   instructions per millisecond instead of as fast as possible (see
   [Speed](#speed)), e.g. `--cycles 300` for roughly an original IBM PC,
   from start-up on; the `Cycles` option does the same from a GUI.
+- `-d`, `--download`: download Psion Chess and install its files in the
+  directory where the adapter looks for them (see
+  [data/README.md](data/README.md)), after showing its copyright status
+  and asking for confirmation. Needs `curl`, which Linux, macOS and
+  Windows 10 and later normally have. The download is only installed if
+  it is the known `psion213.zip`.
 - `-v`, `--version`: print the version of the adapter, e.g. `Psion Chess
   UCI adapter v1.18`, and exit. Built from a commit after a release tag,
   the version also has the number of commits since the tag and the commit,
@@ -306,6 +314,8 @@ Unpack the package and add Psion's files to its `data/` directory.
 | `psionmain.cpp` | `main()` and the headless video, mapper and joystick stubs. |
 | `psion.cpp` | Starting Psion, keyboard input, reading the game state, the UCI controller. |
 | `chess.cpp` | Logic that does not depend on the emulator (move derivation, UCI parsing, time allocation, syncing). Unit tested. |
+| `psionfiles.cpp` | Checking Psion's files against their SHA-256 before they are run; unzipping. Unit tested. |
+| `download.cpp` | `psion -d`: downloading and installing Psion's files. |
 | `ocr.cpp` | Reading text and pieces from the screen. |
 | `memscan.cpp` | A tool that locates Psion's board in memory (see below). |
 
@@ -601,6 +611,7 @@ Environment variables for experiments:
 | Variable | Effect |
 |---|---|
 | `PSION_DIR` | Directory with Psion's files. |
+| `PSION_ZIP_URL` | Where `-d` gets `psion213.zip`, e.g. a `file://` URL (CI uses its cached copy). |
 | `PSION_TWOPLAYER` | Stay in 2-player mode: moves for both sides from stdin. |
 | `PSION_MEMSCAN` | Locate the board in memory by correlating memory snapshots with the board on screen. |
 | `PSION_MEMDUMP` | Directory to write memory snapshots to (with `PSION_MEMSCAN`). |

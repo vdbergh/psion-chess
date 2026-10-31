@@ -20,6 +20,7 @@
 #include "ocr.h"
 #include "memscan.h"
 #include "chess.h"
+#include "psionfiles.h"
 #include "mem.h"
 #include "regs.h"
 #include "cpu.h"
@@ -274,32 +275,6 @@ namespace psion {
         keyboard_buffer.SendKey(KBD_enter);
     }
 
-    // The directory with Psion's files: $PSION_DIR, or "data" next to
-    // the executable.
-    static std::string data_dir() {
-        const char *env = getenv("PSION_DIR");
-        char exe[4096];
-        if (env) {
-            return env;
-        }
-#ifdef _WIN32
-        DWORD n = GetModuleFileNameA(NULL, exe, sizeof(exe));
-        if (n == 0 || n >= sizeof(exe)) {
-            return "data";
-        }
-        std::string path(exe, n);
-        return path.substr(0, path.find_last_of("\\/")) + "\\data";
-#else
-        ssize_t n = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
-        if (n <= 0) {
-            return "data";
-        }
-        exe[n] = 0;
-        std::string path(exe);
-        return path.substr(0, path.rfind('/')) + "/data";
-#endif
-    }
-
     // Whether dir contains Chess.exe (in any case on Linux).
     static bool has_psion_files(const std::string &dir) {
         static const char *names[] = {"Chess.exe", "CHESS.EXE", "chess.exe"};
@@ -317,13 +292,23 @@ namespace psion {
     bool Psion_Init(DOS_Shell *d) {
         char input_line[CMD_MAXLINE] = {0};
         char args[] = ""; // Chess.exe's command line
-        std::string dir = data_dir();
+        std::string dir = PsionDataDir();
         if (!has_psion_files(dir)) {
             fprintf(
                 stderr,
                 "Psion Chess (Chess.exe etc.) not found in %s.\n"
-                "See data/README.md for where to get it, or set PSION_DIR.\n",
+                "Run \"psion -d\" to download it, or see data/README.md.\n",
                 dir.c_str());
+            exit(1);
+        }
+        // Only the known files: the emulator is old, and a changed
+        // download could hold a program that breaks out of it.
+        std::string error;
+        if (!CheckFiles(dir, PSION_FILES, PSION_FILE_COUNT, error)) {
+            fprintf(stderr,
+                    "Psion Chess in %s is not the version from "
+                    "psion213.zip:\n%sSee data/README.md. Not running it.\n",
+                    dir.c_str(), error.c_str());
             exit(1);
         }
         init_ocr();
