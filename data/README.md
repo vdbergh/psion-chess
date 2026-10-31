@@ -24,9 +24,9 @@ should then contain:
 The case of the file names does not matter.
 
 To avoid running unverified software, the adapter checks that each file
-has the SHA-256 below (from `psion213.zip`) before running Psion, and
-refuses to run it if one is missing or different. To check a download by
-hand, run `sha256sum *` in this directory:
+has the SHA-256 below before running Psion, and refuses to run it if one
+is missing or different. To check a download by hand, run `sha256sum *`
+in this directory:
 
     df1691734fe9f1082bca3f5513380807104aa4cc9b68ae97ce2bbff74221660c  Chess.exe
     238a2f23bb9ad36c9b3bc620b91b127899fd7b8a5ef299db1786e482cac67e6a  Chess1.ovl
