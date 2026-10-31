@@ -523,6 +523,24 @@ class UciTest(unittest.TestCase):
         line, _ = e.expect('bestmove', 30)
         self.assertNotEqual(line, 'bestmove 0000')
 
+    def test_draw_during_entry(self):
+        # Psion ends the game at the threefold repetition (ply 8) and takes
+        # no more moves: reported as soon as it shows DRAW, not after the
+        # retries (20 s).
+        e = self.engine
+        start = time.time()
+        e.send('position startpos moves ' + 'g1f3 b8c6 f3g1 c6b8 ' * 4)
+        e.send('go movetime 500')
+        line, before = e.expect('bestmove', 30)
+        self.assertEqual(line, 'bestmove 0000')
+        self.assertIn('info string Psion does not accept g1f3: game over '
+                      '(Psion shows DRAW)', before)
+        self.assertLess(time.time() - start, 10)
+        e.send('position startpos moves e2e4')
+        e.send('go movetime 300')
+        line, _ = e.expect('bestmove', 30)
+        self.assertNotEqual(line, 'bestmove 0000')
+
     def fen_search(self, fen, timeout=30):
         """Set up the FEN position, search; return the move and the lines
         before it."""

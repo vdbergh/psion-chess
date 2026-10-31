@@ -600,8 +600,11 @@ How the engine handles what the UCI protocol leaves open or forbids:
   Illegal move a2a4` (with `(checkmate)` or `(stalemate)` if the game
   was already over before it), one that cannot be set up with `info
   string Invalid FEN`, `info string Psion does not accept e1g1` or `info
-  string Cannot set up the position`. A `go` in such a position is
-  answered with `bestmove 0000`.
+  string Cannot set up the position`. Psion ends a game at a threefold
+  repetition (or by the fifty-move rule) and then takes no more moves:
+  moves after that are reported as soon as Psion shows the result, e.g.
+  `info string Psion does not accept g1f3: game over (Psion shows
+  DRAW)`. A `go` in such a position is answered with `bestmove 0000`.
 
 ## Other modes and tools
 

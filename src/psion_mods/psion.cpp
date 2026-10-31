@@ -1780,12 +1780,26 @@ namespace psion {
                 start_target_game();
                 return;
             }
+            if (moves.size() < uci.target.size() && game_over_shown()) {
+                // Psion ends the game e.g. at a threefold repetition and
+                // takes no more moves: no use waiting for the timeouts.
+                uci_send("info string Psion does not accept %s: game over "
+                         "(Psion shows %s)\n",
+                         uci.target[moves.size()].c_str(),
+                         game_over_result().c_str());
+                uci.unsupported = true;
+                uci.inflight = false;
+                return;
+            }
             if (uci.inflight) {
                 if (moves.size() != uci.inflight_size) {
                     uci.inflight = false;
                     uci.retries = 0;
                 } else if (illegal_move_seen ||
                            now - uci.inflight_since > MOVE_TIMEOUT_MS) {
+                    say("Psion did not play %s; it shows \"%s\"\n",
+                        uci.target[moves.size()].c_str(),
+                        screen_rows[20].c_str());
                     uci.inflight = false;
                     if (++uci.retries > MAX_RETRIES) {
                         uci_send("info string Psion does not accept %s\n",
