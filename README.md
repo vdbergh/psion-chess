@@ -34,7 +34,7 @@ installs them (see [data/README.md](data/README.md)). Then use `./psion`
     id author Richard Lang
     option name Ponder type check default false
     option name Move Overhead type spin default 30 min 0 max 5000
-    option name Cycles type string default max
+    option name Cycles type string default highest
     option name UCI_LimitStrength type check default false
     option name UCI_Elo type spin default 1400 min 1150 max 1650
     uciok
@@ -89,9 +89,10 @@ How the engine handles the gray areas of the protocol is described under
   of 30 ms covers the engine's own part, measured on an unloaded
   i5-1135G7. Increase `Move Overhead` if the engine loses on time, for
   example when playing fast games over a slow network.
-- `Cycles` (default `max`): the speed of the emulated PC, `max` for as
-  fast as the host allows or a fixed number of instructions per
-  millisecond, e.g. `300` for roughly an original IBM PC (see
+- `Cycles` (default `highest`): the speed of the emulated PC, `highest`
+  for as fast as the host allows (`max` is also accepted, but GUIs do not
+  show it as the default, since `max` is a keyword in UCI's option line)
+  or a fixed number of instructions per millisecond, e.g. `300` for roughly an original IBM PC (see
   [Speed](#speed)); at most 1,000,000. Values above what the host can do
   give its full speed. The speed applies only while Psion searches:
   setting up the position and entering moves run at full speed, so a
@@ -250,11 +251,11 @@ Against micro-Max, 48.5% of the moves pondered on were played.
   | 16,000 cycles | TSCP and Sargon | 20.0% and 79.0% | 1392 | ± 40 |
   | 100,000 cycles | TSCP | 43.3% | 1580 | ± 50 |
   | 187,000 cycles set, about 120,000 reached\* | TSCP | 52.7% (295 games) | 1646 | ± 50 |
-  | `max` (the micro-Max match above) | micro-Max | 29.2% | 1707 | ± 55 |
+  | `highest` (the micro-Max match above) | micro-Max | 29.2% | 1707 | ± 55 |
 
   A line through the first three gives Elo = 1597 + 86 × log2(cycles /
   100,000), which `UCI_Elo` uses; the other two fit it within their
-  errors (`max` is about 190,000 to 230,000 cycles here).
+  errors (`highest` is about 190,000 to 230,000 cycles here).
 
   \* With four games at a time the i5-1135G7 could not keep up with
   187,000 cycles in long searches: the search depth reached corresponds

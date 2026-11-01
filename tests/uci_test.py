@@ -237,17 +237,18 @@ class UciTest(unittest.TestCase):
             e.ready()
 
     def test_cycles(self):
-        """The Cycles option slows the emulated PC down, and max restores
-        its full speed: in the same time the search gets less deep."""
+        """The Cycles option slows the emulated PC down, and highest (or max,
+        as before) restores its full speed: in the same time the search gets
+        less deep."""
         e = Engine()
         try:
             e.send('uci')
             _, before = e.expect('uciok', 10)
-            self.assertIn('option name Cycles type string default max', before)
+            self.assertIn('option name Cycles type string default highest', before)
             for bad in ('0', 'fast', '1000001'):
                 e.send('setoption name Cycles value ' + bad)
                 line, _ = e.expect('info string', 5)
-                self.assertIn('Cycles must be max or 1 to 1000000', line)
+                self.assertIn('Cycles must be highest or 1 to 1000000', line)
             moves = ['a2a3', 'h7h6', 'h2h3', 'a7a6']   # out of book
 
             def depth(cycles):
@@ -260,7 +261,7 @@ class UciTest(unittest.TestCase):
                 return max([int(l.split()[2]) for l in before
                             if l.startswith('info depth ')] or [0])
 
-            fast = depth('max')
+            fast = depth('highest')
             slow = depth('3000')   # 300 (an IBM PC) would make the test slow
             again = depth('Max')
             self.assertGreater(fast, slow)

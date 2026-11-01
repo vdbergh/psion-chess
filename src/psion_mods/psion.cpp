@@ -993,7 +993,7 @@ namespace psion {
     const unsigned int DEFAULT_MOVE_OVERHEAD_MS = 30;
     const unsigned int MAX_MOVE_OVERHEAD_MS = 5000;
     static unsigned int move_overhead_ms = DEFAULT_MOVE_OVERHEAD_MS;
-    // The "Cycles" option: "max" (as fast as the host allows) or a fixed
+    // The "Cycles" option: "highest" (as fast as the host allows) or a fixed
     // number of emulated instructions per millisecond, as with --cycles.
     // (DOSBox's "cycles=max limit N" does not work here: its auto-adjust
     // then lowers the cycles far below N and does not raise them again.)
@@ -1001,7 +1001,7 @@ namespace psion {
     // down; far higher ones (10 million) also hide the analysis.
     const unsigned int MAX_CYCLES = 1000000;
 
-    // The speed of the emulated PC (0 for "max"). A fixed speed applies
+    // The speed of the emulated PC (0 for "highest"). A fixed speed applies
     // only from the 'c' that starts a search until MOVE-NOW: setting up
     // positions, entering moves and taking back run at full speed. (The
     // screen shows the search too late: it would run partly at full
@@ -1050,7 +1050,7 @@ namespace psion {
     // applies again.
     static bool limit_strength = false;
     static int uci_elo = DEFAULT_ELO;
-    static unsigned int base_cycles = 0; // 0 for "max"
+    static unsigned int base_cycles = 0; // 0 for "highest"
 
     // In UCI mode: the speed of --cycles becomes the search speed.
     static void init_speed() {
@@ -1068,7 +1068,7 @@ namespace psion {
         if (search_cycles) {
             say("Cycles: %u per ms while searching\n", search_cycles);
         } else {
-            say("Cycles: max\n");
+            say("Cycles: highest\n");
         }
         if (search_speed_on) {
             dosbox_cycles(search_cycles);
@@ -1366,7 +1366,9 @@ namespace psion {
             uci_send("option name Move Overhead type spin default %u min 0 "
                      "max %u\n",
                      DEFAULT_MOVE_OVERHEAD_MS, MAX_MOVE_OVERHEAD_MS);
-            uci_send("option name Cycles type string default max\n");
+            // Not "max", a keyword of the option command: GUIs would read an
+            // empty default.
+            uci_send("option name Cycles type string default highest\n");
             uci_send("option name UCI_LimitStrength type check default false\n");
             uci_send("option name UCI_Elo type spin default %d min %d max %d\n",
                      DEFAULT_ELO, MIN_ELO, MAX_ELO);
@@ -1454,12 +1456,14 @@ namespace psion {
             } else if (SameOptionName(name, "Cycles")) {
                 char *end;
                 long v = strtol(value.c_str(), &end, 10);
-                if (SameOptionName(value, "max")) {
+                // "max" as before v1.26.
+                if (SameOptionName(value, "highest") ||
+                    SameOptionName(value, "max")) {
                     base_cycles = 0;
                     apply_speed();
                 } else if (value.empty() || *end || v < 1 ||
                            v > (long)MAX_CYCLES) {
-                    uci_send("info string Cycles must be max or 1 to %u\n",
+                    uci_send("info string Cycles must be highest or 1 to %u\n",
                              MAX_CYCLES);
                 } else {
                     base_cycles = (unsigned int)v;
