@@ -1,32 +1,39 @@
 # Psion Chess files
 
-Psion Chess itself is not part of this repository. The simplest way to
-install it is
+Psion Chess itself is not part of this repository. Richard Lang, who wrote the chess
+engine, allows his part to be distributed freely, but nobody could give
+permission for Psion's part (the graphics and input/output). See the
+Licence section of the main README.
+
+The simplest way to make Psion Chess available to the adapter is
 
     ./psion -d
 
-(`psion.exe -d` on Windows). This shows its copyright status, asks for
-confirmation, then downloads `psion213.zip` from Classic DOS Games with
-`curl`, checks it and installs its files here (or in `$PSION_DIR`).
+(`psion.exe -d` on Windows). This displays its copyright status and,
+after asking for confirmation, uses `curl` to download `psion213.zip` from Classic DOS Games.
+It unpacks the archive in this directory (or in `$PSION_DIR`, see below) and verifies
+the files (see below).
 
-To install it by hand, download it for example from Classic DOS Games:
+To install Psion Chess by hand, download `psion213.zip`, for example from Classic DOS Games:
 
 https://www.classicdosgames.com/game/Psion_Chess.html
 
-(the file `psion213.zip`) and unzip it into this directory, so that
-`Chess.exe` is directly in `data/` (not in a subdirectory). The directory
+and unzip it into this directory. The directory
 should then contain:
 
     Chess.exe   Chess.hlp   Psion.grt   Verm2.13
     Chess1.ovl  Chess2.ovl  Chess3.ovl  Chess4.ovl
     Chess5.ovl  Chess6.ovl  Chess7.ovl
 
-The case of the file names does not matter.
+The case of the file names does not matter. Note that `Verm2.13` is in fact empty.
 
-To avoid running unverified software, the adapter checks that each file
-has the SHA-256 below before running Psion, and refuses to run it if one
-is missing or different. To check a download by hand, run `sha256sum *`
-in this directory:
+
+To install the files elsewhere, point the environment variable `PSION_DIR`
+to their directory.
+
+Even though the risk is very low, as dosbox acts as a sandbox, the adapter explicitly avoids running
+unverified software: before emulating Psion Chess it always
+checks that each file has the correct SHA-256, as given below.
 
     df1691734fe9f1082bca3f5513380807104aa4cc9b68ae97ce2bbff74221660c  Chess.exe
     238a2f23bb9ad36c9b3bc620b91b127899fd7b8a5ef299db1786e482cac67e6a  Chess1.ovl
@@ -40,12 +47,4 @@ in this directory:
     f48970a275d44dce41fe39a779d1e71e66880ec36f1ddcddccf1997dfe6e5b1c  Psion.grt
     e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  Verm2.13
 
-(`Verm2.13` is empty.)
-
-To install the files elsewhere, point the environment variable `PSION_DIR`
-to their directory.
-
-Why the files are not included: Richard Lang, who wrote the chess
-engine, allows his part to be distributed freely, but nobody could give
-permission for Psion's part (the graphics and input/output). See the
-Licence section of the main README.
+To check a download by hand, run `sha256sum *` in this directory.
