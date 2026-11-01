@@ -136,10 +136,13 @@ How the engine handles the gray areas of the protocol is described under
   70 ms per move on an i5-1135G7. This time is taken from the engine's
   own clock, so very fast time controls leave little time for thinking
   (see [Time allocation](#time-allocation)).
-- There have been instances where Psion apparently incorrectly announced
-  a draw, resulting in a refusal to play on (the adapter replies
-  `bestmove 0000` in this case, preceded by an appropriate diagnostic
-  message). This is being investigated.
+- Psion ends the game itself at a threefold repetition (and by the
+  fifty-move rule) and then refuses to play on. A GUI that continues
+  after a threefold repetition gets `bestmove 0000`, after `info string
+  Game over (Psion shows DRAW)` (see [Quirks](#quirks)).
+- Psion does not recognise insufficient material: it plays on with bare
+  kings, and scores a lone bishop or knight against a bare king as about
+  three pawns up. GUIs end such games themselves.
 
 ### Speed
 
