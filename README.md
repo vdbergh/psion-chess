@@ -14,7 +14,8 @@ emulated machine's memory and plays moves by pressing keys, as a user would.
 Psion Chess is currently playing online at Lichess as
 [psion-chess](https://lichess.org/@/psion-chess). It can be challenged at
 [https://lichess.org/?user=psion-chess#friend](https://lichess.org/?user=psion-chess#friend)
-(no account needed).
+(no account needed). Alternatively you can observe it playing at
+[https://lichess.org/@/psion-chess/tv](https://lichess.org/@/psion-chess/tv).
 
 ## Running
 
