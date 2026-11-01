@@ -19,12 +19,12 @@ Psion Chess is currently playing online at Lichess as
 
 ## Running
 
+### Quick start
+
 Download a [prebuilt executable](#prebuilt-executables) or
-[build](#building) one, and add Psion's files: `./psion -d` downloads and
+[build](#building) one, and add Psion's files: `./psion -d` downloads, verifies and
 installs them (see [data/README.md](data/README.md)). Then use `./psion`
-(`psion.exe` on Windows) as the engine command in your GUI. The adapter checks the
-SHA-256 of each of Psion's files first, and does not run Psion if one
-is missing or differs from the original download.
+(`psion.exe` on Windows) as the engine command in your GUI.
 
 ### Sample GUI engine dialog
 
