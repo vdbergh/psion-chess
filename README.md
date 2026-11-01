@@ -96,8 +96,8 @@ How the engine handles the gray areas of the protocol is described under
   about 30 ms, on an i5-1135G7).
 - `UCI_LimitStrength` (default false) and `UCI_Elo` (1150 to 1650,
   default 1400): play at a given strength on the CCRL Blitz scale, by
-  running the emulated PC at a fixed speed: about 2,400 cycles for 1150,
-  100,000 for 1614 and 134,000 for 1650 (86 Elo per doubling; see
+  running the emulated PC at a fixed speed: about 2,700 cycles for 1150,
+  100,000 for 1597 and 153,000 for 1650 (86 Elo per doubling; see
   [Strength](#strength)). This overrides `Cycles`; switched off, the
   `Cycles` speed applies again. The scale was measured at 2'+1"; at other
   time controls the strength differs somewhat. A host too slow for the
@@ -234,29 +234,36 @@ Against micro-Max, 48.5% of the moves pondered on were played.
   CCRL Blitz list, TSCP 1.83b (1611) and Sargon 1978 1.01b (1167), at
   120+1 with `8moves_v3.pgn`, 300 games per match, four at a time. CCRL
   plays on an i7-4770K and scales the time control to each tester's
-  machine by Stockfish 10's `bench`; here that gives about 2.1 million
-  nodes per second (four at a time) against an estimated 1.6 million on
-  the 4770K, so the opponents had about 1.3 times their CCRL time, worth
-  some 25 Elo, and their ratings are raised by that much. Psion at a
-  fixed speed does not depend on the host, as long as the host keeps up.
-  Rated with Ordo, with TSCP, Sargon and micro-Max as loose anchors
-  (± 21):
+  machine by Stockfish 10's `bench`\*\*; here it gives about 2.1 million
+  nodes per second (four at a time) against 1.92 million on the 4770K, so
+  the opponents had about 1.1 times their CCRL time, worth some 8 Elo, and
+  their ratings are raised by that much. Psion at a fixed speed does not
+  depend on the host, as long as the host keeps up. Rated with Ordo,
+  with TSCP, Sargon and micro-Max as loose anchors (± 21):
 
   | Psion | Opponent | Score | Rating | Error |
   |---|---|---|---|---|
-  | 2,500 cycles | Sargon | 43.5% | 1139 | ± 51 |
-  | 16,000 cycles | TSCP and Sargon | 20.0% and 79.0% | 1409 | ± 40 |
-  | 100,000 cycles | TSCP | 43.3% | 1597 | ± 50 |
-  | 187,000 cycles set, about 120,000 reached\* | TSCP | 52.7% (295 games) | 1663 | ± 50 |
-  | `max` (the micro-Max match above) | micro-Max | 29.2% | 1723 | ± 55 |
+  | 2,500 cycles | Sargon | 43.5% | 1122 | ± 51 |
+  | 16,000 cycles | TSCP and Sargon | 20.0% and 79.0% | 1392 | ± 40 |
+  | 100,000 cycles | TSCP | 43.3% | 1580 | ± 50 |
+  | 187,000 cycles set, about 120,000 reached\* | TSCP | 52.7% (295 games) | 1646 | ± 50 |
+  | `max` (the micro-Max match above) | micro-Max | 29.2% | 1707 | ± 55 |
 
-  A line through the first three gives Elo = 1614 + 86 × log2(cycles /
+  A line through the first three gives Elo = 1597 + 86 × log2(cycles /
   100,000), which `UCI_Elo` uses; the other two fit it within their
   errors (`max` is about 190,000 to 230,000 cycles here).
 
   \* With four games at a time the i5-1135G7 could not keep up with
   187,000 cycles in long searches: the search depth reached corresponds
   to about 120,000. It does keep up with 100,000.
+
+  \*\* The reference: Stockfish 10's `bench` without arguments (16 MB
+  hash, 1 thread, depth 13, the built-in positions) takes 2,054 ms for
+  3,939,338 nodes on the i7-4770K. A time control is scaled by the bench
+  time on one's own machine divided by 2,054 ms (40/15 becomes 40 in
+  15 minutes times that factor), with the bench run under the same load
+  as the games, e.g. four at a time. From CCRL's announcement "Modernising
+  Our Lists Stage 2" (January 2020).
 - Psion has no transposition table: during a search only about 4 KB of
   memory changes, in small areas such as move lists, and nothing that
   fills up as the search proceeds. Every search starts afresh, which

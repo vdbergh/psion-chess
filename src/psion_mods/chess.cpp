@@ -572,10 +572,10 @@ namespace psion {
     unsigned int EloCycles(int elo) {
         // Fitted to matches at 120+1 at 2500, 16000 and 100000 cycles
         // against TSCP 1.83b and Sargon 1978 1.01b, anchored at their CCRL
-        // Blitz ratings (raised by 25 for the i5-1135G7 against CCRL's
-        // i7-4770K): 86 Elo per doubling, 1614 at 100000 cycles.
+        // Blitz ratings (raised by 8 for the i5-1135G7 against CCRL's
+        // i7-4770K): 86 Elo per doubling, 1597 at 100000 cycles.
         elo = std::min(std::max(elo, MIN_ELO), MAX_ELO);
-        return (unsigned int)(100000 * pow(2, (elo - 1614) / 86.0) + 0.5);
+        return (unsigned int)(100000 * pow(2, (elo - 1597) / 86.0) + 0.5);
     }
 
     bool ParseSetOption(const std::vector<std::string> &tokens,

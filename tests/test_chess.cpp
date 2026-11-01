@@ -540,11 +540,11 @@ static void test_think_time(){
 }
 
 static void test_elo_cycles(){
-    CHECK_EQ(EloCycles(1614),100000u);
-    CHECK_EQ(EloCycles(1614-86),50000u);
+    CHECK_EQ(EloCycles(1597),100000u);
+    CHECK_EQ(EloCycles(1597-86),50000u);
     // the range
-    CHECK_EQ(EloCycles(MIN_ELO),2376u);
-    CHECK_EQ(EloCycles(MAX_ELO),133663u);
+    CHECK_EQ(EloCycles(MIN_ELO),2725u);
+    CHECK_EQ(EloCycles(MAX_ELO),153292u);
     CHECK_EQ(EloCycles(0),EloCycles(MIN_ELO));
     CHECK_EQ(EloCycles(3000),EloCycles(MAX_ELO));
     // increasing
