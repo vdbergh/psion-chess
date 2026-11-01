@@ -705,6 +705,7 @@ namespace psion {
     static StartPosition setup_start;
     static bool in_setup_mode();
     static bool game_over_shown();
+    static void search_speed(bool on);
 
     // Track the game through Psion's memory. Returns true and sets move
     // when a new move has been played.
@@ -721,6 +722,13 @@ namespace psion {
             return false;
         }
         settled = have_known && same_state(cur, known);
+        // Psion's board does not change during a search, so a change means
+        // Psion has started to play its move: at full speed, as after M, so
+        // that the states it passes through are as short as then.
+        if (game_state.thinking && have_known &&
+            memcmp(cur.board, known.board, sizeof(cur.board)) != 0) {
+            search_speed(false);
+        }
         if (!have_pending || !same_state(cur, pending)) {
             pending = cur;
             pending_since = GetTicks();
