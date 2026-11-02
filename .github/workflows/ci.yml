@@ -146,8 +146,9 @@ jobs:
 
   # Runs the Windows build on Windows: the unit tests, a start-up check
   # (without Psion's files the engine must report them missing), installing
-  # Psion's files with psion -d, then the UCI integration tests; on the oldest and the newest
-  # Windows that GitHub offers (Windows Server only).
+  # Psion's files with psion -d, the UCI integration tests, and a game
+  # start with a French (AZERTY) keyboard layout; on the oldest and the
+  # newest Windows that GitHub offers (Windows Server only).
   test-windows:
     needs: build-windows
     strategy:
@@ -205,6 +206,24 @@ jobs:
 
       - name: Integration tests
         run: $PYTHON -I source/tests/uci_test.py "$PACKAGE/psion.exe"
+
+      # DOSBox's keyboardlayout "auto" would load the DOS layout of the host
+      # keyboard on Windows, and Psion would get other keys than the ones
+      # pressed. Windows PowerShell: on Windows Server 2022, PowerShell 7
+      # cannot pass the language list to Set-WinUserLanguageList.
+      - name: Switch to a French keyboard layout
+        shell: powershell
+        run: |
+          Set-WinUserLanguageList -LanguageList fr-FR -Force
+          Set-ItemProperty -Path 'HKCU:\Keyboard Layout\Preload' -Name 1 -Value '0000040C'
+
+      - name: Play with the French keyboard layout
+        run: |
+          (echo uci; echo isready; sleep 3; echo "position startpos moves e2e4"
+           echo "go movetime 1000"; sleep 15; echo quit) |
+            "$PACKAGE/psion.exe" 2>/dev/null | tee azerty.txt
+          if grep -q "info string" azerty.txt; then exit 1; fi
+          grep -q "bestmove [a-h][1-8][a-h][1-8]" azerty.txt
 
       - uses: actions/upload-artifact@v4
         if: failure()

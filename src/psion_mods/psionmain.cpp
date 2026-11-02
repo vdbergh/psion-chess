@@ -189,6 +189,10 @@ int main(int argc, char *argv[]) {
     Config myconf(&com_line);
     control = &myconf;
     DOSBOX_Init();
+    // The adapter presses keys by their US scan codes. On Windows the
+    // default "auto" would load the DOS layout of the host keyboard (e.g.
+    // AZERTY), and Psion would get other keys than the ones pressed.
+    control->GetSection("dosbox")->HandleInputline("keyboardlayout=none");
     if (cycles) {
         char line[32];
         snprintf(line, sizeof(line), "cycles=%d", cycles);
