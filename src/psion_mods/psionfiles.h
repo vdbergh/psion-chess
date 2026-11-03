@@ -26,9 +26,15 @@ namespace psion {
         uint64_t total;
     };
 
-    // The directory with Psion's files: $PSION_DIR, or "data" next to
-    // the executable.
+    // The directory with Psion's files: $PSION_DIR, or "data" next to the
+    // executable (as in the build tree and the packages). If the latter
+    // does not exist, the directory of "make install", PSION_DATADIR, if
+    // compiled in.
     std::string PsionDataDir();
+
+    // Where psion -d installs them: $PSION_DIR, or "data" next to the
+    // executable. ("make install" sets PSION_DIR to PSION_DATADIR.)
+    std::string PsionInstallDir();
 
     // Where psion -d downloads Psion's files from, and the SHA-256 of that
     // zip file.

@@ -81,7 +81,7 @@ namespace psion {
     }
 
     int DownloadPsionFiles() {
-        std::string dir = PsionDataDir(), error;
+        std::string dir = PsionInstallDir(), error;
         std::vector<std::string> existing;
         std::vector<unsigned char> zip;
         std::vector<std::vector<unsigned char> > contents(PSION_FILE_COUNT);

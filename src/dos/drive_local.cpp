@@ -116,13 +116,13 @@ bool localDrive::FileOpen(DOS_File * * file,char * name,Bit32u flags) {
 //	Bit32u err=errno;
 	if (!hand) { 
 		if((flags&0xf) != OPEN_READ) {
-			FILE * hmm=fopen(newname,"rb");
-			if (hmm) {
-				fclose(hmm);
-				LOG_MSG("Warning: file %s exists and failed to open in write mode.\nPlease Remove write-protection",newname);
-			}
+			// Psion: a write-protected file (e.g. installed by root) is
+			// opened read-only; writes to it then fail with access denied.
+			// Psion only reads its files, but opens them for writing.
+			hand=fopen(newname,"rb");
+			if (hand) flags=(flags&~0xf)|OPEN_READ;
 		}
-		return false;
+		if (!hand) return false;
 	}
 
 	*file=new localFile(name,hand);

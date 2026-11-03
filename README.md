@@ -208,6 +208,15 @@ for where to download it.
     make check      # unit tests (a second)
     make integration  # UCI tests against ./psion (about two minutes)
 
+To install, run `sudo make install`. This first offers to download
+Psion's files to `/usr/local/share/psion-chess` (as `psion -d` does; if you
+decline, nothing is installed), and then installs `psion` in
+`/usr/local/bin` and the documentation in `/usr/local/share/doc/psion-chess`.
+`PREFIX` installs elsewhere, e.g. `make install PREFIX=~/.local` without
+`sudo`; it is compiled in, so the program finds Psion's files there. With
+`DESTDIR`, e.g. for a package, Psion's files are not downloaded.
+`make uninstall` (with the same `PREFIX`) removes it all again.
+
 ### Windows
 
 The Windows version is cross-compiled on Linux with MinGW-w64 (package

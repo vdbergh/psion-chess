@@ -294,11 +294,8 @@ namespace psion {
         char args[] = ""; // Chess.exe's command line
         std::string dir = PsionDataDir();
         if (!has_psion_files(dir)) {
-            fprintf(
-                stderr,
-                "Psion Chess (Chess.exe etc.) not found in %s.\n"
-                "Run \"psion -d\" to download it, or see data/README.md.\n",
-                dir.c_str());
+            fprintf(stderr, "Psion Chess (Chess.exe etc.) not found. Run "
+                            "psion -d to download it or see data/README.md.\n");
             exit(1);
         }
         // Only the known files, to avoid running unverified software.

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
 #ifdef _WIN32
@@ -140,12 +141,9 @@ namespace psion {
         return sha.HexDigest();
     }
 
-    std::string PsionDataDir() {
-        const char *env = getenv("PSION_DIR");
+    // "data" next to the executable.
+    static std::string exe_data_dir() {
         char exe[4096];
-        if (env) {
-            return env;
-        }
 #ifdef _WIN32
         DWORD n = GetModuleFileNameA(NULL, exe, sizeof(exe));
         if (n == 0 || n >= sizeof(exe)) {
@@ -162,6 +160,25 @@ namespace psion {
         std::string path(exe);
         return path.substr(0, path.rfind('/')) + "/data";
 #endif
+    }
+
+    std::string PsionInstallDir() {
+        const char *env = getenv("PSION_DIR");
+        return env ? env : exe_data_dir();
+    }
+
+    std::string PsionDataDir() {
+        std::string dir = PsionInstallDir();
+#ifdef PSION_DATADIR
+        if (getenv("PSION_DIR")) {
+            return dir;
+        }
+        struct stat st;
+        if (stat(dir.c_str(), &st) != 0 || !S_ISDIR(st.st_mode)) {
+            return PSION_DATADIR;
+        }
+#endif
+        return dir;
     }
 
     static bool same_name(const char *a, const char *b) {

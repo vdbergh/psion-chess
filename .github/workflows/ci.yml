@@ -44,6 +44,18 @@ jobs:
           cp docs/*.md "$name/docs/"
           tar czf "$name.tar.gz" "$name"
 
+      # Into a staging directory, as for a package: Psion's files are not
+      # downloaded there. Then into a prefix, declining the download: then
+      # nothing is installed.
+      - name: make install
+        run: |
+          make install DESTDIR="$PWD/stage" LDFLAGS=-static < /dev/null
+          test -x stage/usr/local/bin/psion
+          test -f stage/usr/local/share/doc/psion-chess/docs/strength.md
+          test -z "$(ls stage/usr/local/share/psion-chess)"
+          ! echo n | make install PREFIX="$RUNNER_TEMP/prefix" LDFLAGS=-static
+          test ! -e "$RUNNER_TEMP/prefix/bin"
+
       - uses: actions/upload-artifact@v4
         with:
           name: psion-chess-linux-x86_64
@@ -135,6 +147,8 @@ jobs:
         run: |
           echo y | PSION_ZIP_URL="file://$PWD/psion213.zip" "$PACKAGE/psion" -d
           echo y | "$PACKAGE/psion" -d | grep -q "already installed"
+          # Read-only, as for a normal user after "sudo make install".
+          chmod a-w "$PACKAGE"/data/*
 
       - name: Integration tests
         run: $PYTHON -I tests/uci_test.py "$PWD/$PACKAGE/psion"

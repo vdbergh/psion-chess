@@ -1183,6 +1183,42 @@ static std::string zip_dynamic(){
     return s;
 }
 
+static void set_psion_dir(const char *dir){
+#ifdef _WIN32
+    _putenv((std::string("PSION_DIR=")+(dir?dir:"")).c_str());
+#else
+    if(dir) setenv("PSION_DIR",dir,1); else unsetenv("PSION_DIR");
+#endif
+}
+
+// tests/Makefile compiles in PSION_DATADIR "/test/datadir"; the test
+// executable is in tests/, which has no data directory of its own.
+static void test_psion_data_dir(){
+    const char *saved=getenv("PSION_DIR");
+    std::string saved_dir=saved?saved:"";
+    set_psion_dir("some/dir");
+    CHECK_EQ(PsionDataDir(),"some/dir");
+    CHECK_EQ(PsionInstallDir(),"some/dir");
+    set_psion_dir(NULL);
+    CHECK_EQ(PsionDataDir(),"/test/datadir");
+#ifdef _WIN32
+    _mkdir("data");
+#else
+    mkdir("data",0700);
+#endif
+    CHECK_EQ(PsionDataDir(),PsionInstallDir());
+    rmdir("data");
+    std::string dir=PsionInstallDir();
+#ifdef _WIN32
+    const std::string suffix="\\tests\\data";
+#else
+    const std::string suffix="/tests/data";
+#endif
+    CHECK(dir.size()>suffix.size() &&
+	  dir.compare(dir.size()-suffix.size(),suffix.size(),suffix)==0);
+    set_psion_dir(saved?saved_dir.c_str():NULL);
+}
+
 static std::string zip_extract(const std::vector<unsigned char> &zip,
 			       const char *name, bool &ok, std::string &error){
     std::vector<unsigned char> data;
@@ -1274,6 +1310,7 @@ int main(){
     test_check_files();
     test_inflate();
     test_zip_extract();
+    test_psion_data_dir();
     printf("%d checks, %d failures\n",checks,failures);
     return failures?1:0;
 }

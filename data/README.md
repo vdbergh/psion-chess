@@ -31,6 +31,12 @@ The case of the file names does not matter. Note that `Verm2.13` is in fact empt
 To install the files elsewhere, point the environment variable `PSION_DIR`
 to their directory.
 
+A `psion` installed with `make install` looks for them in
+`/usr/local/share/psion-chess` (or `$PREFIX/share/psion-chess`), unless
+there is a `data` directory next to it. `psion -d` always installs in
+`data` next to the executable, unless `PSION_DIR` is set, as `make install`
+does: `PSION_DIR=/usr/local/share/psion-chess`.
+
 Even though the risk is very low, as dosbox acts as a sandbox, the adapter explicitly avoids running
 unverified software: before emulating Psion Chess it always
 checks that each file has the correct SHA-256, as given below.
