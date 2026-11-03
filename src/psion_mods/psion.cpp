@@ -1037,11 +1037,11 @@ namespace psion {
     // on: Psion has started a search; off: it is told to move, or done.
     static void search_speed(bool on) {
         if (on != search_speed_on) {
+            search_speed_on = on;
+            dosbox_cycles(on ? search_cycles : 0);
             say("Speed switch to %s at %d cycles (%s)\n",
                 on ? "search" : "full", (int)CPU_CycleMax,
                 CPU_CycleAutoAdjust ? "auto" : "fixed");
-            search_speed_on = on;
-            dosbox_cycles(on ? search_cycles : 0);
         }
     }
 
