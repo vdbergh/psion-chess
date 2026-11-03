@@ -89,21 +89,18 @@ How the engine handles the gray areas of the protocol is described under
   of 30 ms covers the engine's own part, measured on an unloaded
   i5-1135G7. Increase `Move Overhead` if the engine loses on time, for
   example when playing fast games over a slow network.
-- `Cycles` (default `highest`): the speed of the emulated PC, `highest`
-  for as fast as the host allows (`max` is also accepted, but GUIs do not
-  show it as the default, since `max` is a keyword in UCI's option line)
-  or a fixed number of instructions per millisecond, e.g. `300` for roughly an original IBM PC (see
-  [Speed](#speed)); at most 1,000,000. Values above what the host can do
-  give its full speed. The speed applies only while Psion searches:
-  setting up the position and entering moves run at full speed, so a
-  move costs about as much time as at full speed (40 to 75 ms, against
-  about 30 ms, on an i5-1135G7).
+- `Cycles` (default `highest`): the number of instructions per
+  millisecond (capped at 1,000,000) of the emulated PC, e.g. `300` for roughly an original IBM PC (see
+  [Speed](#speed)). The special value "`highest`" means running as fast as the host allows.
+   Values above what the host is capable of
+  also result in running at full speed. The `Cycles` option applies only while Psion searches:
+  other actions such as setting up the position and entering moves
+  are executed at full speed.
 - `UCI_LimitStrength` (default false) and `UCI_Elo` (1150 to 1650,
   default 1400): play at a given strength on the CCRL Blitz scale, by
-  running the emulated PC at reduced speed. This overrides `Cycles`;
-  switched off, the `Cycles` speed applies again. The scale was measured
-  at 2'+1"; at other time controls the strength differs somewhat. A host
-  too slow for the speed asked for plays weaker.
+  running the emulated PC at reduced speed. This overrides `Cycles`.
+  The scale was calibrated at the CCRL blitz time control 2'+1".
+  A host that is too slow for the requested speed will play weaker.
 
 ### Environment variables
 
