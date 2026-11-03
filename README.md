@@ -208,7 +208,8 @@ for where to download it.
     make check      # unit tests (a second)
     make integration  # UCI tests against ./psion (about two minutes)
 
-To install, run `sudo make install`. This first offers to download
+On Linux, `sudo make install` installs Psion Chess system wide (on
+Windows, `make install` is not available). It first offers to download
 Psion's files to `/usr/local/share/psion-chess` (as `psion -d` does; if you
 decline, nothing is installed), and then installs `psion` in
 `/usr/local/bin` and the documentation in `/usr/local/share/doc/psion-chess`.
