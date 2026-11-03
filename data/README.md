@@ -10,7 +10,8 @@ The simplest way to make Psion Chess available to the adapter is
     ./psion -d
 
 (`psion.exe -d` on Windows). This displays its copyright status and,
-after asking for confirmation, uses `curl` to download `psion213.zip` from Classic DOS Games.
+after asking for confirmation, uses `curl` to download `psion213.zip` from
+the preservation website Classic DOS Games.
 It unpacks the archive in this directory (or in `$PSION_DIR`, see below) and verifies
 the files (see below).
 
