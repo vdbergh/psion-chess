@@ -1191,8 +1191,8 @@ static void set_psion_dir(const char *dir){
 #endif
 }
 
-// tests/Makefile compiles in PSION_DATADIR "/test/datadir"; the test
-// executable is in tests/, which has no data directory of its own.
+// tests/Makefile compiles in PSION_DATADIR "/test/datadir". Run from the
+// directory of the test executable, which has no data directory of its own.
 static void test_psion_data_dir(){
     const char *saved=getenv("PSION_DIR");
     std::string saved_dir=saved?saved:"";
@@ -1210,9 +1210,9 @@ static void test_psion_data_dir(){
     rmdir("data");
     std::string dir=PsionInstallDir();
 #ifdef _WIN32
-    const std::string suffix="\\tests\\data";
+    const std::string suffix="\\data";
 #else
-    const std::string suffix="/tests/data";
+    const std::string suffix="/data";
 #endif
     CHECK(dir.size()>suffix.size() &&
 	  dir.compare(dir.size()-suffix.size(),suffix.size(),suffix)==0);
