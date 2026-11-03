@@ -228,10 +228,11 @@ Unpack the package and add Psion's files to its `data/` directory.
 
 ## Other modes and tools
 
-Without the `uci` command the program reads moves like `e2e4` from stdin,
-and Psion replies to them; with `--verbose` the diagnostics (the moves and
-the board after each move) then go to stdout. Moves typed while Psion
-thinks are played once it has moved; `quit` ends the program at once.
+Started with `--verbose` and without the `uci` command, the program
+reads moves like `e2e4` from stdin and Psion replies to them; the
+diagnostics (the moves and the board after each move) then go to
+stdout. Moves typed while Psion thinks are played once it has moved;
+`quit` ends the program at once.
 Environment variables for experiments:
 
 | Variable | Effect |
