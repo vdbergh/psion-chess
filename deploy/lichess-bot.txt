@@ -1,5 +1,5 @@
 # The lichess-bot version the Lichess bot (psion-chess) runs on the VPS.
 # Update both lines after upgrading lichess-bot there; the workflow
 # lichess-bot-update.yml compares them with upstream every day.
-version: 2026.11.2.1
-commit: 59313fc823d6d907d7aba1eb9fa8d9335623072e
+version: 2026.11.3.2
+commit: 35e2c3c878c74184bc163a2f7292d609da820f10
