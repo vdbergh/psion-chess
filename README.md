@@ -100,12 +100,10 @@ How the engine handles the gray areas of the protocol is described under
   about 30 ms, on an i5-1135G7).
 - `UCI_LimitStrength` (default false) and `UCI_Elo` (1150 to 1650,
   default 1400): play at a given strength on the CCRL Blitz scale, by
-  running the emulated PC at a fixed speed: about 2,700 cycles for 1150,
-  100,000 for 1597 and 153,000 for 1650 (86 Elo per doubling; see
-  [Strength](docs/strength.md)). This overrides `Cycles`; switched off, the
-  `Cycles` speed applies again. The scale was measured at 2'+1"; at other
-  time controls the strength differs somewhat. A host too slow for the
-  speed asked for plays weaker.
+  running the emulated PC at reduced speed. This overrides `Cycles`;
+  switched off, the `Cycles` speed applies again. The scale was measured
+  at 2'+1"; at other time controls the strength differs somewhat. A host
+  too slow for the speed asked for plays weaker.
 
 ### Limitations
 
@@ -177,9 +175,15 @@ management](docs/implementation.md#time-management).
 
 ### Strength
 
-Psion rates about 1700 on the CCRL Blitz scale, and gains about 90 Elo
-per doubling of the speed. The matches and rating lists are in
+Psion rates about 1700 on the CCRL Blitz scale, and gains about 60 Elo
+from pondering. The matches and rating lists are in
 [docs/strength.md](docs/strength.md).
+
+### Implementation
+
+How the adapter reads Psion's memory and screen, controls it with
+simulated keypresses and manages the time is described in
+[docs/implementation.md](docs/implementation.md).
 
 ## Building
 
@@ -221,12 +225,6 @@ push is built by GitHub Actions: the packages are on the run's page under
   and 2025.
 
 Unpack the package and add Psion's files to its `data/` directory.
-
-## Implementation
-
-How the adapter reads Psion's memory and screen, controls it with
-simulated keypresses and manages the time is described in
-[docs/implementation.md](docs/implementation.md).
 
 ## Other modes and tools
 
