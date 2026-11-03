@@ -37,10 +37,11 @@ jobs:
       - name: Package
         run: |
           name=psion-chess-linux-x86_64
-          mkdir -p "$name/data"
+          mkdir -p "$name/data" "$name/docs"
           cp psion README.md COPYING AUTHORS "$name/"
           strip "$name/psion"
           cp data/README.md "$name/data/"
+          cp docs/*.md "$name/docs/"
           tar czf "$name.tar.gz" "$name"
 
       - uses: actions/upload-artifact@v4
@@ -74,10 +75,11 @@ jobs:
       - name: Package
         run: |
           name=psion-chess-windows-x86
-          mkdir -p "$name/data"
+          mkdir -p "$name/data" "$name/docs"
           cp psion.exe README.md COPYING AUTHORS "$name/"
           i686-w64-mingw32-strip "$name/psion.exe"
           cp data/README.md "$name/data/"
+          cp docs/*.md "$name/docs/"
           zip -r "$name.zip" "$name"
           mkdir windows-tests
           cp -r "$name" tests/test_chess.exe windows-tests/
