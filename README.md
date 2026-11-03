@@ -185,6 +185,14 @@ How the adapter reads Psion's memory and screen, controls it with
 simulated keypresses and manages the time is described in
 [docs/implementation.md](docs/implementation.md).
 
+### Diagnostic mode
+
+Started with `--verbose` and without the `uci` command, the program
+reads moves like `e2e4` from stdin and Psion replies to them; the
+diagnostics (the moves and the board after each move) then go to
+stdout. Moves typed while Psion thinks are played once it has moved;
+`quit` ends the program at once.
+
 ## Building
 
 Requirements: Linux on x86-64, g++ and GNU make. No other libraries.
@@ -228,11 +236,6 @@ Unpack the package and add Psion's files to its `data/` directory.
 
 ## Other modes and tools
 
-Started with `--verbose` and without the `uci` command, the program
-reads moves like `e2e4` from stdin and Psion replies to them; the
-diagnostics (the moves and the board after each move) then go to
-stdout. Moves typed while Psion thinks are played once it has moved;
-`quit` ends the program at once.
 Environment variables for experiments:
 
 | Variable | Effect |
