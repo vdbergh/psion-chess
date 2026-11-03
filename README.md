@@ -107,10 +107,10 @@ How the engine handles the gray areas of the protocol is described under
 
 ### Environment variables
 
-| Variable | Effect |
+| Variable | Description |
 |---|---|
 | `PSION_DIR` | Directory with Psion's files. |
-| `PSION_ZIP_URL` | Where `-d` gets `psion213.zip`, e.g. a `file://` URL (CI uses its cached copy). |
+| `PSION_ZIP_URL` | URL pointing to `psion213.zip` for use with `-d`. |
 
 ### Limitations
 
