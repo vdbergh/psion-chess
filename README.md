@@ -189,8 +189,8 @@ from pondering. The matches and rating lists are in
 ### Implementation
 
 How the adapter reads Psion's memory and screen, controls it with
-simulated keypresses and manages the time is described in
-[docs/implementation.md](docs/implementation.md).
+simulated keypresses and manages the time, and the tools for experiments,
+are described in [docs/implementation.md](docs/implementation.md).
 
 ### Diagnostic mode
 
@@ -240,23 +240,6 @@ push is built by GitHub Actions: the packages are on the run's page under
   and 2025.
 
 Unpack the package and add Psion's files to its `data/` directory.
-
-## Other modes and tools
-
-Environment variables for experiments:
-
-| Variable | Effect |
-|---|---|
-| `PSION_TWOPLAYER` | Stay in 2-player mode: moves for both sides from stdin. |
-| `PSION_MEMSCAN` | Locate the board in memory by correlating memory snapshots with the board on screen. |
-| `PSION_MEMDUMP` | Directory to write memory snapshots to (with `PSION_MEMSCAN`). |
-
-`tools/find_state.py` searches such snapshots for side-to-move flags and
-counters; `tools/match.py` plays two engines against each other;
-`tools/lichess_check.py` checks the engine with python-chess, the way
-lichess-bot uses it. `tools/lichess-bot-update.sh`, run daily by the workflow
-`lichess-bot-update.yml`, opens an issue when upstream lichess-bot is
-newer than the version the Lichess bot runs (`deploy/lichess-bot.txt`).
 
 ## Licence
 

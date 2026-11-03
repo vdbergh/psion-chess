@@ -10,7 +10,7 @@
 | `psionfiles.cpp` | Checking Psion's files against their SHA-256 before they are run; unzipping. Unit tested. |
 | `download.cpp` | `psion -d`: downloading and installing Psion's files. |
 | `ocr.cpp` | Reading text and pieces from the screen. |
-| `memscan.cpp` | A tool that locates Psion's board in memory (see [Other modes and tools](../README.md#other-modes-and-tools)). |
+| `memscan.cpp` | A tool that locates Psion's board in memory (see [Other modes and tools](#other-modes-and-tools)). |
 
 The adapter never modifies Psion or its memory. It gets its data in two
 ways:
@@ -298,3 +298,20 @@ How the engine handles what the UCI protocol leaves open or forbids:
   moves after that are reported as soon as Psion shows the result, e.g.
   `info string Psion does not accept g1f3: game over (Psion shows
   DRAW)`. A `go` in such a position is answered with `bestmove 0000`.
+
+## Other modes and tools
+
+Environment variables for experiments:
+
+| Variable | Effect |
+|---|---|
+| `PSION_TWOPLAYER` | Stay in 2-player mode: moves for both sides from stdin. |
+| `PSION_MEMSCAN` | Locate the board in memory by correlating memory snapshots with the board on screen. |
+| `PSION_MEMDUMP` | Directory to write memory snapshots to (with `PSION_MEMSCAN`). |
+
+`tools/find_state.py` searches such snapshots for side-to-move flags and
+counters; `tools/match.py` plays two engines against each other;
+`tools/lichess_check.py` checks the engine with python-chess, the way
+lichess-bot uses it. `tools/lichess-bot-update.sh`, run daily by the workflow
+`lichess-bot-update.yml`, opens an issue when upstream lichess-bot is
+newer than the version the Lichess bot runs (`deploy/lichess-bot.txt`).
