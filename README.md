@@ -105,6 +105,13 @@ How the engine handles the gray areas of the protocol is described under
   at 2'+1"; at other time controls the strength differs somewhat. A host
   too slow for the speed asked for plays weaker.
 
+### Environment variables
+
+| Variable | Effect |
+|---|---|
+| `PSION_DIR` | Directory with Psion's files. |
+| `PSION_ZIP_URL` | Where `-d` gets `psion213.zip`, e.g. a `file://` URL (CI uses its cached copy). |
+
 ### Limitations
 
 - `go depth`/`nodes`/`mate` are not supported; these result in a fallback
@@ -240,8 +247,6 @@ Environment variables for experiments:
 
 | Variable | Effect |
 |---|---|
-| `PSION_DIR` | Directory with Psion's files. |
-| `PSION_ZIP_URL` | Where `-d` gets `psion213.zip`, e.g. a `file://` URL (CI uses its cached copy). |
 | `PSION_TWOPLAYER` | Stay in 2-player mode: moves for both sides from stdin. |
 | `PSION_MEMSCAN` | Locate the board in memory by correlating memory snapshots with the board on screen. |
 | `PSION_MEMDUMP` | Directory to write memory snapshots to (with `PSION_MEMSCAN`). |
