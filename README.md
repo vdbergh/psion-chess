@@ -17,11 +17,7 @@ Psion Chess is currently playing online at Lichess as
 
 ### Quick start
 
-Download a [released package](#prebuilt-executables), which includes
-Psion's files. Or [build](#building) the executable and add Psion's files:
-`./psion -d` downloads, verifies and installs them (see
-[data/README.md](data/README.md)). Then use `./psion` (`psion.exe` on
-Windows) as the engine command in your GUI.
+Download the latest [release package](https://github.com/vdbergh/psion-chess/releases/latest) for your OS and point your GUI to the `psion` executable it contains.
 
 ### Sample GUI engine dialog
 
