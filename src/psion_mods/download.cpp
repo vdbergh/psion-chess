@@ -16,14 +16,15 @@
 namespace psion {
 
     static const char *NOTICE =
-        "Psion Chess (1985) is not included with this adapter, since it is\n"
-        "still under copyright. Richard Lang wrote its chess engine and kept\n"
-        "its copyright; in October 2026 he gave permission for his part to\n"
-        "be freely distributed. The graphics and input/output were written\n"
-        "by Psion, and nobody has given permission for that part: Zebra\n"
-        "Technologies, Psion's successor, could not confirm in October 2026\n"
-        "whether it still holds these rights. Classic DOS Games offers\n"
-        "Psion Chess as a free download.\n";
+        "Psion Chess (1985) is not part of the source code of this adapter.\n"
+        "Richard Lang wrote its chess engine and kept its copyright; in\n"
+        "October 2026 he gave permission for his part to be freely\n"
+        "distributed. The graphics and input/output were written by Psion;\n"
+        "in November 2026 Zebra Technologies, Psion's successor, gave\n"
+        "permission, to the extent that it holds the copyright, to use and\n"
+        "redistribute the program unmodified for non-commercial purposes\n"
+        "(see data/LICENCE.md). Classic DOS Games offers Psion Chess as a\n"
+        "free download.\n";
 
     // The zip file is about 100 KB; more than this is not it.
     static const size_t MAX_ZIP_SIZE = 10000000;

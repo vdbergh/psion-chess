@@ -1,11 +1,12 @@
 # Psion Chess files
 
-Psion Chess itself is not part of this repository. Richard Lang, who wrote the chess
-engine, allows his part to be distributed freely, but nobody could give
-permission for Psion's part (the graphics and input/output). See the
-Licence section of the main README.
+Psion Chess itself is not part of this repository. The release packages
+include its files, with the permission of Richard Lang, who wrote the
+chess engine, and of Zebra Technologies, Psion's successor, for Psion's
+part (the graphics and input/output): see [LICENCE.md](LICENCE.md).
 
-The simplest way to make Psion Chess available to the adapter is
+Built from source, or with a package from GitHub Actions, the simplest
+way to make Psion Chess available to the adapter is
 
     ./psion -d
 

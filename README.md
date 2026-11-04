@@ -17,10 +17,11 @@ Psion Chess is currently playing online at Lichess as
 
 ### Quick start
 
-Download a [prebuilt executable](#prebuilt-executables) or
-[build](#building) one, and add Psion's files: `./psion -d` downloads, verifies and
-installs them (see [data/README.md](data/README.md)). Then use `./psion`
-(`psion.exe` on Windows) as the engine command in your GUI.
+Download a [released package](#prebuilt-executables), which includes
+Psion's files. Or [build](#building) the executable and add Psion's files:
+`./psion -d` downloads, verifies and installs them (see
+[data/README.md](data/README.md)). Then use `./psion` (`psion.exe` on
+Windows) as the engine command in your GUI.
 
 ### Sample GUI engine dialog
 
@@ -197,8 +198,8 @@ stdout. Moves typed while Psion thinks are played once it has moved;
 
 Requirements: Linux on x86-64, g++ and GNU make. No other libraries.
 
-Psion Chess itself is not included: see [data/README.md](data/README.md)
-for where to download it.
+Psion Chess itself is not in the repository: see
+[data/README.md](data/README.md) for where to download it.
 
     make            # builds ./psion
     make check      # unit tests (a second)
@@ -232,9 +233,11 @@ installed without it at first, its existing prefix (`~/.wine`) cannot run
 ### Prebuilt executables
 
 Released versions can be downloaded from the repository's [*Releases*
-page](https://github.com/vdbergh/psion-chess/releases). In addition, every
+page](https://github.com/vdbergh/psion-chess/releases). They include
+Psion's files, in `data/` (see [Licence](#licence)). In addition, every
 push is built by GitHub Actions: the packages are on the run's page under
 *Actions*, *Artifacts* (for 90 days, and only when logged in to GitHub).
+These do not include Psion's files: add them with `psion -d`.
 
 - `psion-chess-linux-x86_64`: a statically linked executable that runs on
   any x86-64 Linux.
@@ -242,21 +245,14 @@ push is built by GitHub Actions: the packages are on the run's page under
   pass with it under Wine and, in GitHub Actions, on Windows Server 2022
   and 2025.
 
-Unpack the package and add Psion's files to its `data/` directory.
-
 ## Licence
 
 The emulator is DOSBox (GPL, see `COPYING` and `AUTHORS`), reduced to
-what Psion needs. Psion Chess itself is copyrighted by its authors; it is
-not part of this repository and not covered by that licence.
-
-Richard Lang wrote the chess engine of Psion Chess and kept its
-copyright; the graphics and input/output were written by Psion. In
-October 2026 he gave permission for his part to be freely distributable.
-Psion's part needs permission from its rights holder. Zebra Technologies,
-Psion's successor, could not confirm in October 2026 whether it still
-holds these rights, and the current owner of the PSION trademark does
-not hold them. So Psion Chess is still not included here.
+what Psion needs. Psion Chess itself is not part of this repository and
+not covered by that licence. The release packages include it with the
+permission of Richard Lang, who wrote its chess engine, and of Zebra
+Technologies, Psion's successor, for non-commercial use only: see
+[data/LICENCE.md](data/LICENCE.md).
 
 PSION is a trademark of its owner. This project is not affiliated with,
 endorsed by or sponsored by the owner of the PSION trademark or by

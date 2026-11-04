@@ -112,7 +112,7 @@ endif
 	install -m 755 $(EXE) $(DESTDIR)$(PREFIX)/bin/$(EXE)
 	install -m 644 README.md COPYING AUTHORS $(DESTDIR)$(DOCDIR)/
 	install -m 644 docs/*.md $(DESTDIR)$(DOCDIR)/docs/
-	install -m 644 data/README.md $(DESTDIR)$(DOCDIR)/data/
+	install -m 644 data/README.md data/LICENCE.md $(DESTDIR)$(DOCDIR)/data/
 endif
 
 uninstall:

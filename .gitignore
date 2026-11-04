@@ -2,6 +2,7 @@ build/
 build-windows/
 /psion
 /psion.exe
-# Psion Chess itself is not distributed, see data/README.md
+# Psion Chess itself is not in the repository, see data/README.md
 data/*
 !data/README.md
+!data/LICENCE.md

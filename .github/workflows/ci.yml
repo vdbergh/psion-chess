@@ -2,8 +2,8 @@
 # ready-to-use packages. The UCI integration tests need Psion Chess itself,
 # which is not part of the repository: it is downloaded from Classic DOS
 # Games (see data/README.md), cached, and installed with "psion -d", which
-# checks its SHA-256. It is only used for the tests, never put into an
-# artifact or a release.
+# checks its SHA-256. The artifacts do not include it; only the release
+# packages do (see data/LICENCE.md).
 
 name: CI
 
@@ -40,7 +40,7 @@ jobs:
           mkdir -p "$name/data" "$name/docs"
           cp psion README.md COPYING AUTHORS "$name/"
           strip "$name/psion"
-          cp data/README.md "$name/data/"
+          cp data/README.md data/LICENCE.md "$name/data/"
           cp docs/*.md "$name/docs/"
           tar czf "$name.tar.gz" "$name"
 
@@ -90,7 +90,7 @@ jobs:
           mkdir -p "$name/data" "$name/docs"
           cp psion.exe README.md COPYING AUTHORS "$name/"
           i686-w64-mingw32-strip "$name/psion.exe"
-          cp data/README.md "$name/data/"
+          cp data/README.md data/LICENCE.md "$name/data/"
           cp docs/*.md "$name/docs/"
           zip -r "$name.zip" "$name"
           mkdir windows-tests
@@ -247,7 +247,8 @@ jobs:
           name: uci-test-log-${{ matrix.os }}
           path: source/tests/uci_test.log
 
-  # For version tags (v1.0, ...): publish the packages as a GitHub Release.
+  # For version tags (v1.0, ...): publish the packages as a GitHub Release,
+  # with Psion's files added (see data/LICENCE.md).
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build, build-windows, integration, test-windows]
@@ -263,6 +264,38 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: psion-chess-windows-x86
+
+      - name: Cache Psion Chess
+        id: psion-cache
+        uses: actions/cache@v4
+        with:
+          path: psion213.zip
+          key: psion213-${{ env.PSION_ZIP_SHA256 }}
+          enableCrossOsArchive: true
+
+      - name: Download Psion Chess
+        if: steps.psion-cache.outputs.cache-hit != 'true'
+        run: curl -fsSL --retry 3 -o psion213.zip "$PSION_ZIP_URL"
+
+      # With the Linux psion -d, which checks the files, into both packages.
+      - name: Add Psion Chess
+        run: |
+          linux=psion-chess-linux-x86_64
+          windows=psion-chess-windows-x86
+          tar xzf "$linux.tar.gz"
+          unzip -q "$windows.zip"
+          export PSION_ZIP_URL="file://$PWD/psion213.zip"
+          echo y | "$linux/psion" -d
+          echo y | PSION_DIR="$PWD/$windows/data" "$linux/psion" -d
+          test "$(ls "$linux/data" | wc -l)" -eq 13
+          test "$(ls "$windows/data" | wc -l)" -eq 13
+          (echo uci; echo "position startpos moves e2e4"
+           echo "go movetime 1000"; sleep 10; echo quit) |
+            "$linux/psion" > uci.txt
+          grep -q "bestmove [a-h][1-8][a-h][1-8]" uci.txt
+          rm "$linux.tar.gz" "$windows.zip"
+          tar czf "$linux.tar.gz" "$linux"
+          zip -qr "$windows.zip" "$windows"
 
       - name: Create release
         env:
