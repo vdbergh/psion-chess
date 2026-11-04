@@ -26,6 +26,3 @@ November 2026 it gave this permission:
 > a non-exclusive, royalty-free permission to use and redistribute the
 > program in unmodified form for non-commercial purposes. This permission
 > is given without any warranty that Zebra Technologies holds such rights.
-
-So Psion Chess may be used and redistributed only unmodified and for
-non-commercial purposes.
