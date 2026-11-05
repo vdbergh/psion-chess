@@ -141,44 +141,64 @@ namespace psion {
         return sha.HexDigest();
     }
 
-    // "data" next to the executable.
-    static std::string exe_data_dir() {
+    // The separator for new paths, and those that may occur in paths.
+#ifdef _WIN32
+    static const char SEP = '\\';
+    static const char *SEPS = "\\/";
+#else
+    static const char SEP = '/';
+    static const char *SEPS = "/";
+#endif
+
+    // The directory of the executable, or "." if it cannot be found.
+    static std::string exe_dir() {
         char exe[4096];
 #ifdef _WIN32
         DWORD n = GetModuleFileNameA(NULL, exe, sizeof(exe));
         if (n == 0 || n >= sizeof(exe)) {
-            return "data";
+            return ".";
         }
         std::string path(exe, n);
-        return path.substr(0, path.find_last_of("\\/")) + "\\data";
+        return path.substr(0, path.find_last_of(SEPS));
 #else
         ssize_t n = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
         if (n <= 0) {
-            return "data";
+            return ".";
         }
         exe[n] = 0;
         std::string path(exe);
-        return path.substr(0, path.rfind('/')) + "/data";
+        return path.substr(0, path.rfind('/'));
 #endif
+    }
+
+    static bool is_dir(const std::string &path) {
+        struct stat st;
+        return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
     }
 
     std::string PsionInstallDir() {
         const char *env = getenv("PSION_DIR");
-        return env ? env : exe_data_dir();
+        return env ? env : exe_dir() + SEP + "data";
+    }
+
+    std::string DataDirFor(const std::string &exe_dir) {
+        std::string data = exe_dir + SEP + "data";
+        if (is_dir(data)) {
+            return data;
+        }
+        // The parent of exe_dir, without "..": /usr/local for
+        // /usr/local/bin.
+        size_t sep = exe_dir.find_last_of(SEPS);
+        std::string parent = sep == std::string::npos
+                                 ? exe_dir + SEP + ".."
+                                 : exe_dir.substr(0, sep);
+        std::string share = parent + SEP + "share" + SEP + "psion-chess";
+        return is_dir(share) ? share : data;
     }
 
     std::string PsionDataDir() {
-        std::string dir = PsionInstallDir();
-#ifdef PSION_DATADIR
-        if (getenv("PSION_DIR")) {
-            return dir;
-        }
-        struct stat st;
-        if (stat(dir.c_str(), &st) != 0 || !S_ISDIR(st.st_mode)) {
-            return PSION_DATADIR;
-        }
-#endif
-        return dir;
+        const char *env = getenv("PSION_DIR");
+        return env ? env : DataDirFor(exe_dir());
     }
 
     static bool same_name(const char *a, const char *b) {

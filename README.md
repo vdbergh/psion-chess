@@ -210,9 +210,10 @@ The install can be tweaked with the standard make variables.
    `make install PREFIX=~/.local` may be used for a user install which
    does not need root. Ensure that `~/.local/bin` is in your `PATH`.
 
-- `DESTDIR` installs to a directory (e.g. for a package). In that case
-   Psion's files are not installed. It is expected that the packager does
-   this separately.
+- `DESTDIR` installs to a directory (e.g. for a package).
+
+- `NO_PSION=1` installs everything except Psion's files, e.g. for a
+   package that leaves them to the user.
 
 
 ### Windows

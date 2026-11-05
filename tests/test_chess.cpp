@@ -1191,31 +1191,48 @@ static void set_psion_dir(const char *dir){
 #endif
 }
 
-// tests/Makefile compiles in PSION_DATADIR "/test/datadir". Run from the
-// directory of the test executable, which has no data directory of its own.
+static void make_dir(const std::string &dir){
+#ifdef _WIN32
+    _mkdir(dir.c_str());
+#else
+    mkdir(dir.c_str(),0700);
+#endif
+}
+
+// Run from the directory of the test executable, which has no data
+// directory of its own.
 static void test_psion_data_dir(){
+#ifdef _WIN32
+    const std::string sep="\\";
+#else
+    const std::string sep="/";
+#endif
     const char *saved=getenv("PSION_DIR");
     std::string saved_dir=saved?saved:"";
     set_psion_dir("some/dir");
     CHECK_EQ(PsionDataDir(),"some/dir");
     CHECK_EQ(PsionInstallDir(),"some/dir");
     set_psion_dir(NULL);
-    CHECK_EQ(PsionDataDir(),"/test/datadir");
-#ifdef _WIN32
-    _mkdir("data");
-#else
-    mkdir("data",0700);
-#endif
-    CHECK_EQ(PsionDataDir(),PsionInstallDir());
-    rmdir("data");
     std::string dir=PsionInstallDir();
-#ifdef _WIN32
-    const std::string suffix="\\data";
-#else
-    const std::string suffix="/data";
-#endif
-    CHECK(dir.size()>suffix.size() &&
-	  dir.compare(dir.size()-suffix.size(),suffix.size(),suffix)==0);
+    CHECK(dir.size()>5 && dir.compare(dir.size()-5,5,sep+"data")==0);
+    CHECK_EQ(PsionDataDir(),dir);
+    // An installation: prefix/bin and prefix/share/psion-chess.
+    const std::string prefix="test-prefix", bin=prefix+sep+"bin",
+	share=prefix+sep+"share", installed=share+sep+"psion-chess",
+	data=bin+sep+"data";
+    make_dir(prefix);
+    make_dir(bin);
+    CHECK_EQ(DataDirFor(bin),data);
+    make_dir(share);
+    make_dir(installed);
+    CHECK_EQ(DataDirFor(bin),installed);
+    make_dir(data);
+    CHECK_EQ(DataDirFor(bin),data);
+    rmdir(data.c_str());
+    rmdir(installed.c_str());
+    rmdir(share.c_str());
+    rmdir(bin.c_str());
+    rmdir(prefix.c_str());
     set_psion_dir(saved?saved_dir.c_str():NULL);
 }
 

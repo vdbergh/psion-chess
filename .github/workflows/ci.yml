@@ -44,15 +44,17 @@ jobs:
           cp docs/*.md "$name/docs/"
           tar czf "$name.tar.gz" "$name"
 
-      # Into a staging directory, as for a package: Psion's files are not
-      # downloaded there. Then into a prefix, declining the download: then
-      # nothing is installed.
+      # Into a staging directory, as for a package, without Psion's files.
+      # Then into a staging directory and a prefix, declining the download:
+      # then nothing is installed.
       - name: make install
         run: |
-          make install DESTDIR="$PWD/stage" LDFLAGS=-static < /dev/null
+          make install DESTDIR="$PWD/stage" NO_PSION=1 LDFLAGS=-static
           test -x stage/usr/local/bin/psion
           test -f stage/usr/local/share/doc/psion-chess/docs/strength.md
           test -z "$(ls stage/usr/local/share/psion-chess)"
+          ! echo n | make install DESTDIR="$PWD/stage2" LDFLAGS=-static
+          test ! -e stage2/usr/local/bin
           ! echo n | make install PREFIX="$RUNNER_TEMP/prefix" LDFLAGS=-static
           test ! -e "$RUNNER_TEMP/prefix/bin"
 

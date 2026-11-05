@@ -46,13 +46,11 @@ OBJS := $(SRCS:%.cpp=$(BUILD)/%.o)
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo unknown)
 VERSION_H = $(BUILD)/version.h
 
-# For make install. PSION_DATADIR is compiled in: where an installed psion
-# looks for Psion's files. datadir.stamp is rewritten only when it changes,
-# so that another PREFIX rebuilds psionfiles.o.
+# For make install. An installed psion finds Psion's files in DATADIR
+# relative to itself, as ../share/psion-chess.
 PREFIX ?= /usr/local
 DATADIR = $(PREFIX)/share/psion-chess
 DOCDIR = $(PREFIX)/share/doc/psion-chess
-DATADIR_STAMP = $(BUILD)/datadir.stamp
 
 .PHONY: all windows check integration install uninstall clean FORCE
 
@@ -76,17 +74,6 @@ $(BUILD)/%.o: %.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c -o $@ $<
 
-ifneq ($(TARGET),windows)
-$(DATADIR_STAMP): FORCE
-	@mkdir -p $(dir $@)
-	@echo '$(DATADIR)' > $@.tmp
-	@cmp -s $@.tmp $@ && rm $@.tmp || mv $@.tmp $@
-
-$(BUILD)/src/psion_mods/psionfiles.o: $(DATADIR_STAMP)
-$(BUILD)/src/psion_mods/psionfiles.o: override CPPFLAGS += \
-	-DPSION_DATADIR='"$(DATADIR)"'
-endif
-
 -include $(OBJS:.o=.d)
 
 check:
@@ -96,15 +83,15 @@ integration: $(EXE)
 	$(MAKE) -C tests integration TARGET=$(TARGET)
 
 # First Psion's files, with "psion -d": if they are declined (or the
-# download fails), nothing is installed. With DESTDIR (staging, e.g. for a
-# package) they are not downloaded: a package should not contain them.
+# download fails), nothing is installed. NO_PSION=1 installs everything
+# else, without them.
 install: $(EXE)
 ifeq ($(TARGET),windows)
 	@echo "make install is for Linux only." >&2; exit 1
 else
-ifeq ($(DESTDIR),)
-	install -d $(dir $(DATADIR))
-	@PSION_DIR='$(DATADIR)' ./$(EXE) -d || \
+ifeq ($(NO_PSION),)
+	install -d $(dir $(DESTDIR)$(DATADIR))
+	@PSION_DIR='$(DESTDIR)$(DATADIR)' ./$(EXE) -d || \
 	  { echo "Nothing installed."; exit 1; }
 endif
 	install -d $(DESTDIR)$(PREFIX)/bin $(DESTDIR)$(DATADIR) \

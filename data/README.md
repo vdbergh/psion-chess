@@ -33,9 +33,12 @@ The case of the file names does not matter. Note that `Verm2.13` is in fact empt
 To install the files elsewhere, point the environment variable `PSION_DIR`
 to their directory.
 
-A `psion` installed with `make install` looks for them in
-`/usr/local/share/psion-chess` (or `$PREFIX/share/psion-chess`), unless
-there is a `data` directory next to it. `psion -d` always installs in
+Without `PSION_DIR`, the adapter uses the directory `data` next to the
+executable if it exists, and otherwise `../share/psion-chess` relative to
+the executable if that exists. So a `psion` installed with `make install`
+in `/usr/local/bin` (or `$PREFIX/bin`) finds them in
+`/usr/local/share/psion-chess` (or `$PREFIX/share/psion-chess`), also
+after the installation has been moved. `psion -d` always installs in
 `data` next to the executable, unless `PSION_DIR` is set, as `make install`
 does: `PSION_DIR=/usr/local/share/psion-chess`.
 

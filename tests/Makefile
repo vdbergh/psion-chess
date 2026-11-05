@@ -29,8 +29,7 @@ check: $(TEST_CHESS)
 
 $(TEST_CHESS): test_chess.cpp $(SRC)/chess.cpp $(SRC)/chess.h \
 		$(SRC)/psionfiles.cpp $(SRC)/psionfiles.h
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -I$(SRC) '-DPSION_DATADIR="/test/datadir"' \
-		-o $@ test_chess.cpp \
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -I$(SRC) -o $@ test_chess.cpp \
 		$(SRC)/chess.cpp $(SRC)/psionfiles.cpp
 
 integration:
