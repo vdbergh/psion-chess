@@ -204,7 +204,7 @@ Psion Chess itself is not in the repository: see
 On Linux, `sudo make install` installs Psion Chess system wide.
 `sudo make uninstall` (with the same `PREFIX`) reverts this.
 
-The install can be tweaked with the standard make variables.
+The install can be tweaked using the following make variables:
 
 - `PREFIX` installs elsewhere. E.g.
    `make install PREFIX=~/.local` may be used for a user install which
