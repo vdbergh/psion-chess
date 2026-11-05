@@ -29,6 +29,8 @@ namespace psion {
     // The zip file is about 100 KB; more than this is not it.
     static const size_t MAX_ZIP_SIZE = 10000000;
 
+    // Yes unless answered otherwise; but not without an answer (at the end
+    // of the input).
     static bool confirmed() {
         char line[64];
         if (!fgets(line, sizeof(line), stdin)) {
@@ -38,7 +40,7 @@ namespace psion {
         for (char *p = line; *p && !isspace((unsigned char)*p); p++) {
             answer += (char)tolower((unsigned char)*p);
         }
-        return answer == "y" || answer == "yes";
+        return answer.empty() || answer == "y" || answer == "yes";
     }
 
     // Runs curl and returns what it wrote to stdout.
@@ -116,7 +118,7 @@ namespace psion {
             }
             printf("\n\n");
         }
-        printf("Download and install Psion Chess? [y/N] ");
+        printf("Download and install Psion Chess? [Y/n] ");
         fflush(stdout);
         if (!confirmed()) {
             printf("Nothing downloaded.\n");
