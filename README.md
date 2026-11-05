@@ -17,7 +17,7 @@ Psion Chess is currently playing online at Lichess as
 
 ### Quick start
 
-Download the latest [release package](https://github.com/vdbergh/psion-chess/releases/latest) for your OS and point your GUI to the `psion` executable it contains.
+Download and unpack the latest [release package](https://github.com/vdbergh/psion-chess/releases/latest) for your OS and point your GUI to the `psion` executable it contains.
 
 ### Sample GUI engine dialog
 
