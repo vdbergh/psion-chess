@@ -166,7 +166,7 @@ class UciTest(unittest.TestCase):
         e = self.engine
         e.send('uci')
         _, before = e.expect('uciok', 10)
-        self.assertIn('id name Psion Chess 1985', before)
+        self.assertIn('id name Psion Chess 2.13 (1985)', before)
         self.assertTrue(any(l.startswith('id author') for l in before))
 
     def test_movetime(self):

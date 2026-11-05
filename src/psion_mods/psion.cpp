@@ -1408,7 +1408,7 @@ namespace psion {
                 init_speed();
             }
             uci_mode = true;
-            uci_send("id name Psion Chess 1985\n");
+            uci_send("id name Psion Chess 2.13 (1985)\n");
             uci_send("id author Richard Lang\n");
             uci_send("option name Ponder type check default false\n");
             uci_send("option name Move Overhead type spin default %u min 0 "

@@ -23,7 +23,7 @@ Download and unpack the latest [release package](https://github.com/vdbergh/psio
 
     $ ./psion
     uci
-    id name Psion Chess 1985
+    id name Psion Chess 2.13 (1985)
     id author Richard Lang
     option name Ponder type check default false
     option name Move Overhead type spin default 30 min 0 max 5000
