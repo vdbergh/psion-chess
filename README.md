@@ -128,7 +128,7 @@ How the engine handles the gray areas of the protocol is described under
   move found at once. A ponder miss costs about 0.05 seconds of the
   engine's clock.
 - Entering the opponent's move and reporting the engine's take about
-  70 ms per move on an i5-1135G7. This time is taken from the engine's
+  80 ms per move on an i5-1135G7. This time is taken from the engine's
   own clock, so very fast time controls leave little time for thinking
   (see [Time allocation](#time-allocation)).
 - Psion ends the game itself at a threefold repetition (and by the
