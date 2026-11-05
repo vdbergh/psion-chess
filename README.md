@@ -195,21 +195,25 @@ stdout. Moves typed while Psion thinks are played once it has moved;
 Requirements: Linux on x86-64, g++ and GNU make. No other libraries.
 
 Psion Chess itself is not in the repository: see
-[data/README.md](data/README.md) for where to download it.
+[data/README.md](data/README.md) for instructions on how to obtain it.
 
     make            # builds ./psion
     make check      # unit tests (a second)
     make integration  # UCI tests against ./psion (about two minutes)
 
-On Linux, `sudo make install` installs Psion Chess system wide (on
-Windows, `make install` is not available). It first offers to download
-Psion's files to `/usr/local/share/psion-chess` (as `psion -d` does; if you
-decline, nothing is installed), and then installs `psion` in
-`/usr/local/bin` and the documentation in `/usr/local/share/doc/psion-chess`.
-`PREFIX` installs elsewhere, e.g. `make install PREFIX=~/.local` without
-`sudo`; it is compiled in, so the program finds Psion's files there. With
-`DESTDIR`, e.g. for a package, Psion's files are not downloaded.
-`make uninstall` (with the same `PREFIX`) removes it all again.
+On Linux, `sudo make install` installs Psion Chess system wide.
+`sudo make uninstall` (with the same `PREFIX`) reverts this.
+
+The install can be tweaked with the standard make variables.
+
+- `PREFIX` installs elsewhere. E.g.
+   `make install PREFIX=~/.local` may be used for a user install which
+   does not need root. Ensure that `~/.local/bin` is in your `PATH`.
+
+- `DESTDIR` installs to a directory (e.g. for a package). In that case
+   Psion's files are not installed. It is expected that the packager does
+   this separately.
+
 
 ### Windows
 
