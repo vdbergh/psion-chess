@@ -289,6 +289,19 @@ namespace psion {
         return false;
     }
 
+    // Emulated cycles: the budgets of the emulated milliseconds begun, less
+    // what is left of the current one. (Cycles skipped by HLT count too,
+    // but Psion does not halt while it searches.)
+    static double cycles_begun = 0;
+
+    static void count_cycles() {
+        cycles_begun += CPU_CycleMax;
+    }
+
+    static double emulated_cycles() {
+        return cycles_begun - CPU_CycleLeft - CPU_Cycles;
+    }
+
     bool Psion_Init(DOS_Shell *d) {
         char input_line[CMD_MAXLINE] = {0};
         char args[] = ""; // Chess.exe's command line
@@ -308,6 +321,7 @@ namespace psion {
             exit(1);
         }
         init_ocr();
+        TIMER_AddTickHandler(count_cycles);
         snprintf(input_line, CMD_MAXLINE, "MOUNT C \"%s\"", dir.c_str());
         d->DoCommand(input_line);
         strcpy(input_line, "C:");
@@ -704,6 +718,27 @@ namespace psion {
     static bool game_over_shown();
     static void search_speed(bool on);
 
+    // A search, from pressing 'c' (or "go") until Psion starts to play its
+    // move, for the diagnostics.
+    static bool search_measured = false;
+    static unsigned int search_start_ticks = 0;
+    static double search_start_cycles = 0;
+
+    static void search_started() {
+        search_measured = true;
+        search_start_ticks = GetTicks();
+        search_start_cycles = emulated_cycles();
+    }
+
+    static void search_ended() {
+        if (search_measured) {
+            search_measured = false;
+            say("Searched %u ms, %.0f cycles\n",
+                GetTicks() - search_start_ticks,
+                emulated_cycles() - search_start_cycles);
+        }
+    }
+
     // Track the game through Psion's memory. Returns true and sets move
     // when a new move has been played.
     static bool PollGameState(std::string &move) {
@@ -725,6 +760,7 @@ namespace psion {
         if (game_state.thinking && have_known &&
             memcmp(cur.board, known.board, sizeof(cur.board)) != 0) {
             search_speed(false);
+            search_ended();
         }
         if (!have_pending || !same_state(cur, pending)) {
             pending = cur;
@@ -927,6 +963,21 @@ namespace psion {
     static unsigned int promotion_since = 0;
     static bool promotion_prompt = false; // "PROMOTE TO Q,R,B,N ?" shown
     const unsigned int PROMOTION_TIMEOUT_MS = 3000;
+
+    // In the interactive mode, a move typed has been sent to Psion, which
+    // has not yet played it or shown ILLEGAL: further lines wait, or the
+    // next move would be typed into this one.
+    const unsigned int MOVE_IN_FLIGHT_MS = 3000;
+    static bool move_in_flight = false;
+    static unsigned int move_sent_ticks = 0;
+
+    static bool move_pending() {
+        if (move_in_flight &&
+            GetTicks() - move_sent_ticks >= MOVE_IN_FLIGHT_MS) {
+            move_in_flight = false;
+        }
+        return move_in_flight;
+    }
 
     static void SendUciMove(const std::string &m) {
         illegal_move_seen = false;
@@ -1872,6 +1923,7 @@ namespace psion {
             uci.go_pending = false;
             search_speed(true);
             press(KBD_c);
+            search_started();
             uci.thinking_start = GetTicks();
             game_state.thinking = true;
             uci.search = SEARCH_RUNNING;
@@ -1958,6 +2010,7 @@ namespace psion {
         if (!illegal_move_seen && row.find("ILLEGAL") != std::string::npos) {
             say("Illegal move!\n");
             illegal_move_seen = true;
+            move_in_flight = false;
             ResetCursor();
         }
     }
@@ -1977,6 +2030,7 @@ namespace psion {
             return;
         }
         illegal_move_seen = false;
+        move_in_flight = false;
         game_state.moves.push_back(move);
         for (i = 0; i < game_state.moves.size(); i++) {
             say("%s ", game_state.moves[i].c_str());
@@ -2001,15 +2055,35 @@ namespace psion {
         if (game_state.thinking) {
             say("Thinking!\n");
             keyboard_buffer.SendKey(KBD_c);
+            search_started();
         } else {
             say("Stopped thinking!\n");
             keyboard_buffer.SendKey(KBD_2);
         }
     }
 
-    // In the interactive mode, lines read while Psion thinks: they are
-    // carried out on the user's turn (except "quit").
+    // In the interactive mode, lines read while Psion thinks (or a move
+    // is in flight): they are carried out on the user's turn, in order
+    // (except "quit").
     static std::vector<std::string> held_lines;
+
+    // At the end of the input in the interactive mode, the program exits
+    // once Psion has had nothing to do for this long: so that it still
+    // replies to the last move (the keys of a move take a moment to show).
+    const unsigned int EOF_IDLE_MS = 1000;
+    static bool input_ended = false;
+    static unsigned int idle_since = 0;
+
+    static void exit_when_idle() {
+        bool idle = settled && !game_state.thinking && !move_pending() &&
+                    held_lines.empty() && keyboard_buffer.Empty() &&
+                    !promotion_in_progress();
+        if (!idle) {
+            idle_since = GetTicks();
+        } else if (GetTicks() - idle_since >= EOF_IDLE_MS) {
+            exit(0);
+        }
+    }
 
     static void interactive_line(const std::string &line) {
         std::string move(line);
@@ -2018,6 +2092,8 @@ namespace psion {
             UciCommand(line.c_str());
         } else if (IsMoveString(move)) {
             SendUciMove(move);
+            move_in_flight = true;
+            move_sent_ticks = GetTicks();
         }
     }
 
@@ -2029,7 +2105,8 @@ namespace psion {
             line = deferred_commands.front();
             deferred_commands.erase(deferred_commands.begin());
             UciCommand(line.c_str(), true);
-        } else if (!uci_mode && !game_state.thinking && !held_lines.empty()) {
+        } else if (!uci_mode && !game_state.thinking && !move_pending() &&
+                   !held_lines.empty()) {
             line = held_lines.front();
             held_lines.erase(held_lines.begin());
             interactive_line(line);
@@ -2039,19 +2116,25 @@ namespace psion {
                 UciCommand(line.c_str());
             } else if (tokens.size() == 1 && tokens[0] == "quit") {
                 exit(0);
-            } else if (game_state.thinking) {
+            } else if (game_state.thinking || move_pending() ||
+                       !held_lines.empty()) {
                 held_lines.push_back(line);
             } else {
                 interactive_line(line);
             }
         } else if (eof && uci_mode) {
             exit(0);
+        } else if (eof && !input_ended) {
+            input_ended = true;
+            idle_since = GetTicks();
         }
         CheckGameState();
         SendPromotion();
         if (uci_mode) {
             UciAnalysis();
             UciStep();
+        } else if (input_ended) {
+            exit_when_idle();
         }
         keyboard_buffer.ProcessKeys();
         if (uci_mode) {

@@ -186,9 +186,11 @@ are described in [docs/implementation.md](docs/implementation.md).
 
 Started with `--verbose` and without the `uci` command, the program
 reads moves like `e2e4` from stdin and Psion replies to them; the
-diagnostics (the moves and the board after each move) then go to
-stdout. Moves typed while Psion thinks are played once it has moved;
-`quit` ends the program at once.
+diagnostics (the moves and the board after each move, and the time and
+emulated cycles of each search) then go to stdout. Moves typed while
+Psion thinks are played once it has moved; `quit` ends the program at
+once, and at the end of the input it ends once Psion has replied to the
+last move.
 
 ## Building
 
