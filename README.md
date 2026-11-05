@@ -120,8 +120,8 @@ How the engine handles the gray areas of the protocol is described under
 - Psion searches to a fixed maximum depth and moves as soon as it is
   reached, whatever the time left. In a locked pawn ending, with few moves
   per ply, this takes under a second, so Psion moves almost at once even at
-  long time controls (in Fine's position 70 it moves after about 1 second
-  with 10 seconds to think). The depth limit is part of Psion's program and
+  long time controls. This depth limit, which inherently limits Psion's
+  ability to understand certain positions, is part of Psion's program and
   is left as it is.
 - The move to ponder on (`bestmove ... ponder ...`) is the second move of
   Psion's principal variation, so there is none after a book move or a
