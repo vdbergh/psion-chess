@@ -1100,8 +1100,9 @@ static void test_check_files(){
     CHECK(!CheckFiles(TMP_DIR,files,2,error));
     CHECK_EQ(error,"B.bin has SHA-256 "+sha256("x")+", expected "+empty+"\n");
     write_file("B.bin","");
-#ifndef _WIN32
-    // DOSBox might use either.
+#if !defined(_WIN32) && !defined(__APPLE__)
+    // DOSBox might use either. (On Windows and usually on macOS, file
+    // names ignore case: A.TXT is a.TXT.)
     write_file("A.TXT","abc");
     CHECK(!CheckFiles(TMP_DIR,files,2,error));
     CHECK(error.find("both ")==0);
