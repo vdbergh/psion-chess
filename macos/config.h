@@ -1,6 +1,5 @@
-/* config.h for macOS on Apple Silicon (arm64), derived from the Linux one.
-   This DOSBox version has no recompiler for arm64, so the interpreter
-   ("normal") core is used, and the FPU is emulated in C. */
+/* config.h for macOS on Apple Silicon (arm64), derived from the Linux one:
+   with the ARMv8 recompiler from DOSBox SVN, and the FPU emulated in C. */
 
 /*
  *  Copyright (C) 2002-2013  The DOSBox Team
@@ -38,7 +37,7 @@
 
 /* Define to 1 to use recompiling cpu core. Can not be used together with the
    dynamic-x86 core */
-/* #undef C_DYNREC */
+#define C_DYNREC 1
 
 /* Define to 1 to enable floating point emulation */
 #define C_FPU 1
@@ -56,8 +55,8 @@
 /* Define to 1 if you have the mprotect function */
 #define C_HAVE_MPROTECT 1
 
-/* The type of cpu this target has (only used by the recompiler) */
-/* #undef C_TARGETCPU */
+/* The type of cpu this target has */
+#define C_TARGETCPU ARMV8LE
 
 /* Define to 1 to use a unaligned memory access */
 #define C_UNALIGNED_MEMORY 1

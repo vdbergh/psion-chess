@@ -550,6 +550,20 @@ static INLINE void cache_addq(Bit64u val) {
 	cache.pos+=8;
 }
 
+// the same at a given position (as in DOSBox SVN, for the ARMv8 backend)
+static INLINE void cache_addb(Bit8u val,Bit8u *pos) {
+	*pos=val;
+}
+static INLINE void cache_addw(Bit16u val,Bit8u *pos) {
+	*(Bit16u*)pos=val;
+}
+static INLINE void cache_addd(Bit32u val,Bit8u *pos) {
+	*(Bit32u*)pos=val;
+}
+static INLINE void cache_addq(Bit64u val,Bit8u *pos) {
+	*(Bit64u*)pos=val;
+}
+
 
 static void dyn_return(BlockReturn retcode,bool ret_exception);
 static void dyn_run_code(void);
@@ -590,6 +604,11 @@ static void cache_init(bool enable) {
 				MEM_COMMIT,PAGE_EXECUTE_READWRITE);
 			if (!cache_code_start_ptr)
 				cache_code_start_ptr=(Bit8u*)malloc(CACHE_TOTAL+CACHE_MAXSIZE+PAGESIZE_TEMP-1+PAGESIZE_TEMP);
+#elif defined (DRC_MAP_JIT)
+			void *jit=mmap(NULL,CACHE_TOTAL+CACHE_MAXSIZE+PAGESIZE_TEMP-1+PAGESIZE_TEMP,
+				PROT_READ|PROT_WRITE|PROT_EXEC,MAP_PRIVATE|MAP_ANON|MAP_JIT,-1,0);
+			cache_code_start_ptr=jit==MAP_FAILED ? NULL : (Bit8u*)jit;
+			DRC_JIT_WRITABLE();
 #else
 			cache_code_start_ptr=(Bit8u*)malloc(CACHE_TOTAL+CACHE_MAXSIZE+PAGESIZE_TEMP-1+PAGESIZE_TEMP);
 #endif
@@ -601,7 +620,7 @@ static void cache_init(bool enable) {
 			cache_code_link_blocks=cache_code;
 			cache_code=cache_code+PAGESIZE_TEMP;
 
-#if (C_HAVE_MPROTECT)
+#if (C_HAVE_MPROTECT) && !defined (DRC_MAP_JIT)
 			if(mprotect(cache_code_link_blocks,CACHE_TOTAL+CACHE_MAXSIZE+PAGESIZE_TEMP,PROT_WRITE|PROT_READ|PROT_EXEC))
 				LOG_MSG("Setting excute permission on the code cache has failed");
 #endif
@@ -626,6 +645,12 @@ static void cache_init(bool enable) {
 		core_dynrec.runcode=(BlockReturn (*)(Bit8u*))cache.pos;
 //		link_blocks[1].cache.start=cache.pos;
 		dyn_run_code();
+#if defined (__aarch64__)
+		// the blocks are flushed from the instruction cache when they are
+		// closed, this code here
+		__builtin___clear_cache((char*)cache_code_link_blocks,
+			(char*)cache.pos);
+#endif
 
 		cache.free_pages=0;
 		cache.last_page=0;

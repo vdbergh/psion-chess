@@ -12,8 +12,8 @@
 # Linux, "windows" for a 32-bit Windows executable built with MinGW-w64,
 # or "macos" (the default on a Mac) for Apple Silicon. (The 64-bit
 # recompiler of this DOSBox version only supports the Linux calling
-# convention; the 32-bit one works on Windows. There is none for arm64:
-# on a Mac the slower interpreter core is used.)
+# convention; the 32-bit one works on Windows. On a Mac the ARMv8
+# recompiler from DOSBox SVN is used.)
 TARGET ?= $(if $(filter Darwin,$(shell uname -s)),macos,linux)
 MS_BITFIELDS = -mno-ms-bitfields
 

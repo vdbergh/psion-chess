@@ -42,6 +42,20 @@
 #endif
 #endif /* C_HAVE_MPROTECT */
 
+#if defined(__APPLE__) && defined(__aarch64__)
+// Apple Silicon: the code cache must be MAP_JIT memory, which a thread can
+// either write or execute: writable while blocks are translated (the code
+// is only written then), executable while they run.
+#include <sys/mman.h>
+#include <pthread.h>
+#define DRC_MAP_JIT 1
+#define DRC_JIT_WRITABLE() pthread_jit_write_protect_np(0)
+#define DRC_JIT_EXECUTABLE() pthread_jit_write_protect_np(1)
+#else
+#define DRC_JIT_WRITABLE()
+#define DRC_JIT_EXECUTABLE()
+#endif
+
 #include "callback.h"
 #include "regs.h"
 #include "mem.h"
@@ -139,6 +153,7 @@ static struct {
 #define ARMV4LE		0x04
 #define ARMV7LE		0x05
 #define POWERPC		0x04
+#define ARMV8LE		0x07
 
 #if C_TARGETCPU == X86_64
 #include "core_dynrec/risc_x64.h"
@@ -150,6 +165,9 @@ static struct {
 #include "core_dynrec/risc_armv4le.h"
 #elif C_TARGETCPU == POWERPC
 #include "core_dynrec/risc_ppc.h"
+#elif C_TARGETCPU == ARMV8LE
+// From DOSBox SVN (r4424), adapted to the interface of this version.
+#include "core_dynrec/risc_armv8le.h"
 #endif
 
 #include "core_dynrec/decoder.h"
@@ -228,7 +246,9 @@ run_block:
 		cache.block.running=0;
 		// now we're ready to run the dynamic code block
 //		BlockReturn ret=((BlockReturn (*)(void))(block->cache.start))();
+		DRC_JIT_EXECUTABLE();
 		BlockReturn ret=core_dynrec.runcode(block->cache.start);
+		DRC_JIT_WRITABLE();
 
 		switch (ret) {
 		case BR_Iret:
