@@ -1,9 +1,9 @@
-# Builds the engine for Linux and Windows, runs the unit tests and uploads
-# ready-to-use packages. The UCI integration tests need Psion Chess itself,
-# which is not part of the repository: it is downloaded from the Internet
-# Archive (see data/README.md), cached, and installed with "psion -d", which
-# checks its SHA-256. The artifacts do not include it; only the release
-# packages do (see data/LICENCE.md).
+# Builds the engine for Linux, Windows and macOS, runs the unit tests and
+# uploads ready-to-use packages. The UCI integration tests need Psion Chess
+# itself, which is not part of the repository: it is downloaded from the
+# Internet Archive (see data/README.md), cached, and installed with
+# "psion -d", which checks its SHA-256. The artifacts do not include it;
+# only the release packages do (see data/LICENCE.md).
 
 name: CI
 
@@ -108,7 +108,7 @@ jobs:
           name: windows-tests
           path: windows-tests
 
-  # macOS on Apple Silicon (arm64), with the interpreter core: built,
+  # macOS on Apple Silicon (arm64), with the ARMv8 recompiler: built,
   # packaged and tested on the same runner, with Psion's files as for the
   # Linux integration tests.
   macos:
@@ -160,8 +160,19 @@ jobs:
           echo y | PSION_ZIP_URL="file://$PWD/psion213.zip" "$PACKAGE/psion" -d
           echo y | "$PACKAGE/psion" -d | grep -q "already installed"
 
-      # How fast the interpreter core is, compared with the recompiler on
-      # Linux: the diagnostics show the cycles of a search.
+      # Into a prefix, with Psion's files from the cached zip: the installed
+      # psion must find them in ../share/psion-chess.
+      - name: make install
+        run: |
+          echo y | PSION_ZIP_URL="file://$PWD/psion213.zip" \
+            make install PREFIX="$RUNNER_TEMP/prefix"
+          test "$(ls "$RUNNER_TEMP/prefix/share/psion-chess" | wc -l)" -eq 11
+          (echo uci; echo isready; sleep 5; echo quit) |
+            "$RUNNER_TEMP/prefix/bin/psion" > installed.txt
+          grep -q readyok installed.txt
+
+      # How fast it is, compared with Linux: the diagnostics show the cycles
+      # of a search.
       - name: Speed
         run: |
           (echo uci; echo "debug on"; echo isready
@@ -323,7 +334,7 @@ jobs:
   # with Psion's files added (see data/LICENCE.md).
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build, build-windows, integration, test-windows]
+    needs: [build, build-windows, integration, test-windows, macos]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -337,6 +348,10 @@ jobs:
         with:
           name: psion-chess-windows-x86
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: psion-chess-macos-arm64
+
       - name: Cache Psion Chess
         id: psion-cache
         uses: actions/cache@v4
@@ -349,25 +364,30 @@ jobs:
         if: steps.psion-cache.outputs.cache-hit != 'true'
         run: curl -fsSL --retry 3 -o psion213.zip "$PSION_ZIP_URL"
 
-      # With the Linux psion -d, which checks the files, into both packages.
+      # With the Linux psion -d, which checks the files, into all packages.
       - name: Add Psion Chess
         run: |
           linux=psion-chess-linux-x86_64
           windows=psion-chess-windows-x86
+          macos=psion-chess-macos-arm64
           tar xzf "$linux.tar.gz"
           unzip -q "$windows.zip"
+          tar xzf "$macos.tar.gz"
           export PSION_ZIP_URL="file://$PWD/psion213.zip"
           echo y | "$linux/psion" -d
           echo y | PSION_DIR="$PWD/$windows/data" "$linux/psion" -d
+          echo y | PSION_DIR="$PWD/$macos/data" "$linux/psion" -d
           test "$(ls "$linux/data" | wc -l)" -eq 13
           test "$(ls "$windows/data" | wc -l)" -eq 13
+          test "$(ls "$macos/data" | wc -l)" -eq 13
           (echo uci; echo "position startpos moves e2e4"
            echo "go movetime 1000"; sleep 10; echo quit) |
             "$linux/psion" > uci.txt
           grep -q "bestmove [a-h][1-8][a-h][1-8]" uci.txt
-          rm "$linux.tar.gz" "$windows.zip"
+          rm "$linux.tar.gz" "$windows.zip" "$macos.tar.gz"
           tar czf "$linux.tar.gz" "$linux"
           zip -qr "$windows.zip" "$windows"
+          tar czf "$macos.tar.gz" "$macos"
 
       - name: Create release
         env:
@@ -375,8 +395,10 @@ jobs:
         run: |
           linux="psion-chess-$GITHUB_REF_NAME-linux-x86_64.tar.gz"
           windows="psion-chess-$GITHUB_REF_NAME-windows-x86.zip"
+          macos="psion-chess-$GITHUB_REF_NAME-macos-arm64.tar.gz"
           mv psion-chess-linux-x86_64.tar.gz "$linux"
           mv psion-chess-windows-x86.zip "$windows"
-          gh release create "$GITHUB_REF_NAME" "$linux" "$windows" \
+          mv psion-chess-macos-arm64.tar.gz "$macos"
+          gh release create "$GITHUB_REF_NAME" "$linux" "$windows" "$macos" \
             --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" \
             --generate-notes

@@ -194,7 +194,8 @@ last move.
 
 ## Building
 
-Requirements: Linux on x86-64, g++ and GNU make. No other libraries.
+Requirements: Linux on x86-64, g++ and GNU make, or macOS on Apple
+Silicon (see [macOS](#macos)). No other libraries.
 
 Psion Chess itself is not in the repository: see
 [data/README.md](data/README.md) for instructions on how to obtain it.
@@ -203,7 +204,7 @@ Psion Chess itself is not in the repository: see
     make check      # unit tests (a second)
     make integration  # UCI tests against ./psion (about two minutes)
 
-On Linux, `sudo make install` installs Psion Chess system wide.
+On Linux and macOS, `sudo make install` installs Psion Chess system wide.
 `sudo make uninstall` (with the same `PREFIX`) reverts this.
 
 The install can be tweaked using the following make variables:
@@ -233,6 +234,14 @@ The tests need Wine with 32-bit support (`wine32:i386`). If Wine was
 installed without it at first, its existing prefix (`~/.wine`) cannot run
 32-bit programs; use a new one, e.g. `export WINEPREFIX=~/.wine32`.
 
+### macOS
+
+On a Mac with Apple Silicon, `make` builds `./psion` for arm64, with the
+Xcode command line tools (`xcode-select --install`); `make check`,
+`make integration` and `make install` work as on Linux. This DOSBox
+version has no recompiler for arm64: the one from DOSBox SVN is used
+(`src/cpu/core_dynrec/risc_armv8le.h`). Intel Macs are not supported.
+
 ### Prebuilt executables
 
 Released versions can be downloaded from the repository's [*Releases*
@@ -247,6 +256,9 @@ These do not include Psion's files: add them with `psion -d`.
 - `psion-chess-windows-x86`: `psion.exe` for Windows. The integration tests
   pass with it under Wine and, in GitHub Actions, on Windows Server 2022
   and 2025.
+- `psion-chess-macos-arm64`: for macOS on Apple Silicon. It is not signed
+  by Apple: if macOS refuses to start a downloaded `psion`, run
+  `xattr -dr com.apple.quarantine psion-chess-macos-arm64` once.
 
 ## Licence
 
