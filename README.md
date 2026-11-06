@@ -30,29 +30,6 @@ Download and unpack the latest [release package](https://github.com/vdbergh/psio
 
 once in the unpack directory to get it to run. A self compiled binary is not affected by this restriction. See [Building](#building).
 
-### Sample GUI engine dialog
-
-    $ ./psion
-    uci
-    id name Psion Chess 2.13 (1985)
-    id author Richard Lang
-    option name Ponder type check default false
-    option name Move Overhead type spin default 30 min 0 max 5000
-    option name Cycles type string default highest
-    option name UCI_LimitStrength type check default false
-    option name UCI_Elo type spin default 1400 min 1150 max 1650
-    uciok
-    isready
-    readyok
-    position startpos moves e2e4
-    go movetime 2000
-    bestmove c7c5
-    position startpos moves g2g4 a7a6 h2h4 h7h6
-    go movetime 2000
-    info depth 5 time 98 score cp -10 pv e2e4 d7d5 b1c3 g8f6 f2f3
-    info depth 7 time 364 score cp -20 pv e2e4 d7d5 e4e5 d5d4 f1c4 b8c6 f2f4
-    bestmove e2e4 ponder d7d5
-
 ### Command line options
 
 - `-V`, `--verbose`: besides the UCI output, write diagnostics to stderr:
