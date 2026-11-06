@@ -15,7 +15,7 @@
 namespace psion {
 
     const char *PSION_ZIP_URL =
-        "https://www.classicdosgames.com/files/games/psion/psion213.zip";
+        "https://archive.org/download/psion213/psion213.zip";
     const char *PSION_ZIP_SHA256 =
         "f2c50e8d46f09c7434e8a26579483586ef92998a4b9ad632b05e367d3741b2d1";
 

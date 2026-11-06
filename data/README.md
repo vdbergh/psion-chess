@@ -12,15 +12,16 @@ way to make Psion Chess available to the adapter is
 
 (`psion.exe -d` on Windows). This displays its copyright status and,
 after asking for confirmation, uses `curl` to download `psion213.zip` from
-the preservation website Classic DOS Games.
+the Internet Archive.
 It unpacks the archive in this directory (or in `$PSION_DIR`, see below) and verifies
 the files (see below).
 
-To install Psion Chess by hand, download `psion213.zip`, for example from Classic DOS Games:
+To install Psion Chess by hand, download `psion213.zip`, for example from
+the Internet Archive:
 
-https://www.classicdosgames.com/game/Psion_Chess.html
+https://archive.org/details/psion213
 
-and unzip it into this directory. The directory
+(the preservation website Classic DOS Games offers the same file) and unzip it into this directory. The directory
 should then contain:
 
     Chess.exe   Chess.hlp   Psion.grt   Verm2.13

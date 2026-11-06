@@ -23,8 +23,8 @@ namespace psion {
         "in November 2026 Zebra Technologies, Psion's successor, gave\n"
         "permission, to the extent that it holds the copyright, to use and\n"
         "redistribute the program unmodified for non-commercial purposes\n"
-        "(see data/LICENCE.md). Classic DOS Games offers Psion Chess as a\n"
-        "free download.\n";
+        "(see data/LICENCE.md). The Internet Archive offers Psion Chess as\n"
+        "a free download.\n";
 
     // The zip file is about 100 KB; more than this is not it.
     static const size_t MAX_ZIP_SIZE = 10000000;

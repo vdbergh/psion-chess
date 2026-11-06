@@ -1,7 +1,7 @@
 # Builds the engine for Linux and Windows, runs the unit tests and uploads
 # ready-to-use packages. The UCI integration tests need Psion Chess itself,
-# which is not part of the repository: it is downloaded from Classic DOS
-# Games (see data/README.md), cached, and installed with "psion -d", which
+# which is not part of the repository: it is downloaded from the Internet
+# Archive (see data/README.md), cached, and installed with "psion -d", which
 # checks its SHA-256. The artifacts do not include it; only the release
 # packages do (see data/LICENCE.md).
 
@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 
 env:
-  PSION_ZIP_URL: https://www.classicdosgames.com/files/games/psion/psion213.zip
+  PSION_ZIP_URL: https://archive.org/download/psion213/psion213.zip
   PSION_ZIP_SHA256: f2c50e8d46f09c7434e8a26579483586ef92998a4b9ad632b05e367d3741b2d1
 
 jobs:
