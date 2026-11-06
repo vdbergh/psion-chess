@@ -145,6 +145,12 @@ and a half then: in a 3+2 blitz game (about 6 seconds a move) the engine
 effectively thinks longer than at a tournament rate of 40 moves in 2
 hours (3 minutes a move).
 
+### Strength
+
+Psion rates about 1700 on the CCRL Blitz scale, and gains about 60 Elo
+from pondering. The matches and rating lists are in
+[docs/strength.md](docs/strength.md).
+
 ### Time allocation
 
 A move gets the time given by `go movetime`, or else
@@ -157,12 +163,6 @@ needed after `go` to set up the position, up to 200 ms. Psion always
 thinks for at least 50 ms, so a move takes at least about 80 ms. Increase
 `Move Overhead` if the engine loses on time. The details are in [Time
 management](docs/implementation.md#time-management).
-
-### Strength
-
-Psion rates about 1700 on the CCRL Blitz scale, and gains about 60 Elo
-from pondering. The matches and rating lists are in
-[docs/strength.md](docs/strength.md).
 
 ### Implementation
 
