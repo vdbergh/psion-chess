@@ -9,10 +9,13 @@
 #                     (after asking) and install psion in $(PREFIX)/bin
 #   make uninstall    remove all of that again
 
-# Linux, or "windows" for a 32-bit Windows executable built with MinGW-w64.
-# (The 64-bit recompiler of this DOSBox version only supports the Linux
-# calling convention; the 32-bit one works on Windows.)
-TARGET ?= linux
+# Linux, "windows" for a 32-bit Windows executable built with MinGW-w64,
+# or "macos" (the default on a Mac) for Apple Silicon. (The 64-bit
+# recompiler of this DOSBox version only supports the Linux calling
+# convention; the 32-bit one works on Windows. There is none for arm64:
+# on a Mac the slower interpreter core is used.)
+TARGET ?= $(if $(filter Darwin,$(shell uname -s)),macos,linux)
+MS_BITFIELDS = -mno-ms-bitfields
 
 ifeq ($(TARGET),windows)
 CXX = i686-w64-mingw32-g++
@@ -22,6 +25,13 @@ CONFIG_DIR = windows
 # Statically linked, so that no MinGW DLLs are needed.
 override LDFLAGS += -static
 LIBS = -lwinmm
+else ifeq ($(TARGET),macos)
+BUILD = build-macos
+EXE = psion
+CONFIG_DIR = macos
+# An x86 option, which clang rejects for arm64.
+MS_BITFIELDS =
+LIBS =
 else
 BUILD = build
 EXE = psion
@@ -35,7 +45,7 @@ endif
 # etc. are given on the command line, e.g. "make LDFLAGS=-static" for an
 # executable that runs on any x86-64 Linux.
 CXXFLAGS ?= -g -O2
-override CXXFLAGS += -std=gnu++98 -mno-ms-bitfields
+override CXXFLAGS += -std=gnu++98 $(MS_BITFIELDS)
 override CPPFLAGS += -DHAVE_CONFIG_H -I$(CONFIG_DIR) -Iinclude
 
 SRCS := src/dosbox.cpp $(wildcard src/*/*.cpp)
@@ -107,5 +117,5 @@ uninstall:
 	rm -rf $(DESTDIR)$(DATADIR) $(DESTDIR)$(DOCDIR)
 
 clean:
-	rm -rf build build-windows psion psion.exe
+	rm -rf build build-windows build-macos psion psion.exe
 	$(MAKE) -C tests clean

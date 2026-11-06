@@ -9,6 +9,10 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
+#ifdef __APPLE__
+#include <limits.h>
+#include <mach-o/dyld.h>
+#endif
 
 #include "psionfiles.h"
 
@@ -160,6 +164,15 @@ namespace psion {
         }
         std::string path(exe, n);
         return path.substr(0, path.find_last_of(SEPS));
+#elif defined(__APPLE__)
+        // Symbolic links resolved, as with /proc/self/exe.
+        char real[PATH_MAX];
+        uint32_t size = sizeof(exe);
+        if (_NSGetExecutablePath(exe, &size) != 0 || !realpath(exe, real)) {
+            return ".";
+        }
+        std::string path(real);
+        return path.substr(0, path.rfind('/'));
 #else
         ssize_t n = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
         if (n <= 0) {

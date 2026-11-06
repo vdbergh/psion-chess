@@ -1,5 +1,6 @@
 build/
 build-windows/
+build-macos/
 /psion
 /psion.exe
 # Psion Chess itself is not in the repository, see data/README.md

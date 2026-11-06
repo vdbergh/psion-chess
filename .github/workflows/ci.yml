@@ -108,6 +108,76 @@ jobs:
           name: windows-tests
           path: windows-tests
 
+  # macOS on Apple Silicon (arm64), with the interpreter core: built,
+  # packaged and tested on the same runner, with Psion's files as for the
+  # Linux integration tests.
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      PACKAGE: psion-chess-macos-arm64
+    steps:
+      - uses: actions/checkout@v4
+        # With the tags, for the version (git describe).
+        with:
+          fetch-depth: 0
+
+      - name: Build
+        run: make -j"$(sysctl -n hw.ncpu)"
+
+      - name: Unit tests
+        run: make check
+
+      - name: Package
+        run: |
+          mkdir -p "$PACKAGE/data" "$PACKAGE/docs"
+          cp psion README.md COPYING AUTHORS "$PACKAGE/"
+          strip "$PACKAGE/psion"
+          cp data/README.md data/LICENCE.md "$PACKAGE/data/"
+          cp docs/*.md "$PACKAGE/docs/"
+          tar czf "$PACKAGE.tar.gz" "$PACKAGE"
+          file "$PACKAGE/psion"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: psion-chess-macos-arm64
+          path: psion-chess-macos-arm64.tar.gz
+
+      - name: Cache Psion Chess
+        id: psion-cache
+        uses: actions/cache@v4
+        with:
+          path: psion213.zip
+          key: psion213-${{ env.PSION_ZIP_SHA256 }}
+          enableCrossOsArchive: true
+
+      - name: Download Psion Chess
+        if: steps.psion-cache.outputs.cache-hit != 'true'
+        run: curl -fsSL --retry 3 -o psion213.zip "$PSION_ZIP_URL"
+
+      - name: Install Psion Chess
+        run: |
+          echo y | PSION_ZIP_URL="file://$PWD/psion213.zip" "$PACKAGE/psion" -d
+          echo y | "$PACKAGE/psion" -d | grep -q "already installed"
+
+      # How fast the interpreter core is, compared with the recompiler on
+      # Linux: the diagnostics show the cycles of a search.
+      - name: Speed
+        run: |
+          (echo uci; echo "debug on"; echo isready
+           echo "position startpos moves g2g4"; echo "go movetime 3000"
+           sleep 8; echo quit) | "$PACKAGE/psion" 2>&1 |
+            grep -E "Searched|bestmove"
+
+      - name: Integration tests
+        run: python3 -I tests/uci_test.py "$PWD/$PACKAGE/psion"
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: uci-test-log-macos
+          path: tests/uci_test.log
+
   # Runs the Linux package with Psion's files: the UCI integration tests,
   # on the oldest and the newest Ubuntu that GitHub offers.
   integration:
