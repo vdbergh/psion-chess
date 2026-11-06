@@ -4,7 +4,8 @@
   <img src="screenshot.png">
 </p>
 
-Psion Chess (Richard Lang, 1985) is a DOS program. This project runs it in
+Psion Chess (Richard Lang, 1985) was one of the strongest chess programs
+of its time. This project runs the MS-DOS version in
 a stripped-down, headless DOSBox and adds an adapter that speaks the UCI
 protocol, so that it can be used from any chess GUI or match runner.
 
