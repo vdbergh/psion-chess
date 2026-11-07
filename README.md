@@ -24,7 +24,7 @@ Psion Chess is currently playing online at Lichess as
 
 Download and unpack the latest [release package](https://github.com/vdbergh/psion-chess/releases/latest) for your OS and point your GUI to the `psion` executable it contains.
 
-*Note:* The macOS binary is unsigned. This means that one may need to run
+*Note:* The macOS binary is unsigned. This means that you may need to run
 
     xattr -dr com.apple.quarantine psion-chess-macos-arm64
 
