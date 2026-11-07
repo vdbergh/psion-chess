@@ -106,8 +106,8 @@ How the engine handles the gray areas of the protocol is described under
     principal variation.
   - Book moves and moves found instantly come without `info`.
 - Psion searches to a fixed maximum depth and moves as soon as it is
-  reached, whatever the time left. In a locked pawn ending, with few moves
-  per ply, this takes under a second, so Psion moves almost at once even at
+  reached, whatever the time left. So in a locked pawn ending, with few moves
+  per ply (like Fine 70), Psion moves almost at once even at
   long time controls. This depth limit, which inherently limits Psion's
   ability to understand certain positions, is part of Psion's program and
   is left as it is.
