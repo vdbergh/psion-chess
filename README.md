@@ -28,7 +28,7 @@ Download and unpack the latest [release package](https://github.com/vdbergh/psio
 
     xattr -dr com.apple.quarantine psion-chess-macos-arm64
 
-once in the unpack directory to get it to run. A self compiled binary is not affected by this restriction. See [Building](#building).
+once in the directory where you unpacked the package to get it to run. A self compiled binary is not affected by this restriction. See [Building](#building).
 
 ### Command line options
 
@@ -246,7 +246,8 @@ These do not include Psion's files: add them with `psion -d`.
   and 2025.
 - `psion-chess-macos-arm64`: for macOS on Apple Silicon. It is not signed
   by Apple: if macOS refuses to start a downloaded `psion`, run
-  `xattr -dr com.apple.quarantine psion-chess-macos-arm64` once.
+  `xattr -dr com.apple.quarantine psion-chess-macos-arm64` once in the
+  directory where you unpacked the package.
 
 ## Licence
 
