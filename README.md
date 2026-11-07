@@ -113,7 +113,7 @@ How the engine handles the gray areas of the protocol is described under
   is left as it is.
 - The move to ponder on (`bestmove ... ponder ...`) is the second move of
   Psion's principal variation, so there is none after a book move or a
-  move found at once. A ponder miss costs about 0.05 seconds of the
+  forced move. A ponder miss costs about 50 ms of the
   engine's clock.
 - Entering the opponent's move and reporting the engine's take about
   80 ms per move on an i5-1135G7. This time is taken from the engine's
