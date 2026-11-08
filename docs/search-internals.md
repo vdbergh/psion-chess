@@ -147,6 +147,42 @@ inside make, show up as unmake writes with a make return address: 411 of
 Unmake is called from `0D9C`, `0DA5`, `0DCA`, `1264`, `13E9`, `1487`,
 `14CA`, `14E7`, `14FE`, `174E` (return addresses).
 
+## Search depth
+
+The word at `7076` (ply times 2) was read at every write of 0000 to the
+search board, so each node counts twice, at the value the ply had then
+(`git stash` "ply histogram experiment (PSION_PLY)", on `main`). Root
+moves are made at value 2, so value 2k is ply k. Searches of 15–20 s,
+all of which showed 8-ply PVs (the most Psion shows):
+
+| Position | Highest value | Highest ply | Most writes at |
+|---|---|---|---|
+| 1.a4 h5 | 22 | 11 | 16 (ply 8) |
+| Kiwipete-like middlegame (`r3k2r/p1ppqpb1/...`) | 26 | 13 | 14–18 (plies 7–9) |
+| Locked pawn ending (`8/8/4k3/3p1p2/3P1P2/4K3/8/8 w`) | 30 | 15 | 24 (ply 12) |
+
+The depth in our info lines is the PV length, so it says nothing about
+how deep Psion searched; it searches past ply 8.
+
+The same experiment also counts captures per ply: a write of a piece
+over a piece is make placing a capturing piece (en passant is missed).
+Searches of 15 s:
+
+| Ply | 1.a4 g5 | Middlegame | Pawn ending |
+|---|---|---|---|
+| 5–8 | 4–8% | 27–63% | 0% |
+| 9 | 27% | 48% | 1.0% |
+| 10–11 | 13–29% | 27–33% | 0.7–1.9% |
+| 12–13 | | 25–33% | 5–6% |
+| 14–15 | | | 0.4–0.8% |
+
+The deepest plies are mostly quiet moves, so they are not a capture
+search (quiescence search). In the pawn ending, Psion's full-width
+search simply goes deeper. Any exchange evaluation must therefore be
+static: make is not used for it (see the callers above). The counts at
+ply 0 are the board setup. The counts at ply 1 in the pawn ending, where
+no capture is possible, are unexplained (12 of 134).
+
 ## Node count
 
 Implemented in `src/psion_mods/nodes.cpp`: a page handler on the pages
