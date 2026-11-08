@@ -476,15 +476,16 @@ class UciTest(unittest.TestCase):
         self.assertTrue(Board(moves).plausible(line.split()[1]), line)
 
     def test_info_book_move(self):
-        """A book move gets an info line too: depth 1, 1 node."""
+        """A book move gets an info line too: depth 1, 1 node, the move."""
         e = self.engine
         e.send('position startpos')
         e.send('go movetime 2000')
-        _, before = e.expect('bestmove', 15)
+        line, before = e.expect('bestmove', 15)
         infos = [l.split() for l in before if l.startswith('info ')]
         self.assertEqual(len(infos), 1, before)
         self.assertEqual(infos[0][:4] + infos[0][5:],
-                         ['info', 'depth', '1', 'time', 'nodes', '1'], infos)
+                         ['info', 'depth', '1', 'time', 'nodes', '1', 'pv',
+                          line.split()[1]], infos)
         int(infos[0][4])
 
     def test_info_mate(self):

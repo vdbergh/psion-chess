@@ -1308,10 +1308,10 @@ namespace psion {
             unsigned int time_ms = GetTicks() - uci.thinking_start;
             unsigned long nodes = search_nodes();
             if (nodes < BOOK_MOVE_NODES) {
-                uci_send("info depth 1 time %u nodes 1\n", time_ms);
-            } else {
-                uci_send("info depth 1 time %u nodes %lu\n", time_ms, nodes);
+                nodes = 1;
             }
+            uci_send("info depth 1 time %u nodes %lu pv %s\n", time_ms, nodes,
+                     move.c_str());
         }
         if (move == uci.info_move && !uci.info_ponder.empty()) {
             uci_send("bestmove %s ponder %s\n", move.c_str(),
