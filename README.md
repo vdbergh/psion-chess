@@ -95,7 +95,10 @@ How the engine handles the gray areas of the protocol is described under
 - `go depth`/`nodes`/`mate` are not supported; these result in a fallback
   search of 5 s.
 - Psion ends a search by itself after about 3–4 minutes (its level 11,
-  "4 minutes per move"), so longer `movetime` searches end earlier.
+  "4 minutes per move"), so longer `movetime` searches end earlier. Its
+  level *Infinite* has no such limit, but there Psion stops reading the
+  keyboard once its search reaches the maximum depth, which happens almost
+  at once in a locked pawn ending; it would then never move.
 - Chess960 is not supported.
 - The move counters of a FEN are ignored, so Psion's 50-move rule counts
   from the FEN (the GUI should still apply the rule itself).
