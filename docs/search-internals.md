@@ -70,7 +70,7 @@ second rank, and the flag is bit `04` of the square words.
 |---|---|
 | `5A42` | Incremental material/position score, updated by make from tables at `0744` |
 | `5A4C` | Return address of make/unmake (they keep undo data on the stack); also used as a pointer by the routine at `20B2` |
-| `5A72` | Side flag (`00`/`80`, toggled per ply) |
+| `5A72` | Side flag (bit `80`, toggled per ply) and evaluation mode: bit `40` turns on the passed-pawn code, bits `03` scale the mobility down (`61` in pawn endings, `00` in the opening) |
 | `6740` | Piece list: per piece index, its square (low byte of the 0x88 address); with related tables at `6700` and `6720` |
 | `675E`, `67DE` | King squares (White, Black) |
 | `055C` | Ray table used to check whether a move leaves the king in check |
@@ -305,9 +305,104 @@ the attacker wins on that square. For each side the evaluation keeps the
 two largest results (`702`/`703` and `704`/`705`) and the square of the
 largest (`706`).
 
-**Final score (`2C4A`..`2CDD`).** The incremental material/position score
-(`5A42`), the mobility in `bp` and a term from `5A60` (looked up through
-the tables at `6A00`/`6B00`) are adjusted by these largest exchange
-gains. This stands in for a capture search at the end of the full-width
-search. I have not worked out the exact formula, which also depends on
-flags at `708`/`709` and `5A70`/`5A71`.
+**Final score.** Read from the code (`2974`..`2CDD`) and checked by
+running it (see "Check of the formula" below). Two sides matter:
+
+- Q is the side that just moved: White if bit `80` of `5A72` is clear,
+  Black if it is set.
+- T is the side to move.
+
+The score is computed in White's view first and returned in `bp` from
+Q's view; the callers negate it (`neg bp` at `1799`, `1824`, `1870`).
+Score units: the piece-square tables give a pawn about 16–28, a knight
+or bishop about 66–81, a rook about 123–128 and a queen about 219–230.
+Exchange values are about half of that (pawn 13), so twice an exchange
+gain is its value in score units.
+
+1. **Static part.** It is the sum of:
+   - `5A42`: the piece-square sums, kept up to date by make (tables
+     through `0744`: pawn `6200`, knight `6100`, bishop `6300`, rook
+     `6400`, queen `6500`, king `6600`, Black's at `+10`, negative).
+   - The pawn term: a signed byte cached in `5A60`, recomputed only when
+     `5A61` is non-zero. It is recomputed in one of two ways, depending on
+     bit `40` of `5A72`: the tables at `6A00`/`6B00` (`2AE7`), or the
+     detailed code at `2AA6` with table `6D00`.
+   - Slider mobility: +1 per empty square a White slider sees and −1 for
+     Black. Only diagonal and vertical rays count; the horizontal rays of
+     rooks and queens are walked but counted into a value that is thrown
+     away (`xchg bp,ax` at `2E41`/`2F65`).
+   - +2 for each line from a slider through an enemy piece to the enemy
+     king, or (not for a queen) to the enemy queen: pins (`2EC1`).
+   - Check: +2 if Q's move gives check (`2A56`), and +8 more if two
+     pieces give check (`2CF6`). Here `709` gets bit `80`.
+   - The mobility and pin terms so far are shifted right by `5A72 & 3`
+     (`sar bp,cl` at `2A42`), e.g. halved in pawn endings (`5A72` =
+     `61`). The check terms come after the shift.
+   - Passed pawns (`2D13`..`2E1D`), only with bit `40` of `5A72`, from
+     the passed-pawn file masks at `5A52`/`5A5D`. For each passed pawn
+     whose promotion square is empty, there are terms of 6, 32 (`0x20`)
+     and 72 (`0x48`) units, the 72 when only pawns are left. Which apply
+     depends on whether the side has pieces, which side is to move, and
+     which kings and pieces attack the promotion square (and `2E20` /
+     `1B69` for the square in front of it). Not decoded in full. Unlike the
+     pawn term, these are not cached.
+2. **Exchange step costs.** For each attacked piece, its owner loses:
+   - `[714A]` if no pawn defends it (`714A` is 0 in the dumps, and no
+     instruction writes it directly);
+   - 1 if it is defended only by pieces behind others (`2BA3`);
+   - 1 for each further round of captures (`2BBA`, `2BD7`).
+3. **Exchange gains.** The four largest gains, in exchange units:
+   - `m1` and `m2`: the two largest gains T can make against Q's pieces
+     (`702`/`703`). If the piece that just moved (on the to-square kept in
+     `708`) is one of them, its gain counts 2 more (`2BF2`) and `709` gets
+     bit `40`.
+   - `t1` and `t2`: the two largest gains Q can make against T's pieces
+     (`704`/`705`).
+4. **The returned score** (`2C4A`..`2CCA`), with S the static part in
+   Q's view:
+
+   ```
+   bp = S
+   if m1 > 0:  bp -= 2*m1 + m2          # T takes the biggest, half of the next
+   if t1 > 0 and not (m1 > 0 and moved piece en prise):
+       bp += 2                          # Q threatens something
+       if T in check and m1 == 0: bp += 1
+       if t2 > 0:   bp += 3             # Q threatens two things
+       if t2 >= 16: bp += 2             #   the second worth more than a pawn
+   ```
+
+   T is to move, so it is assumed to win the most valuable piece of Q's
+   that is en prise, in full. The second counts half, as T can win only
+   one of them at once. Q's own threats get only a small bonus (2–7
+   units, at most about a third of a pawn), because T can answer them.
+
+The routine also returns other values:
+
+- `cx`: the score before step 4 (popped at `2CCB`). Callers use it for
+  margins (`mov di,0xa; sub di,cx` at `18B9`).
+- `di = bp + 2*t1` (computed after the `m` terms, before the bonus); the
+  callers above do not use it.
+- `dx`: the bound for this ply, `[704C + 7076 - 2]`.
+- Flags written into the move: `[si+2]` gets the square of T's best
+  capture, with `10` set if `m1 > 0`; `[si+3]` gets bits `30` when Q
+  threatens something (bit `20` cleared if `5A70 & 10`).
+
+**Check of the formula.** Psion was run on the normal core with a
+temporary page handler on all of DS (`git stash` "evaluation check
+(PSION_EVALCHECK)"). The handler reads the registers when the
+evaluation writes into memory at known instructions:
+
+- At `2CCD` (`mov [si+2],bl`), `bp` is the returned score and `cx` the
+  score before step 4. Recomputing step 4 from `cx`, `702`..`705` and
+  `709` gives `bp` in all of over 3 million evaluations, from searches
+  of six positions (the three above, and three with passed pawns).
+- At the first write of the exchange loop (`2B2B`), `bp` is the static
+  part before the exchange costs. A literal C++ copy of the slider walks
+  (`2E2E`..`30AD`), shifted by `5A72 & 3`, together with the check terms,
+  `5A42` and the pawn term, gives it exactly in every evaluation where the
+  passed-pawn code did not run. Where it did run, the differences are
+  sums of 6, 32 and 72. (Differences of −8, and 64 = 72 − 8, are an error
+  of the check itself: the passed-pawn code sets bit `10` of `709`, which
+  the check takes as a double check, +10 instead of +2.)
+- The exchange step costs (step 2) and the exchange gains (step 3) were
+  not checked separately. They come in through `cx` and `702`..`705`.
