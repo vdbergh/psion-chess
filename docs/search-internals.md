@@ -543,6 +543,22 @@ not kept), by the return address of make:
 | Kiwipete-like middlegame | 278,089 | 207,397 | 35,959 (13%) | 33,200 / 89 / 2,670 |
 | Locked pawn ending | 814,463 | 153,973 | 0 | |
 
+**Not inherited.** No routine passes bit `04` on to the child's moves.
+The routines test the parent's flags with masks that leave out bit `04`
+(`F8`, `88`, `40`, `A8`, `C0`, `B8`), so every move must earn the flag
+again. Counted over the same 8 s searches (experiment not kept), as
+nodes that made at least one move:
+
+| Position | Nodes | Under the filter | Parent also under the filter |
+|---|---|---|---|
+| 1.a4 g5 | 118,403 | 2,666 | 0 |
+| Kiwipete-like middlegame | 42,400 | 10,557 | 216 (2%): 176 runs of 2 plies, 35 of 3, 5 of 4 |
+
+So the filter nearly always covers one ply: the node after a flagged
+move searches only its captures, promotions and checks, and the nodes
+below those are almost never filtered again. A filtered node
+that made no move at all is not in these counts.
+
 This is the capture search that we did not see in the capture share per
 ply. It runs only after tactical moves and makes up a small part of the
 tree. The evaluation's static exchange evaluation still stands in for it
