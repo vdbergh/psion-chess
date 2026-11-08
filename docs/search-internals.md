@@ -244,3 +244,70 @@ another move and searched longer) and 164.1 Mcycles/s without; the runs
 vary between 155 and 171. So no measurable cost: the handler is called
 for about 1 in 400 emulated cycles. That is about 129,000 nodes per second
 on that machine.
+
+## Evaluation and static exchange evaluation (`2974`)
+
+Found with a profile: a temporary tick handler records CS:IP once per
+emulated millisecond while Psion thinks (`git stash` "CS:IP profiler
+(PSION_PROF) and PSION_CORE", normal core). The code was disassembled
+from a `PSION_MEMDUMP` dump (linear `02590`, offset 0 = `0259:0000`).
+In a 60 s search of the Kiwipete-like middlegame (59,779 samples), the
+samples were spread over these routines (counted from the nearest
+`call` target):
+
+| Routine | Share | What it is |
+|---|---|---|
+| `2E20` (`2E2E`..`2FFF` and on) | 43% | ray walks for the attack tables (below) |
+| `2974` | 34% | evaluation: attack tables, exchanges, final score |
+| `1C5C` make | 6% | |
+| `1267` | 4% | |
+| `312D` | 2% | |
+| `1FB8` unmake | 2% | |
+
+So about three quarters of the time goes into the evaluation. It is
+called from the search routines in the per-ply table at `5A92` (`175A`,
+`1778`, `1796`, `186D`, `1895`, `1633`, ...).
+
+**Attack tables.** For every piece, the evaluation walks its moves and
+adds the piece to an attack byte for each square it attacks (`add
+[bx+0x180],dh` at `2E5D`). The tables lie at fixed offsets from the
+square's search-board address: `+180`/`+190` and `+300`/`+480`, one pair
+per side. The walk also counts mobility (`inc bp` per empty square). It
+also adds pieces lined up behind an attacker of the same kind (`+181`,
+x-rays and batteries), and a piece pinned against the king (`cmp
+ah,[67DE]`).
+
+The attack byte counts attackers per kind. This is read off the tables:
+`6800 + byte` gives the value of the least valuable attacker, and `6900
++ byte` gives the byte with that attacker removed:
+
+| Bits | Attackers |
+|---|---|
+| `C0` | pawns (count 1–3) |
+| `03` | knights and bishops (count) |
+| `30` | rooks (count) |
+| `0C` | queens (count) |
+
+The piece values (at piece-list entry + `20`, e.g. `6760` for White's
+pawns) are pawn `0D` (13), knight and bishop `28` (40), rook `41` (65),
+queen `74` (116) and king 0.
+
+**Exchanges (`2B11`..`2C48`).** For each piece of each side (the piece
+lists at `5A44` = `6740` and `5A46` = `67C0`), the evaluation reads the
+attack and defence bytes on its square. If the piece is attacked, it
+plays out the captures on that square. Each side always captures with
+its least valuable attacker (`sub al,[bx]` with the `6800` table, next
+set from `6900`, at `2BA6`..`2BDE`). The pieces behind them (`+181`) join
+when the front line runs out. The two bounds kept in `ah` and `dl` let
+either side stop capturing when that is better. This is a static
+exchange evaluation: no moves are made on the board. The result is what
+the attacker wins on that square. For each side the evaluation keeps the
+two largest results (`702`/`703` and `704`/`705`) and the square of the
+largest (`706`).
+
+**Final score (`2C4A`..`2CDD`).** The incremental material/position score
+(`5A42`), the mobility in `bp` and a term from `5A60` (looked up through
+the tables at `6A00`/`6B00`) are adjusted by these largest exchange
+gains. This stands in for a capture search at the end of the full-width
+search. I have not worked out the exact formula, which also depends on
+flags at `708`/`709` and `5A70`/`5A71`.
