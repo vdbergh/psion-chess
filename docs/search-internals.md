@@ -179,9 +179,24 @@ Searches of 15 s:
 The deepest plies are mostly quiet moves, so they are not a capture
 search (quiescence search). In the pawn ending, Psion's full-width
 search simply goes deeper. Any exchange evaluation must therefore be
-static: make is not used for it (see the callers above). The counts at
-ply 0 are the board setup. The counts at ply 1 in the pawn ending, where
-no capture is possible, are unexplained (12 of 134).
+static: make is not used for it (see the callers above).
+
+The "captures" at plies 0 and 1 are not moves. They come from the board
+setup at the start of a search: `34B6` writes a piece's code with
+`stosb`, then `34D9` writes its index into the high byte, over a
+non-zero word. In the pawn ending all 12 at ply 1 come from `34D9`: the
+6 pieces, set up twice while the counter is 2. The 31 at ply 0 are the
+32 pieces of the start position (the white king has index 00, so its
+write is 0). The `3412` clears that come with these setups also add 32
+"nodes" each at those plies.
+
+The setup runs when Psion starts a game (at start-up and on a new
+game), when a set-up position is finished, and at the start of each
+search. The counter is 0 only at start-up: the first setup comes 3 ms
+before `23E4` writes 2 to it, the value at the root. It is never set
+back to 0. During the search it goes up by 2 (at `131C`) and back down
+(at `1470` and `14D4`, among others). So every later setup is counted
+at ply 1.
 
 ## Node count
 
