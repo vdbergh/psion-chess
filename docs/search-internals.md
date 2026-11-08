@@ -449,3 +449,45 @@ that iteration may work differently (`11A6` also branches on `5A67 & 3`).
 - Fail high (a cutoff at the root brings the ply back to 0, `14D2` →
   `1466` → `1147`): `114C` sets beta to +∞ and searches again from the
   old alpha.
+
+## Move ordering
+
+Read from the code; not checked by running it. At each node the moves
+come in stages, kept in the stage byte `[si+3]` (1, 2, 3) of the move
+slot (`1337`..`1413`):
+
+1. In some cases (bit `80` of `dh` at `133B`) a move from `206B` is
+   tried first (`1363`). Not decoded.
+2. **Capture of the piece that just moved** (`136C`..`1388`). The square
+   comes from `5A70`. `1B46` scans the piece list of the side to move
+   from the start: pawns, then knights and bishops, rooks, queen and
+   king. It takes the first piece that attacks the square, i.e. the least
+   valuable one.
+3. **Killer move** (`13AC`..`13C1`): one per ply, at `6FFE` + ply, checked
+   for legality by `1A51` and tried if legal.
+4. **All other moves.** `632` calls `30B4`, which generates the moves
+   piece by piece (handler table at `6720`/`67A0`: `3213` pawns, `31C8`
+   knights, `3153`, `314B`, `3146`, `3325`/`3320` king). The generator
+   pushes them onto a stack used as the move list (`push cx; push ax`),
+   leaving out the moves already tried in stages 2 and 3 (`cmp ax,bp`,
+   `cmp ax,[6FC]`).
+   - Near the root (ply ≤ `5A66` / 2; `5A66` was 8, so plies 1–4) they
+     are sorted first (`0D92`..`0E60`). Every move is made, evaluated
+     statically (`5A94` = `1633`, which calls `2974`) and unmade. A
+     capture or a move flagged `80` (probably check) gets +8. The 10
+     best go into an insertion-sorted list at `03E0`..`0407`, and are
+     then put first in that order. The rest follow in generation order.
+   - Deeper (`14FE`), the moves are tried in generation order. When bit
+     `04` of `5A71` is set, `155F` skips moves that are not captures and
+     not flagged `20` (pawn moves to the last rank), with further
+     conditions. That is selectivity rather than ordering; not decoded.
+
+**Killer update** (`15FF`, on a beta cutoff): if the move came from
+stage 4 (`[si+3] & 3` = 0), it becomes the killer for this ply (`6FFE` +
+ply). Up to ply 8 (counter below `11`) it is also stored in a table of 9 bytes per
+ply at `7090` (purpose not known).
+
+The root moves are kept in a table at `6E00` (12 bytes per move, filled
+at `1068`), and `11A6` works through it at each iteration; how they are
+reordered between iterations is not decoded. There is no history table,
+and no hash move, as no hash table has turned up.
