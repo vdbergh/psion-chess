@@ -431,6 +431,20 @@ class UciTest(unittest.TestCase):
         line, before = e.expect('bestmove', 15)
         infos = [l.split() for l in before if l.startswith('info ')]
         self.assertTrue(infos, before)
+        # The node count, after the time: it only grows during a search,
+        # and nps goes with it. Without it the rest is checked as before.
+        nodes = []
+        for i, info in enumerate(infos):
+            self.assertEqual(info[3:6:2], ['time', 'nodes'], info)
+            self.assertEqual(info[7], 'nps', info)
+            nodes.append(int(info[6]))
+            time = int(info[4])
+            if time > 0:
+                self.assertAlmostEqual(int(info[8]), nodes[-1] * 1000 / time,
+                                       delta=1, msg=info)
+            infos[i] = info[:5] + info[9:]
+        self.assertGreater(nodes[0], 0, infos)
+        self.assertEqual(nodes, sorted(nodes), nodes)
         # The last pv starts with the move played: if Psion did not
         # display its line, a line with the move alone and the last score
         # as a lower bound says so much.

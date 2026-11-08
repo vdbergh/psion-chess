@@ -44,10 +44,13 @@ time it takes: a `go` without a new `position`, for example, first takes
 back the move Psion has just played.
 
 Psion keeps no node count, and its search depth is not found in memory
-or on the screen. So `info` lines have no `nodes` or `nps`, the depth is
-the length of the longest principal variation seen, and the time is
-measured by the adapter itself: from when Psion started to think, so
-without entering the opponent's move.
+or on the screen. The adapter counts the nodes itself, by counting the
+writes to the board Psion searches on (`nodes.cpp`, see
+[search-internals.md](search-internals.md#node-count)). The depth is the
+length of the longest principal variation seen, and the time (also for
+`nps`) is measured by the adapter itself: from when Psion started to
+think, so without entering the opponent's move. The last `info` line is
+repeated before `bestmove` with the time and nodes of the whole search.
 
 ## Psion's memory
 

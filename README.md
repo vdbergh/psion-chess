@@ -98,7 +98,9 @@ How the engine handles the gray areas of the protocol is described under
 - The move counters of a FEN are ignored, so Psion's 50-move rule counts
   from the FEN (the GUI should still apply the rule itself).
 - Limitations of `info` lines:
-  - There is no node count.
+  - The node count is counted by the adapter from Psion's board writes
+    (see [docs/search-internals.md](docs/search-internals.md)); it is
+    within about 0.5% of the moves Psion searched.
   - The depth given is the length of the longest principal variation so
     far in the search, as Psion does not show its search depth.
   - The score has a resolution of 10 centipawns.
@@ -174,8 +176,8 @@ are described in [docs/implementation.md](docs/implementation.md).
 
 Started with `--verbose` and without the `uci` command, the program
 reads moves like `e2e4` from stdin and Psion replies to them; the
-diagnostics (the moves and the board after each move, and the time and
-emulated cycles of each search) then go to stdout. Moves typed while
+diagnostics (the moves and the board after each move, and the time,
+emulated cycles and nodes of each search) then go to stdout. Moves typed while
 Psion thinks are played once it has moved; `quit` ends the program at
 once, and at the end of the input it ends once Psion has replied to the
 last move.

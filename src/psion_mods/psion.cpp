@@ -19,6 +19,7 @@
 #include "psion.h"
 #include "ocr.h"
 #include "memscan.h"
+#include "nodes.h"
 #include "chess.h"
 #include "psionfiles.h"
 #include "mem.h"
@@ -613,6 +614,7 @@ namespace psion {
             }
         }
         say("Psion's data segment is %04X\n", segment);
+        Nodes_Install(segment);
         return true;
     }
 
@@ -723,19 +725,26 @@ namespace psion {
     static bool search_measured = false;
     static unsigned int search_start_ticks = 0;
     static double search_start_cycles = 0;
+    static unsigned long long search_start_nodes = 0;
 
     static void search_started() {
         search_measured = true;
         search_start_ticks = GetTicks();
         search_start_cycles = emulated_cycles();
+        search_start_nodes = Nodes_Count();
+    }
+
+    // Nodes since the last search started (also after it ended).
+    static unsigned long search_nodes() {
+        return (unsigned long)(Nodes_Count() - search_start_nodes);
     }
 
     static void search_ended() {
         if (search_measured) {
             search_measured = false;
-            say("Searched %u ms, %.0f cycles\n",
+            say("Searched %u ms, %.0f cycles, %lu nodes\n",
                 GetTicks() - search_start_ticks,
-                emulated_cycles() - search_start_cycles);
+                emulated_cycles() - search_start_cycles, search_nodes());
         }
     }
 
@@ -1195,6 +1204,29 @@ namespace psion {
         fflush(stdout);
     }
 
+    // An info line up to the score: depth, time, nodes (if counted) and
+    // the score.
+    static std::string info_head(bool mate, int score) {
+        unsigned int time_ms = GetTicks() - uci.thinking_start;
+        unsigned long nodes = search_nodes();
+        std::string info;
+        char buf[80];
+        snprintf(buf, sizeof(buf), "info depth %u time %u",
+                 (unsigned int)uci.info_depth, time_ms);
+        info = buf;
+        if (nodes > 0) {
+            snprintf(buf, sizeof(buf), " nodes %lu", nodes);
+            info += buf;
+            if (time_ms > 0) {
+                snprintf(buf, sizeof(buf), " nps %lu",
+                         (unsigned long)(nodes * 1000.0 / time_ms));
+                info += buf;
+            }
+        }
+        snprintf(buf, sizeof(buf), " score %s %d", mate ? "mate" : "cp", score);
+        return info + buf;
+    }
+
     // How long after "go" (or "ponderhit") Psion started to think: 0 if
     // it was thinking already, as after a ponder hit.
     static unsigned int setup_time() {
@@ -1230,13 +1262,7 @@ namespace psion {
         uci.search = SEARCH_NONE;
         game_state.thinking = false;
         if (!uci.info_move.empty() && move != uci.info_move && move != "0000") {
-            std::string info;
-            char buf[80];
-            snprintf(buf, sizeof(buf), "info depth %u time %u score %s %d",
-                     (unsigned int)uci.info_depth,
-                     GetTicks() - uci.thinking_start,
-                     uci.info_mate ? "mate" : "cp", uci.info_score);
-            info = buf;
+            std::string info = info_head(uci.info_mate, uci.info_score);
             std::vector<std::string> pv = uci.info_pv;
             if (move.size() == 5 && uci.info_move.size() == 5 &&
                 move.compare(0, 4, uci.info_move, 0, 4) == 0 &&
@@ -1259,6 +1285,16 @@ namespace psion {
                 // and a new best one beats the last score shown: a lower
                 // bound.
                 info += " lowerbound pv " + move;
+            }
+            uci_send("%s\n", info.c_str());
+        } else if (!uci.info_move.empty() && move == uci.info_move &&
+                   search_nodes() > 0) {
+            // The last line again, with the time and nodes of the whole
+            // search.
+            std::string info =
+                info_head(uci.info_mate, uci.info_score) + " pv";
+            for (size_t i = 0; i < uci.info_pv.size(); i++) {
+                info += " " + uci.info_pv[i];
             }
             uci_send("%s\n", info.c_str());
         }
@@ -1616,12 +1652,7 @@ namespace psion {
         // Psion does not show the depth; the length of the longest line
         // seen comes close (and GUIs such as Polyglot need a depth).
         uci.info_depth = std::max(uci.info_depth, a.pv.size());
-        std::string info;
-        char buf[80];
-        snprintf(buf, sizeof(buf), "info depth %u time %u score %s %d pv",
-                 (unsigned int)uci.info_depth, GetTicks() - uci.thinking_start,
-                 a.mate ? "mate" : "cp", a.score);
-        info = buf;
+        std::string info = info_head(a.mate, a.score) + " pv";
         for (size_t i = 0; i < a.pv.size(); i++) {
             info += " " + a.pv[i];
         }
