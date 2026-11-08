@@ -559,6 +559,39 @@ move searches only its captures, promotions and checks, and the nodes
 below those are almost never filtered again. A filtered node
 that made no move at all is not in these counts.
 
+**Which routines set the flag.** Counted per ply over the same searches
+(the routine is `[5A92 + ply]` at the time of the make; the table changes
+between iterations, so a ply can have several):
+
+| Ply | 1.a4 g5: routine, flags / makes | Middlegame: routine, flags / makes |
+|---|---|---|
+| 2 | `1895`: 2 / 68 | `1895`: 89 / 340 |
+| 3 | `1778`, `18FC`, `1919`: 0 | `1778`: 5 / 1,059; `18FC`, `1919`: 0 |
+| 4 | `1895`: 43 / 2,313 | `1895`: 1,578 / 3,834; `186D`: 43 / 172 |
+| 5 | `1778`, `18FC`, `1919`: 0 | `1778`: 189 / 10,157; `175A`: 8 / 1,114; `18FC`: 0 |
+| 6 | `1895`: 2,628 / 32,444 | `186D`: 1,097 / 9,370; `1895`: 495 / 21,889 |
+| 7 | `1778`, `18FC`: 0 | `1778`: 1,093 / 22,373; `175A`: 197 / 23,907; `1796`: 0 |
+| 8 | `1895`: 3,162 / 161,326 | `186D`: 3,157 / 60,185 |
+| 9 | `1778`: 0 | `175A`: 1,146 / 29,174; `1796`: 0 |
+| 10 | | `186D`: 1,426 / 17,626 |
+
+`1919`, `18FC`, `1796` and `1633` (the pre-sort) never set it. `1895`
+and `186D` set it at the even plies. `175A` and `1778` set it only through
+`183F`, the code of `1821`. They reach it only when the counter at
+`714C`, lowered by 1 or 2 for the move's own flags, is negative: for
+`175A` after adding 4 (`175D`..`1775`), for `1778` as it is
+(`177B`..`1793`). `714C` goes down by 1 or 2 for each move along the path
+that is flagged `80` or `20` in `dh` (`1306`..`1317`); it is saved and
+restored per ply, and its start comes from a table (`0F62`). Values seen
+at makes were 0 to 15 in the quiet opening and mostly −9 to 5 in the
+middlegame.
+
+So in the quiet opening only even plies set the flag, and a filtered node
+(odd ply) never has a filtered parent. In the middlegame the odd plies
+set it as well, once `714C` has run low, but still only 2% of the
+filtered nodes have a filtered parent. Why, is not decoded: it depends on
+the conditions in `1821`..`1869`.
+
 This is the capture search that we did not see in the capture share per
 ply. It runs only after tactical moves and makes up a small part of the
 tree. The evaluation's static exchange evaluation still stands in for it
