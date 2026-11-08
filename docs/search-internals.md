@@ -478,9 +478,8 @@ slot (`1337`..`1413`):
      best go into an insertion-sorted list at `03E0`..`0407`, and are
      then put first in that order. The rest follow in generation order.
    - Deeper (`14FE`), the moves are tried in generation order. When bit
-     `04` of `5A71` is set, `155F` skips moves that are not captures and
-     not flagged `20` (pawn moves to the last rank), with further
-     conditions. That is selectivity rather than ordering; not decoded.
+     `04` of `5A71` is set, only captures, promotions and checks are
+     searched (see "Selective filter" below).
 
 **Killer update** (`15FF`, on a beta cutoff): if the move came from
 stage 4 (`[si+3] & 3` = 0), it becomes the killer for this ply (`6FFE` +
@@ -491,3 +490,60 @@ The root moves are kept in a table at `6E00` (12 bytes per move, filled
 at `1068`), and `11A6` works through it at each iteration; how they are
 reordered between iterations is not decoded. There is no history table,
 and no hash move, as no hash table has turned up.
+
+## Selective filter at the deep plies (`155F`)
+
+`5A6E`..`5A71` hold the move that led to the current node: `12F4`..`1304`
+copy its slot there when going down a ply. `5A6E` is the move and
+`5A70`/`5A71` are its bytes `[si+2]`/`[si+3]`. So bit `04` of `5A71` is a
+flag on the parent's move.
+
+When that flag is set, the loop at `14FE` (stage 4 beyond ply `5A66`/2)
+searches a move only if one of these holds:
+
+- it is a capture (`dl & 1`);
+- it is flagged `20` in `[si+3]`, which the generator sets for pawn moves
+  to the last rank, i.e. promotions;
+- it gives a direct check (`156A`..`15C9`). The vector from the
+  to-square to the enemy king indexes the ray table at `055D`. That byte
+  gives the kinds of piece that attack along the vector, and the byte
+  before it the step. For a slider of a matching kind, the squares
+  between must be empty (`15B5`..`15C9`). A knight matches only on a
+  knight vector (step 0). A pawn matches if the step points the right way
+  for its colour and the vector is a pawn capture (`159C`..`15A7`). The
+  king never matches. Discovered checks are not looked for.
+
+All other moves are skipped (`jmp 14FE`). Stages 2 and 3 (capture of the
+moved piece, killer) come before this loop and are not filtered. So a
+node under the flag does a capture search with promotions and checks
+added, much like a quiescence search with checks.
+
+**Where the flag is set.** It is set on a move M by the per-ply routines
+in the table at `5A92`, which run after M is made: `or [si+3],4` at
+`183F`, `1889`, `18C2` and `18F4`. Which routine runs depends on the
+ply (the table is rebuilt per iteration). The conditions combine the
+static score of the position after M with margins of a few units
+against the bound (e.g. `10 - cx` against `dx` at `18B9`) and the flags of
+the parent's move in `5A71`:
+
+- `80`: it gave check;
+- `40`: the piece it moved is en prise;
+- `20`/`10`: it created a threat;
+- `08`: from the passed-pawn code.
+
+Roughly, M gets the flag when the position is not quiet and the score is
+close to the window. The exact conditions per routine are not decoded.
+
+**How often.** Makes counted in searches of 8 s (normal core; experiment
+not kept), by the return address of make:
+
+| Position | All makes | From the deep loop (`1511`) | With the filter on | Captures / promotions / checks |
+|---|---|---|---|---|
+| 1.a4 g5 | 426,325 | 44,994 | 2,856 (0.7%) | 2,408 / 0 / 448 |
+| Kiwipete-like middlegame | 278,089 | 207,397 | 35,959 (13%) | 33,200 / 89 / 2,670 |
+| Locked pawn ending | 814,463 | 153,973 | 0 | |
+
+This is the capture search that we did not see in the capture share per
+ply. It runs only after tactical moves and makes up a small part of the
+tree. The evaluation's static exchange evaluation still stands in for it
+at all other leaves.
