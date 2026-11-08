@@ -406,3 +406,46 @@ evaluation writes into memory at known instructions:
   the check takes as a double check, +10 instead of +2.)
 - The exchange step costs (step 2) and the exchange gains (step 3) were
   not checked separately. They come in through `cx` and `702`..`705`.
+
+## Search algorithm: alpha-beta with an aspiration window
+
+Read from the code; not checked by running it.
+
+**In the tree: plain alpha-beta (negamax).** There is one word per ply
+in the table at `704C` (index: the ply counter `7076`). It holds the best
+score found so far at that ply, from the view of the side to move there.
+Scores are stored with a bias of `8000`, so they compare unsigned and
+`neg` turns a score round.
+
+- Going down a ply (`12D9`), the child's entry starts as the entry two
+  plies up: the child's alpha is the grandparent's best. Its beta is
+  implicit: minus the parent's best. This is the usual negamax window
+  passing, written with a table instead of arguments. With
+  `search(child, -beta, -alpha)`, the child's alpha is minus the
+  parent's beta, which is the grandparent's alpha. The child's beta is
+  minus the parent's alpha, which changes only between children, so it
+  is fixed while the child is searched.
+- Coming back up (`1493`..`14B0`): if the child's best did not get above
+  its starting value, the child failed low. The parent's move is then at
+  least beta, so the parent stops (`14CD`, through `15FF`, probably the
+  killer update) and returns as well. Otherwise, if minus the child's
+  best beats the parent's best, it becomes the parent's new best (`14B0`,
+  then `15CE`).
+
+Every move gets this same window (alpha, beta). Nothing searches a move
+with a null window and then searches it again, so this is not PVS or
+NegaScout.
+
+**At the root: an aspiration window** (`0FD8`, called from the iteration
+loop at `107E`..`10C1`). After the first iteration (`5A67 & 3` non-zero),
+the window is the previous root score v (`704E`) ± 20 units, about one
+pawn: alpha = v − 20 (also kept in `713A`), beta = v + 20 (`704C` =
+−(v + 20)). In the first iteration `704E` is set to `F000` and `704C`
+to 0 (beta = +∞); with the bias, `F000` would be a very high alpha, so
+that iteration may work differently (`11A6` also branches on `5A67 & 3`).
+
+- Fail low (the root best is still alpha, `10AA`): `1125` sets alpha to
+  −∞ (0) and searches again (`jmp 1089`).
+- Fail high (a cutoff at the root brings the ply back to 0, `14D2` →
+  `1466` → `1147`): `114C` sets beta to +∞ and searches again from the
+  old alpha.
