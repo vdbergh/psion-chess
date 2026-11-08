@@ -51,6 +51,8 @@ length of the longest principal variation seen, and the time (also for
 `nps`) is measured by the adapter itself: from when Psion started to
 think, so without entering the opponent's move. The last `info` line is
 repeated before `bestmove` with the time and nodes of the whole search.
+When Psion showed no line, as for a book move, the last line is `info
+depth 1 time T nodes 1`.
 
 ## Psion's memory
 

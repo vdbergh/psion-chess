@@ -475,6 +475,18 @@ class UciTest(unittest.TestCase):
             self.assertEqual(int(info[2]), depth, info)
         self.assertTrue(Board(moves).plausible(line.split()[1]), line)
 
+    def test_info_book_move(self):
+        """A book move gets an info line too: depth 1, 1 node."""
+        e = self.engine
+        e.send('position startpos')
+        e.send('go movetime 2000')
+        _, before = e.expect('bestmove', 15)
+        infos = [l.split() for l in before if l.startswith('info ')]
+        self.assertEqual(len(infos), 1, before)
+        self.assertEqual(infos[0][:4] + infos[0][5:],
+                         ['info', 'depth', '1', 'time', 'nodes', '1'], infos)
+        int(infos[0][4])
+
     def test_info_mate(self):
         e = self.engine
         # Legal's mate: 1. Bxf7+ Ke7 2. Nd5#

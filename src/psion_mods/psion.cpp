@@ -1257,6 +1257,10 @@ namespace psion {
                 game_state.moves == uci.target);
     }
 
+    // A book move or a forced move counts fewer nodes than this (the board
+    // set-up, and a few dozen moves made in some book positions).
+    const unsigned long BOOK_MOVE_NODES = 100;
+
     static void finish_search(const std::string &move) {
         search_speed(false);
         uci.search = SEARCH_NONE;
@@ -1297,6 +1301,17 @@ namespace psion {
                 info += " " + uci.info_pv[i];
             }
             uci_send("%s\n", info.c_str());
+        } else if (uci.info_move.empty() && move != "0000") {
+            // Psion showed no line: a book move or a forced move (then the
+            // board was hardly searched: a few dozen nodes at most), or a
+            // search stopped before Psion showed anything.
+            unsigned int time_ms = GetTicks() - uci.thinking_start;
+            unsigned long nodes = search_nodes();
+            if (nodes < BOOK_MOVE_NODES) {
+                uci_send("info depth 1 time %u nodes 1\n", time_ms);
+            } else {
+                uci_send("info depth 1 time %u nodes %lu\n", time_ms, nodes);
+            }
         }
         if (move == uci.info_move && !uci.info_ponder.empty()) {
             uci_send("bestmove %s ponder %s\n", move.c_str(),
