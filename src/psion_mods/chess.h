@@ -109,6 +109,11 @@ namespace psion {
     // double pawn move, which is then the first of moves.
     PositionRequest ParsePosition(const std::vector<std::string> &tokens);
 
+    // "CHECKMATE" or "STALEMATE" if the game is over by the rules after
+    // moves from start, else "" (also if a move is illegal).
+    std::string GameOver(const StartPosition &start,
+                         const std::vector<std::string> &moves);
+
     // The keys that set up start in Psion's set-up mode, once it is in
     // that mode in a new game: 'e' (empty board), '0' (empty the square),
     // the cursor keys 'U', 'D', 'L', 'R', a piece letter ("kqrbnp") to

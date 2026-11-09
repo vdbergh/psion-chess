@@ -346,7 +346,13 @@ How the engine handles what the UCI protocol leaves open or forbids:
 - `go` in a position Psion considers over (mate, stalemate, or a draw by
   repetition or the fifty-move rule) is answered at once with
   `bestmove 0000`, after `info string Game over (Psion shows DRAW)` (or
-  `CHECKMATE`, `STALEMATE`). After `go infinite` or `go ponder` the
+  `CHECKMATE`, `STALEMATE`). A mate or stalemate is seen from the
+  position itself, without waiting for Psion to show it (`info string
+  Game over (checkmate)`, or `stalemate`); on a slow machine Psion may
+  still be drawing the text when `go` comes. If Psion shows a draw only
+  after the search was started, it ignores the `c`, and the result it
+  shows answers the `go` within about 300 ms (`c` and `m` do not count
+  as keys that change the board). After `go infinite` or `go ponder` the
   answer comes with `stop` or `ponderhit`, as for any move found early.
 - A position with an illegal move is reported at once with `info string
   Illegal move a2a4` (with `(checkmate)` or `(stalemate)` if the game

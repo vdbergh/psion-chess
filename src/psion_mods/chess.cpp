@@ -780,10 +780,12 @@ namespace psion {
     }
 
     // Whether moves are legal from start. If not, error says which move
-    // is not, and why when the game was already over.
+    // is not, and why when the game was already over. If they are, over
+    // says whether the game is over after them: "CHECKMATE", "STALEMATE"
+    // or "".
     static bool check_game(const StartPosition &start,
                            const std::vector<std::string> &moves,
-                           std::string &error) {
+                           std::string &error, std::string *over = NULL) {
         Board b;
         bool white = start.standard || start.white;
         std::string castling = start.standard ? "KQkq" : start.castling;
@@ -819,7 +821,18 @@ namespace psion {
             make_move(b, m);
             white = !white;
         }
+        if (over) {
+            *over = has_legal_move(b, white, castling, ep_file) ? ""
+                    : in_check(b, white)                       ? "CHECKMATE"
+                                                               : "STALEMATE";
+        }
         return true;
+    }
+
+    std::string GameOver(const StartPosition &start,
+                         const std::vector<std::string> &moves) {
+        std::string error, over;
+        return check_game(start, moves, error, &over) ? over : "";
     }
 
     PositionRequest ParsePosition(const std::vector<std::string> &tokens) {

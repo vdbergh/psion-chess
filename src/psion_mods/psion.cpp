@@ -1279,20 +1279,28 @@ namespace psion {
                    : 0;
     }
 
+    // When a key was last pressed that can change the board: not 'c'
+    // (compute) or 'm' (move now). Psion ignores a 'c' in a position it
+    // considers over, and the result it shows then must still count.
+    static unsigned int last_board_key = 0;
     static unsigned int last_key_ticks() {
-        return uci.last_action;
+        return last_board_key;
     }
 
     static void press(KBD_KEYS k) {
         keyboard_buffer.SendKey(k);
         uci.last_action = GetTicks();
         uci.action_done = false;
+        if (k != KBD_c && k != KBD_m) {
+            last_board_key = uci.last_action;
+        }
     }
 
     static void press(KBD_KEYS modifier, KBD_KEYS k) {
         keyboard_buffer.SendKey(modifier, k);
         uci.last_action = GetTicks();
         uci.action_done = false;
+        last_board_key = uci.last_action;
     }
 
     static bool uci_synced() {
@@ -1967,6 +1975,7 @@ namespace psion {
             case SYNC_SEND_MOVE:
                 SendUciMove(uci.target[moves.size()]);
                 uci.last_action = now;
+                last_board_key = now;
                 uci.action_done = false;
                 uci.inflight = true;
                 uci.inflight_size = moves.size();
@@ -2002,15 +2011,27 @@ namespace psion {
             uci.go_pending = false;
             uci_send("bestmove 0000\n");
         }
-        if (uci.go_pending && game_over_shown()) {
+        // A mate or stalemate is seen from the position itself, without
+        // waiting for Psion to show it: a slow machine may still be about
+        // to draw the text when "go" comes, and the 'c' pressed then would
+        // be ignored.
+        std::string over = uci.go_pending && uci.has_target && !uci.unsupported
+                               ? GameOver(uci.target_start, uci.target)
+                               : "";
+        if (uci.go_pending && (!over.empty() || game_over_shown())) {
             // No move to play: answered at once (or once "stop" comes)
             // instead of after a search Psion would not do.
             uci.go_pending = false;
             uci.info_move.clear();
             uci.info_ponder.clear();
             uci.info_pv.clear();
-            uci_send("info string Game over (Psion shows %s)\n",
-                     game_over_result().c_str());
+            if (over.empty()) {
+                uci_send("info string Game over (Psion shows %s)\n",
+                         game_over_result().c_str());
+            } else {
+                uci_send("info string Game over (%s)\n",
+                         over == "CHECKMATE" ? "checkmate" : "stalemate");
+            }
             report_move("0000");
         }
         if (uci.go_pending) {

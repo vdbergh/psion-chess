@@ -505,6 +505,20 @@ static void test_parse_go(){
     CHECK_EQ(go.nodes,0);
 }
 
+static void test_game_over(){
+    StartPosition start=StandardStart();
+    CHECK_EQ(GameOver(start,split("f2f3 e7e5 g2g4 d8h4")),std::string("CHECKMATE"));
+    CHECK_EQ(GameOver(start,split("f2f3 e7e5 g2g4")),std::string(""));
+    CHECK_EQ(GameOver(start,{}),std::string(""));
+    // an illegal move: not over
+    CHECK_EQ(GameOver(start,split("f2f3 e7e5 g2g4 d8h5")),std::string(""));
+    PositionRequest req=ParsePosition(split("position fen 7k/5Q2/6K1/8/8/8/8/8 b - - 0 1"));
+    CHECK(req.supported);
+    CHECK_EQ(GameOver(req.start,req.moves),std::string("STALEMATE"));
+    req=ParsePosition(split("position fen 7k/8/6K1/8/8/8/8/5Q2 w - - 0 1 moves f1f8"));
+    CHECK_EQ(GameOver(req.start,req.moves),std::string("CHECKMATE"));
+}
+
 static void test_depth_reached(){
     // the counter: 05 (3 plies), 09 (5), 0D (7), ...; 0 before the search
     CHECK(!DepthReached(5,0x00));
@@ -1378,6 +1392,7 @@ int main(){
     test_think_time();
     test_move_now_time();
     test_depth_reached();
+    test_game_over();
     test_set_option();
     test_elo_cycles();
     test_parse_position();
