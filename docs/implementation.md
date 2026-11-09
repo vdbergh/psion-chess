@@ -72,9 +72,16 @@ taken for the game.
 
 Square codes: empty `00`, pawn `2C`, knight `24`, bishop `1C`, rook `0A`,
 queen `17`, king `01`; bit `80` is set for Black and bits `40`/`04` are
-flags that do not change the piece. Promoted pieces get codes that are not
-known in advance (seen: `10` and `20`); the adapter learns them from the
-piece it typed at the promotion prompt or from the screen. Bit `04` (and
+flags that do not change the piece. A promoted Black piece has other
+codes until it moves, and while Psion's promotion prompt is up the
+promotion square cycles through `08`, `10`, `18` and `20` (`+80` for
+Black); the last of these can stay there until the board is redrawn. For
+such a square the adapter takes the piece from Psion's search board at
+`5B00` (0x88, words, the code in the low byte), which holds the position
+after the move once Psion has played it: promoted pieces are queen `57`,
+rook `0E`, bishop `1C`, knight `64` for White and `D3`, `8A`, `98`, `E0`
+for Black (see [search-internals.md](search-internals.md#make-1c5c)).
+Bit `04` (and
 `40`) marks a king or rook that has moved. Psion's own record of that
 (whether it may castle) is elsewhere, e.g. in its piece list (from `5BC0`
 for White); a king or rook typed in set-up mode is marked as moved there,
@@ -116,8 +123,8 @@ contents, because some rows blink. The adapter uses:
 | 22 | The status line: level 11 (`LEVEL 11  4 Min`), easy mode (`LEVEL E`). |
 | 24 | The `PROMOTE TO` and `ILLEGAL` prompts. |
 
-The board read from the screen is used only to identify promoted pieces
-whose codes are unknown (see above), and as the reference for `memscan`.
+The board read from the screen is used only as the reference for
+`memscan`.
 
 Reading the screen is the only way to get its text: Psion runs in CGA
 mode 6 (640x200, two colours) and draws its text itself, as pixels,

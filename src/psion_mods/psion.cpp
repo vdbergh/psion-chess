@@ -529,6 +529,7 @@ namespace psion {
     const unsigned int MEM_BOARD = 0x28AC; // 64 bytes, a8..h8, a7..h7, ...
     const unsigned int MEM_SIDE = 0x725B;  // 00 White, FF Black to move
     const unsigned int MEM_PLY = 0x7260;   // word, counts the ponder move
+    const unsigned int MEM_SEARCH_BOARD = 0x5B00; // 0x88 words, a8 first
 
     static bool read_state_at(unsigned int segment, PsionState &state) {
         unsigned int base = segment * 16;
@@ -685,16 +686,19 @@ namespace psion {
         return removed;
     }
 
-    static char ocr_board_buf[8][8]; // last OCR'd board
+    static char ocr_board_buf[8][8]; // last OCR'd board (for memscan)
 
-    // The piece typed at the last promotion prompt.
-    static char last_promotion = 0;
-    static unsigned int last_promotion_ticks = 0;
     static bool promotion_in_progress();
 
-    // Guesses the pieces on squares with unknown codes (promoted pieces):
-    // the piece just typed at a promotion prompt, or what the screen shows.
-    static bool resolve_unknown_squares(PsionState &cur) {
+    // The pieces on squares with unknown codes (promoted pieces, see
+    // DecodeSquare()). A code seen there before stands for the piece known
+    // there. A new one only appears when Psion plays a move, its own or a
+    // typed one, and is looked up on Psion's search board, which then
+    // holds the position after that move. (A typed promotion gets there
+    // once the piece is chosen; until then the square does not hold a
+    // piece of that colour, and the state is not accepted yet.)
+    static bool resolve_unknown_squares(PsionState &cur,
+                                        const PsionState *before) {
         int f, r;
         if (promotion_in_progress()) {
             return false; // the board is in flux until a piece is chosen
@@ -704,34 +708,23 @@ namespace psion {
                 if (cur.board[f][r] != '?') {
                     continue;
                 }
-                bool white = !(cur.codes[f][r] & 0x80);
-                char c = ocr_board_buf[f][r];
-                if (last_promotion &&
-                    GetTicks() - last_promotion_ticks < 5000 &&
-                    (r == 7 || r == 0)) {
-                    c = white ? toupper(last_promotion) : last_promotion;
+                char c;
+                if (before && before->codes[f][r] == cur.codes[f][r] &&
+                    before->board[f][r] != '.') {
+                    c = before->board[f][r];
+                } else {
+                    c = DecodeSearchSquare(mem_readb(
+                        cur.segment * 16 + MEM_SEARCH_BOARD +
+                        32 * (7 - r) + 2 * f));
                 }
-                if (!c || !strchr("PNBRQKpnbrqk", c) ||
-                    (isupper(c) != 0) != white) {
+                bool white = !(cur.codes[f][r] & 0x80);
+                if (c == '?' || c == '.' || (isupper(c) != 0) != white) {
                     return false;
                 }
                 cur.board[f][r] = c;
             }
         }
         return true;
-    }
-
-    static void learn_unknown_squares(const PsionState &cur) {
-        int f, r;
-        for (f = 0; f < 8; f++) {
-            for (r = 0; r < 8; r++) {
-                if (DecodeSquare(cur.codes[f][r]) == '?') {
-                    say("Learned square code %02X: %c\n", cur.codes[f][r],
-                        cur.board[f][r]);
-                    LearnSquareCode(cur.codes[f][r], cur.board[f][r]);
-                }
-            }
-        }
     }
 
     // Set while takebacks are on their way: the number of moves left then.
@@ -848,7 +841,8 @@ namespace psion {
                                                      : STABLE_MS)) {
             return false;
         }
-        if (cur.unknown && !resolve_unknown_squares(cur)) {
+        if (cur.unknown &&
+            !resolve_unknown_squares(cur, have_known ? &known : NULL)) {
             return false;
         }
         // While the engine searches its own move, the side byte (and hence
@@ -868,9 +862,6 @@ namespace psion {
                   DeriveMove(known.board, cur.board, known.white_to_move, move);
         if (!ok && cur.unknown) {
             return false; // only trust a guessed piece if it explains a move
-        }
-        if (ok && cur.unknown) {
-            learn_unknown_squares(cur);
         }
         if (ok) {
             cur.ply = known.ply + 1;
@@ -1032,8 +1023,6 @@ namespace psion {
             }
             return;
         }
-        last_promotion = pending_promotion;
-        last_promotion_ticks = GetTicks();
         switch (pending_promotion) {
         case 'q':
             keyboard_buffer.SendKey(KBD_q);
@@ -2036,8 +2025,8 @@ namespace psion {
         }
         std::string row(txt_buf[24], TEXT_WIDTH);
         bottom_row = row;
-        ocr_board(board, (unsigned char *)pixels);
         if (MemScan_Enabled()) {
+            ocr_board(board, (unsigned char *)pixels);
             // memscan uses the screen as ground truth
             static bool start_snapshot_taken = false;
             if (!start_snapshot_taken && game_state.moves.empty() &&

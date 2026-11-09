@@ -111,6 +111,19 @@ addresses:
 - Lifts the piece (`1CCF`), pushes it and its square, updates the piece
   list at `6740`, sets the moved bit (and handles promotion), places it
   (`1CE8`), and updates the score from the tables at `0744`.
+- A promotion (`1D01`..`1D59`): the piece comes from bits `11` of the
+  move's from byte (`00` queen, `10` bishop, `01` rook, `11` knight) and
+  gets the code `57`, `1C`, `0E` or `64`, XOR `84` for Black (`D3`, `98`,
+  `8A`, `E0`). The White codes and the Black rook are the usual ones with
+  bit `40` or `04`; the other Black ones are not, until the piece moves
+  and make sets bit `04` (`1CDC`, with bit `40` from the parity). Seen on
+  the search board for typed promotions and Psion's own ones.
+- The game board at `28AC` is a copy made for the display (by the
+  `rep movsw` at `4BBB`; `2953` copies the search board to `5A00`, which
+  is probably its source): while the promotion prompt is up, the display
+  cycles the square through `08`, `10`, `18`, `20` (`+80` for Black), and
+  after a typed promotion the last of these can stay there until the
+  board is redrawn (seen: `90` for a Black queen).
 - Then checks whether the own king is attacked (rays from `055C`, king
   squares `675E`/`67DE`). If so (`1E1B`): `sub bp,bp; jmp 1FBC`, i.e.
   it undoes the move through the unmake code and returns BP = 0. These

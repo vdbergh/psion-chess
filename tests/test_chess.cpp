@@ -100,15 +100,29 @@ static void test_decode_square(){
     CHECK_EQ(DecodeSquare(0x80),'?');
 }
 
-static void test_learn_square_code(){
-    // a promoted queen seen in a game
+static void test_decode_search_square(){
+    // the codes of promoted pieces on the search board, as seen
+    CHECK_EQ(DecodeSearchSquare(0x57),'Q');
+    CHECK_EQ(DecodeSearchSquare(0x0E),'R');
+    CHECK_EQ(DecodeSearchSquare(0x1C),'B');
+    CHECK_EQ(DecodeSearchSquare(0x64),'N');
+    CHECK_EQ(DecodeSearchSquare(0xD3),'q');
+    CHECK_EQ(DecodeSearchSquare(0x8A),'r');
+    CHECK_EQ(DecodeSearchSquare(0x98),'b');
+    CHECK_EQ(DecodeSearchSquare(0xE0),'n');
+    // only on the search board
+    CHECK_EQ(DecodeSquare(0xD3),'?');
+    CHECK_EQ(DecodeSquare(0x98),'?');
+    CHECK_EQ(DecodeSquare(0xE0),'?');
+    // the codes of the promotion prompt are no pieces
+    CHECK_EQ(DecodeSquare(0x08),'?');
     CHECK_EQ(DecodeSquare(0x10),'?');
-    LearnSquareCode(0x10,'Q');
-    CHECK_EQ(DecodeSquare(0x10),'Q');
-    CHECK_EQ(DecodeSquare(0x90),'?');
-    // learning does not override the fixed codes
-    LearnSquareCode(0x2C,'Q');
-    CHECK_EQ(DecodeSquare(0x2C),'P');
+    CHECK_EQ(DecodeSquare(0x18),'?');
+    CHECK_EQ(DecodeSquare(0x20),'?');
+    CHECK_EQ(DecodeSearchSquare(0x10),'?');
+    CHECK_EQ(DecodeSearchSquare(0x18),'?');
+    CHECK_EQ(DecodeSearchSquare(0x20),'?');
+    CHECK_EQ(DecodeSearchSquare(0x90),'?');
 }
 
 static void test_is_start_position(){
@@ -1290,7 +1304,7 @@ static void test_zip_extract(){
 
 int main(){
     test_decode_square();
-    test_learn_square_code();
+    test_decode_search_square();
     test_is_start_position();
     test_derive_simple_moves();
     test_derive_capture();

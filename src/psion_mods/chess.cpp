@@ -15,12 +15,6 @@ namespace psion {
     // (about 0.35 s a ply).
     const size_t MAX_TAKEBACKS = 100;
 
-    static char learned_codes[256];
-
-    void LearnSquareCode(unsigned char v, char piece) {
-        learned_codes[v] = piece;
-    }
-
     // Square codes: bit 0x80 is set for Black. Bit 0x40 (and 0x04 for
     // rooks and kings) is some flag that does not change the piece.
     char DecodeSquare(unsigned char v) {
@@ -50,9 +44,28 @@ namespace psion {
             c = 'K';
             break;
         default:
-            return learned_codes[v] ? learned_codes[v] : '?';
+            return '?';
         }
         return (v & 0x80) ? c - 'A' + 'a' : c;
+    }
+
+    char DecodeSearchSquare(unsigned char v) {
+        char c = DecodeSquare(v);
+        if (c != '?' || !(v & 0x80)) {
+            return c;
+        }
+        // Make gives a promoted piece the White code with bit 04 toggled
+        // and 80 added (1C5C..1D59 in docs/search-internals.md). Bit 04 is
+        // set again once the piece moves, which gives the usual codes.
+        switch (v & 0x3F) {
+        case 0x13:
+            return 'q';
+        case 0x18:
+            return 'b';
+        case 0x20:
+            return 'n';
+        }
+        return '?';
     }
 
     bool IsStartPosition(const Board board) {
