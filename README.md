@@ -133,6 +133,11 @@ How the engine handles the gray areas of the protocol is described under
   fifty-move rule) and then refuses to play on. A GUI that continues
   after a threefold repetition gets `bestmove 0000`, after `info string
   Game over (Psion shows DRAW)` (see [Quirks](docs/implementation.md#quirks)).
+- Psion does not take castling and en passant rights into account when
+  it detects a threefold repetition. So in very rare cases it declares a
+  draw that the rules do not, e.g. after a rook has moved away and back,
+  losing the right to castle, and refuses to play on: the GUI then gets
+  `bestmove 0000`.
 - Psion does not recognise insufficient material: it plays on with bare
   kings, and scores a lone bishop or knight against a bare king as about
   three pawns up. GUIs end such games themselves.
