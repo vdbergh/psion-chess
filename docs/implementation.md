@@ -117,17 +117,21 @@ DOSBox renders each screen update into a 640x400 frame, which
 `ProcessScreen` hands to `ocr.cpp`. `ocr()` turns it into 80x25 text by
 matching each 8x8 cell against Psion's font, and `ocr_board()` reads the
 pieces off the graphical board. Each row keeps its last non-blank
-contents, because some rows blink. The adapter uses:
+contents, because some rows blink. The adapter uses the text for:
 
-| Row | Used for |
-|---|---|
-| 6 | `PLAYER PLAYER`: 2-player mode is on. |
-| 20 | `SET-UP POSITION`: set-up mode; `DRAW`, `CHECKMATE` or `STALEMATE` instead of `YOUR MOVE`: Psion considers the game over (only as long as the board is the one shown with the text, which stays a little after a takeback). |
-| 22 | The status line: level 11 (`LEVEL 11  4 Min`), easy mode (`LEVEL E`). |
-| 24 | The `PROMOTE TO` and `ILLEGAL` prompts. |
+| Row | Text | Used for |
+|---|---|---|
+| 6 | `PLAYER PLAYER` | 2-player mode is on (checked after each engine move, and before typing moves). |
+| 20 | `SET-UP POSITION`, `WHITE`/`BLACK` | Set-up mode, and the colour being set up. |
+| 20 | `DRAW`, `CHECKMATE`, `STALEMATE` (instead of `YOUR MOVE`) | Psion considers the game over (only as long as the board is the one shown with the text, which stays a little after a takeback). |
+| 22 | `LEVEL 11  4 Min`, `LEVEL E` | Level 11 is set; easy mode (no pondering) is on. |
+| 24 | `PROMOTE TO` | When to type the piece of a promotion. |
+| 24 | `ILLEGAL MOVE`, `ILLEGAL POSITION` | A typed move was refused; the set-up failed. |
 
-The board read from the screen is used only as the reference for
-`memscan`.
+Row 20 also goes into the diagnostic message when Psion does not play a
+move typed. Everything else (the game, the analysis, the depth, the
+promoted pieces) comes from memory. The board read from the screen is
+used only as the reference for `memscan`, and is read only then.
 
 Reading the screen is the only way to get its text: Psion runs in CGA
 mode 6 (640x200, two colours) and draws its text itself, as pixels,
