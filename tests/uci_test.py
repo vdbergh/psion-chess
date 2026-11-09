@@ -215,7 +215,7 @@ class UciTest(unittest.TestCase):
         e = self.engine
         e.send('uci')
         _, before = e.expect('uciok', 10)
-        self.assertIn('option name Move Overhead type spin default 30 min 0 max 5000',
+        self.assertIn('option name Move Overhead type spin default 10 min 0 max 5000',
                       before)
         moves = ['b2b4', 'g7g5', 'g2g4', 'b7b5']
         try:
@@ -233,7 +233,7 @@ class UciTest(unittest.TestCase):
             line, _ = e.expect('info string', 5)
             self.assertIn('Move Overhead must be 0 to 5000', line)
         finally:
-            e.send('setoption name Move Overhead value 30')
+            e.send('setoption name Move Overhead value 10')
             e.ready()
 
     def test_cycles(self):

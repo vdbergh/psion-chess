@@ -24,6 +24,7 @@ namespace psion {
         int unknown;               // number of '?' squares
         bool white_to_move;
         int ply;              // half-moves played since the start
+        int counter;          // Psion's ply counter as read
         bool pondering;       // engine is searching its predicted reply
         unsigned int segment; // Psion's data segment
     };

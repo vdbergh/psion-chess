@@ -22,6 +22,11 @@ namespace psion {
     bool Nodes_TakePv(MemoryPv &pv);
     void Nodes_ClearPv();
 
+    // Whether Psion is copying its board to the game board (DS:28AC, 64
+    // bytes, copied whole when a move is played): a word of it has been
+    // written, but not yet the last one.
+    bool Nodes_BoardCopying();
+
 } // namespace psion
 
 #endif

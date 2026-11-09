@@ -16,7 +16,7 @@
  *
  * The same handler watches the copy of the principal variation that
  * Psion makes for its analysis display (score at DS:7150, moves at
- * 7152..7161).
+ * 7152..7161), and the copies of its board to the game board (DS:28AC).
  */
 
 namespace psion {
@@ -26,9 +26,13 @@ namespace psion {
 
     static const unsigned int PV_OFFSET = 0x7150;
     static const unsigned int PV_LAST = PV_OFFSET + 2 + 7 * 2; // last move
+    static const unsigned int GAME_OFFSET = 0x28AC;
+    static const unsigned int GAME_SIZE = 64;
 
     static unsigned int board_lo = 0, board_hi = 0; // linear, [lo, hi)
     static unsigned int pv_base = 0, pv_last = 0;    // linear
+    static unsigned int game_lo = 0, game_hi = 0;    // linear, [lo, hi)
+    static bool game_copying = false;
     static unsigned long long zero_writes = 0;
 
     static const int PV_QUEUE = 16;
@@ -55,6 +59,9 @@ namespace psion {
         }
         if (addr <= pv_last + 1 && addr + size > pv_last + 1) {
             queue_pv();
+        }
+        if (addr < game_hi && addr + size > game_lo) {
+            game_copying = addr + size < game_hi;
         }
     }
 
@@ -95,6 +102,11 @@ namespace psion {
         MEM_SetPageHandler(pv_base / MEM_PAGESIZE,
                            (pv_last + 1) / MEM_PAGESIZE - pv_base / MEM_PAGESIZE + 1,
                            &board_handler);
+        game_lo = data_segment * 16 + GAME_OFFSET;
+        game_hi = game_lo + GAME_SIZE;
+        MEM_SetPageHandler(game_lo / MEM_PAGESIZE,
+                           (game_hi - 1) / MEM_PAGESIZE - game_lo / MEM_PAGESIZE + 1,
+                           &board_handler);
         PAGING_ClearTLB();
     }
 
@@ -110,6 +122,10 @@ namespace psion {
 
     void Nodes_ClearPv() {
         pv_size = 0;
+    }
+
+    bool Nodes_BoardCopying() {
+        return game_copying;
     }
 
     unsigned long long Nodes_Count() {

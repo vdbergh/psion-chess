@@ -86,7 +86,15 @@ while: 20 ms if it differs from the last one by a single move (the usual
 case, also for the position a takeback leads to), and 200 ms for any other
 change, such as a new game, the position after set-up mode or a
 resynchronization. The states Psion passes through while it plays a move,
-such as a piece lifted, are not taken for positions. While Psion searches
+such as a piece lifted, are not taken for positions. A single move is
+accepted at once, though, when Psion has finished writing it: Psion
+plays a move (its own or one typed) by first counting the ply at `7260`
+and then copying its whole board to `28AC` twice, once with the piece
+lifted and once with the move done. The node counter's write handler
+sees whether such a copy is under way; a board that differs by one
+move, read with the ply counter changed and no copy under way, is the
+move done (see [search-internals.md](search-internals.md#playing-a-move)).
+Castling, en passant and promotions still wait the 20 ms. While Psion searches
 its own move, its board does not change, but its side-to-move byte is
 unreliable: the adapter counts the plies itself instead. If no legal move
 explains a change, it resynchronizes to the state in memory. Reads that
@@ -207,7 +215,7 @@ allocation is 5 seconds; see [Limitations](../README.md#limitations).)
 There are several complications, however, that have to be dealt with:
 
 - Many GUIs send `position` and `go` together, a few microseconds apart.
-  So entering the opponent's move (about 40 ms) has barely begun when
+  So entering the opponent's move (about 20 ms) has barely begun when
   `go` arrives. This is even worse if a new position has to be set up
   via `position fen`. This "setup time", i.e. the time still needed to
   set up the position *after the `go` command is received*, is counted
@@ -222,7 +230,7 @@ There are several complications, however, that have to be dealt with:
 - The adapter makes sure that Psion thinks at least 50 ms, for otherwise
   Psion plays very weak moves.
 - Once Psion is told to move, it takes some time to play the move and
-  for the adapter to report it (about 30 ms on an i5-1135G7), and then
+  for the adapter to report it (about 10 ms on an i5-1135G7), and then
   the move still has to reach the opponent via the GUI or the network.
   This time is estimated by the `Move Overhead` option, and has to be
   subtracted from the allocated time as well.
@@ -247,25 +255,25 @@ simplifies to
 
     max(allocated_time, setup_time + move_overhead + 50 ms)
 
-With the default `move_overhead` of 30 ms and a setup time of 40 ms this
-becomes
+With the default `move_overhead` of 10 ms and a setup time of 20 ms (to
+enter the opponent's move) this becomes
 
-    max(allocated_time, 120 ms)
+    max(allocated_time, 80 ms)
 
 On the other hand, for a GUI that sends `isready` first, the setup time
 is zero, so that we get
 
-    max(allocated_time, 80 ms)
+    max(allocated_time, 60 ms)
 
 The following table summarizes this: the time a move takes by the
 formulas, and in parentheses the median measured on an i5-1135G7.
 
 | | With `isready` | Without |
 |---|---|---|
-| `go movetime 0` | 80 ms (81) | 120 ms (121) |
-| `go movetime 100` | 100 ms (100) | 120 ms (120) |
-| `go movetime 120` | 120 ms | 120 ms |
-| `go movetime 150` | 150 ms | 150 ms (151) |
+| `go movetime 0` | 60 ms (60) | 80 ms (80) |
+| `go movetime 100` | 100 ms (100) | 100 ms (101) |
+| `go movetime 120` | 120 ms (121) | 120 ms (119) |
+| `go movetime 150` | 150 ms (152) | 150 ms (147) |
 
 Note that Psion can also move earlier: from its book, or when it finds
 the move at once (a mate).

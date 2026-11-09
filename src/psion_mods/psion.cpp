@@ -563,6 +563,7 @@ namespace psion {
         }
         state.white_to_move = side == 0x00;
         state.ply = mem_readw(base + MEM_PLY);
+        state.counter = state.ply;
         if (state.ply > 2000) {
             return false;
         }
@@ -630,6 +631,30 @@ namespace psion {
     // only removed (a piece is lifted). This takes longer when the
     // emulation runs slowly.
     const unsigned int MID_MOVE_STABLE_MS = 3000;
+    // A complete move is accepted at once, though, once Psion has written
+    // it: when it plays a move (its own or one typed), it first counts the
+    // ply and then copies its whole board to MEM_BOARD twice, once with
+    // the piece lifted and once with the move done (see
+    // docs/search-internals.md, "Playing a move"). Castling, en passant
+    // and promotions, which change more than two squares or the piece,
+    // still wait for MOVE_STABLE_MS.
+    static bool move_written(const PsionState &before, const PsionState &after,
+                             const std::string &move) {
+        if (after.counter == before.counter || Nodes_BoardCopying() ||
+            move.size() != 4) {
+            return false;
+        }
+        int ff = move[0] - 'a', fr = move[1] - '1';
+        int tf = move[2] - 'a', tr = move[3] - '1';
+        char p = toupper(before.board[ff][fr]);
+        if (p == 'K' && abs(tf - ff) == 2) {
+            return false; // castling
+        }
+        if (p == 'P' && tf != ff && before.board[tf][tr] == '.') {
+            return false; // en passant
+        }
+        return true;
+    }
 
     static PsionState known; // last accepted state
     static bool have_known = false;
@@ -771,11 +796,11 @@ namespace psion {
             search_speed(false);
             search_ended();
         }
-        if (!have_pending || !same_state(cur, pending)) {
+        bool fresh = !have_pending || !same_state(cur, pending);
+        if (fresh) {
             pending = cur;
             pending_since = GetTicks();
             have_pending = true;
-            return false;
         }
         if (setting_up) {
             // Only the position set up counts, once Psion has left set-up
@@ -799,6 +824,11 @@ namespace psion {
         bool one_move =
             have_known && !cur.unknown &&
             DeriveMove(known.board, cur.board, known.white_to_move, candidate);
+        bool written = one_move && !setting_up && takeback_to < 0 &&
+                       move_written(known, cur, candidate);
+        if (fresh && !written) {
+            return false;
+        }
         bool mid_move =
             have_known && ((cur.ply == known.ply &&
                             cur.white_to_move == known.white_to_move) ||
@@ -812,7 +842,8 @@ namespace psion {
             one_move = memcmp(b, cur.board, sizeof(b)) == 0;
             mid_move = mid_move && !one_move;
         }
-        if (GetTicks() - pending_since < (one_move   ? MOVE_STABLE_MS
+        if (!written &&
+            GetTicks() - pending_since < (one_move   ? MOVE_STABLE_MS
                                           : mid_move ? MID_MOVE_STABLE_MS
                                                      : STABLE_MS)) {
             return false;
@@ -1034,10 +1065,10 @@ namespace psion {
     /* UCI */
 
     // The "Move Overhead" option: the time a move costs on the clock
-    // besides Psion's thinking (key delays, MOVE_STABLE_MS and polling, the
-    // GUI, the network). The default is about the median of what a move
-    // costs with the engine alone, on an i5-1135G7: 32 ms.
-    const unsigned int DEFAULT_MOVE_OVERHEAD_MS = 30;
+    // besides Psion's thinking (playing the move, polling, the GUI, the
+    // network). The default is about the median of what a move costs with
+    // the engine alone, on an i5-1135G7: 10 ms.
+    const unsigned int DEFAULT_MOVE_OVERHEAD_MS = 10;
     const unsigned int MAX_MOVE_OVERHEAD_MS = 5000;
     static unsigned int move_overhead_ms = DEFAULT_MOVE_OVERHEAD_MS;
     // The "Cycles" option: "highest" (as fast as the host allows) or a fixed

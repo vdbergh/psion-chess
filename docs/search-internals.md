@@ -760,3 +760,25 @@ played move was always the first move of the last line.
 `1166` also copies the first 5 words of row 2 into the current root
 move's entry in `6E00`, and `11E4` copies 6 words of row 1 into the
 entry of a new best. What reads these stored lines is not decoded.
+
+## Playing a move
+
+When Psion plays a move, its own after a search or one typed, `28D2`
+first adds 1 to the ply counter `7260` (and moves the pointer `7264`).
+Within about 1 ms the routine at `4BBB` then copies the whole board to
+the game board at `28AC` (64 bytes, as words, a8 first) twice: first
+with the piece lifted (for e2e4 both e2 and e4 are empty), then with the
+move done. Nothing else is written there until the next move. `725B`
+(the side to move) is not written when Psion plays its own move.
+
+Logged for 7 of Psion's moves and the moves the adapter typed in between
+(searches of 500 ms; experiment not kept). Before, the adapter accepted
+each move 21 to 30 ms after the last copy: the 20 ms it waited for the
+board to stay unchanged, and its polling. It now accepts a move at once
+when the board differs by one move, the ply counter has changed and no
+copy is under way (the node counter's write handler watches `28AC`).
+Castling, en passant and promotions were not logged and still wait: a
+copy with only the king, or only the pawn, moved might exist. With
+`Move Overhead` 0 and `isready` before each `go`, 20 moves in a row took
+(median) 209 ms instead of 230 ms at `go movetime 200`, and 60 ms
+instead of 79 ms at `go movetime 0`.

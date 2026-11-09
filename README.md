@@ -62,12 +62,12 @@ How the engine handles the gray areas of the protocol is described under
 ### UCI options
 
 - `Ponder`: for GUIs that only let an engine ponder if it offers it.
-- `Move Overhead` (ms, default 30): the estimated time from telling
+- `Move Overhead` (ms, default 10): the estimated time from telling
   Psion to move until the opponent has the move: Psion playing it and
   the adapter reporting it, plus sending it to the opponent via the GUI
   or the network. How this option is used is explained in more detail
   in the [Time allocation](#time-allocation) section below. The default
-  of 30 ms covers the engine's own part, measured on an unloaded
+  of 10 ms covers the engine's own part, measured on an unloaded
   i5-1135G7. Increase `Move Overhead` if the engine loses on time, for
   example when playing fast games over a slow network.
 - `Cycles` (default `highest`): the number of instructions per
@@ -167,7 +167,8 @@ A move gets the time given by `go movetime`, or else
 where `n` is `movestogo` if given, otherwise 30 with an increment and 60
 without. `Move Overhead` is subtracted from this, and so is the time still
 needed after `go` to set up the position, up to 200 ms. Psion always
-thinks for at least 50 ms, so a move takes at least about 80 ms. Increase
+thinks for at least 50 ms, so a move takes at least about 60 ms (80 ms
+if the position still has to be set up after `go`). Increase
 `Move Overhead` if the engine loses on time. The details are in [Time
 management](docs/implementation.md#time-management).
 
