@@ -453,18 +453,45 @@ with a null window and then searches it again, so this is not PVS or
 NegaScout.
 
 **At the root: an aspiration window** (`0FD8`, called from the iteration
-loop at `107E`..`10C1`). After the first iteration (`5A67 & 3` non-zero),
-the window is the previous root score v (`704E`) ± 20 units, about one
-pawn: alpha = v − 20 (also kept in `713A`), beta = v + 20 (`704C` =
-−(v + 20)). In the first iteration `704E` is set to `F000` and `704C`
-to 0 (beta = +∞); with the bias, `F000` would be a very high alpha, so
-that iteration may work differently (`11A6` also branches on `5A67 & 3`).
+loop at `107E`..`10C1`). In every iteration (`5A67 & 3` non-zero: the
+counter is `05`, `09`, ... or `03`, `07`, ..., see "Iterative
+deepening"), the window is the previous root score v (`704E`) ± 20 units,
+0.83 pawn (24 units per pawn): alpha = v − 20 (also kept in `713A`),
+beta = v + 20 (`704C` = −(v + 20)). For the first iteration v comes from
+the pass over the root moves before it (counter `00`), which is the only
+one with `5A67 & 3` = 0: there `704E` is set to `F000` and `704C` to 0
+(beta = +∞).
 
 - Fail low (the root best is still alpha, `10AA`): `1125` sets alpha to
-  −∞ (0) and searches again (`jmp 1089`).
+  −∞ (0) and searches again (`jmp 1089`). Until the first move of that
+  search is done, the move Psion would play is still the previous best,
+  the one that failed low (see "The move played").
 - Fail high (a cutoff at the root brings the ply back to 0, `14D2` →
   `1466` → `1147`): `114C` sets beta to +∞ and searches again from the
   old alpha.
+
+**How often.** Writes of 0 to `713A` (fail low) and to `704C` (fail high)
+counted per search, with the iteration counter (experiment not kept).
+In self-play from the start position (80 plies at each movetime) they
+are rare, but against another engine from unbalanced openings they are
+not: Psion against Fairy-Max 5.0b (H.G. Muller's micro-Max derivative,
+through a small UCI front end), 40 games at 10+0.1 from the UHO openings
+(19.5 to 20.5):
+
+| Games | Searches | Root fail lows | ... in the last iteration | Root fail highs |
+|---|---|---|---|---|
+| Self-play, movetime 300 ms | 80 | 1 (counter `05`, depth 3) | 0 | 0 |
+| Self-play, movetime 1000 ms | 80 | 1 (counter `09`, depth 5) | 0 | 0 |
+| Self-play, movetime 3000 ms | 80 | 1 (counter `05`, depth 3) | 0 | 0 |
+| Against Fairy-Max, 10+0.1 | 2,548 | 386 (15%) | 88 (3.5%) | 210 (8%) |
+
+Against Fairy-Max the fail lows came at depth 3 (231), 5 (117), 7 (34)
+and 9 (4), the fail highs at depth 3 (101), 5 (84) and 7 (25). In self-play
+the scores of successive iterations mostly differ by 1 to 9 units, far
+inside the window. A fail low in the last iteration, where MOVE-NOW can
+stop the second search, came in about one search in 29 against
+Fairy-Max; how often MOVE-NOW actually cut that search short, and whether
+finishing it would change the move, these counts do not show.
 
 ## Move ordering
 
