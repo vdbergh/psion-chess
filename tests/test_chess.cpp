@@ -495,6 +495,34 @@ static void test_parse_go(){
     CHECK_EQ(ThinkTime(go,true,0),500u);
     // a value missing at the end
     CHECK_EQ(ParseGo(split("go wtime")).wtime,0);
+    // depth and nodes
+    go=ParseGo(split("go depth 7 nodes 100000 movetime 500"));
+    CHECK_EQ(go.depth,7);
+    CHECK_EQ(go.nodes,100000);
+    CHECK_EQ(go.movetime,500);
+    go=ParseGo(split("go wtime 1000"));
+    CHECK_EQ(go.depth,0);
+    CHECK_EQ(go.nodes,0);
+}
+
+static void test_depth_reached(){
+    // the counter: 05 (3 plies), 09 (5), 0D (7), ...; 0 before the search
+    CHECK(!DepthReached(5,0x00));
+    CHECK(!DepthReached(5,0x05));
+    CHECK(!DepthReached(5,0x09));   // iteration 5 still under way
+    CHECK(DepthReached(5,0x0D));    // iteration 7 started: 5 is complete
+    // even depths and depths below 3: Psion's next (odd) depth
+    CHECK(!DepthReached(6,0x0D));
+    CHECK(DepthReached(6,0x11));
+    CHECK(!DepthReached(1,0x05));
+    CHECK(DepthReached(1,0x09));
+    // the other variant (03, 07, ...) and the time steps of 2
+    CHECK(DepthReached(5,0x0B));     // 09 -> 0B: 5 -> 7
+    CHECK(!DepthReached(7,0x0B));
+    CHECK(DepthReached(7,0x0F));
+    // beyond 15: never (Psion stops after its iteration at 1B)
+    CHECK(!DepthReached(15,0x1B));
+    CHECK(!DepthReached(20,0x1B));
 }
 
 static void test_move_now_time(){
@@ -536,9 +564,14 @@ static void test_think_time(){
     // movetime 0: the minimum, not the default of 5 s
     go=ParseGo(split("go movetime 0"));
     CHECK_EQ(ThinkTime(go,true,30),50u);
-    // no time at all (depth, nodes, mate): the default
+    // depth or nodes without a time: no limit in time
     go=ParseGo(split("go depth 5"));
-    CHECK_EQ(ThinkTime(go,true,30),4970u);
+    CHECK_EQ(ThinkTime(go,true,30),0u);
+    go=ParseGo(split("go nodes 100000"));
+    CHECK_EQ(ThinkTime(go,true,30),0u);
+    // ... with a time, that time
+    go=ParseGo(split("go depth 5 movetime 2000"));
+    CHECK_EQ(ThinkTime(go,true,400),1600u);
     // the time used up (negative or 0): the minimum, not the default
     go=ParseGo(split("go wtime -20 btime 0"));
     CHECK_EQ(ThinkTime(go,true,94),50u);
@@ -549,8 +582,8 @@ static void test_think_time(){
     CHECK_EQ(ThinkTime(go,false,0),(unsigned int)(2147483647LL/60));
     go=ParseGo(split("go wtime 99999999999 btime 1"));
     CHECK_EQ(ThinkTime(go,true,0),(unsigned int)(2147483647LL/60));
-    // no time information: a fixed default
-    go=ParseGo(split("go depth 10"));
+    // no time information at all (mate): a fixed default
+    go=ParseGo(split("go mate 3"));
     CHECK_EQ(ThinkTime(go,true,400),4600u);
     go=ParseGo(split("go infinite"));
     CHECK_EQ(ThinkTime(go,true,400),0u);
@@ -1329,6 +1362,7 @@ int main(){
     test_parse_go();
     test_think_time();
     test_move_now_time();
+    test_depth_reached();
     test_set_option();
     test_elo_cycles();
     test_parse_position();

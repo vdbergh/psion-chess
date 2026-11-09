@@ -204,6 +204,10 @@ namespace psion {
         return 2 * ((counter + 1) / 4) + 1;
     }
 
+    bool DepthReached(int depth, unsigned char counter) {
+        return IterationDepth(counter) > std::max(depth | 1, 3);
+    }
+
     bool MemoryAnalysis(unsigned short score, const unsigned short moves[8],
                         Analysis &a) {
         a.mate = false;
@@ -469,6 +473,7 @@ namespace psion {
         go.wtime = go.btime = 0;
         go.winc = go.binc = go.movestogo = go.movetime = 0;
         go.infinite = go.ponder = false;
+        go.depth = go.nodes = 0;
         for (i = 1; i < tokens.size(); i++) {
             const std::string &t = tokens[i];
             int v = go_value(tokens, i + 1);
@@ -491,6 +496,10 @@ namespace psion {
                 go.infinite = true;
             } else if (t == "ponder") {
                 go.ponder = true;
+            } else if (t == "depth") {
+                go.depth = v;
+            } else if (t == "nodes") {
+                go.nodes = v;
             }
         }
         return go;
@@ -514,8 +523,10 @@ namespace psion {
             long long n = go.movestogo > 0 ? go.movestogo : inc > 0 ? 30 : 60;
             t = time / n + 3 * inc / 4;
             t = std::min(t, 3 * time / 4);
+        } else if (go.depth > 0 || go.nodes > 0) {
+            return 0; // until the depth or the nodes are reached
         } else {
-            t = 5000; // depth, nodes, mate: not supported
+            t = 5000; // mate: not supported
         }
         // Over the n moves this keeps overhead per move in reserve:
         // time/n - overhead = (time - n * overhead) / n.

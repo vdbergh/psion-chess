@@ -92,8 +92,9 @@ How the engine handles the gray areas of the protocol is described under
 
 ### Limitations
 
-- `go depth`/`nodes`/`mate` are not supported; these result in a fallback
-  search of 5 s.
+- `go mate` is not supported; it results in a fallback search of 5 s.
+  `go depth` and `go nodes` are (see [Time allocation](#time-allocation)),
+  but Psion's depths are odd: `go depth 6` searches to depth 7.
 - Psion ends a search by itself after about 3–4 minutes (its level 11,
   "4 minutes per move"), so longer `movetime` searches end earlier. Its
   level *Infinite* has no such limit, but there Psion stops reading the
@@ -179,6 +180,12 @@ thinks for at least 50 ms, so a move takes at least about 60 ms (80 ms
 if the position still has to be set up after `go`). Increase
 `Move Overhead` if the engine loses on time. The details are in [Time
 management](docs/implementation.md#time-management).
+
+`go depth` and `go nodes` end the search as well, whichever limit comes
+first; without a time they are the only limits. The depth is rounded up
+to Psion's next depth (3, 5, ..., 15), and Psion plays the best move of
+the iteration that reached it. The node count is checked about every
+10 ms, so a search goes on for a few thousand nodes more.
 
 ### Implementation
 

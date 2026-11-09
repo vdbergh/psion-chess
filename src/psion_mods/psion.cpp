@@ -1206,7 +1206,9 @@ namespace psion {
         bool infinite; // wait for "stop" (or "ponderhit") before bestmove
         bool ponder;   // "go ponder", until "ponderhit" or "stop"
         bool stop_received;
-        unsigned int think_ms;       // 0: until "stop"
+        unsigned int think_ms;       // 0: no limit in time
+        int depth_limit;             // "go depth", 0 if none
+        unsigned long nodes_limit;   // "go nodes", 0 if none
         unsigned int ponderhit_ms;   // think_ms from "ponderhit" on
         unsigned int search_start;   // when "go" was received
         unsigned int thinking_start; // when Psion started to think
@@ -1428,6 +1430,8 @@ namespace psion {
         uci.ponder = go.ponder;
         uci.ponderhit_ms = ThinkTime(go, white, move_overhead_ms);
         uci.think_ms = go.ponder ? 0 : uci.ponderhit_ms;
+        uci.depth_limit = go.depth;
+        uci.nodes_limit = (unsigned long)go.nodes;
         uci.stop_received = false;
         uci.go_pending = true;
         // The GUI's clock runs from now, including the time it takes to set
@@ -1797,6 +1801,18 @@ namespace psion {
     // to do until the next command.
     static bool uci_done = false;
 
+    // Whether "go depth" or "go nodes" is reached (not before "ponderhit",
+    // nor in an infinite search). The node count is checked every tick,
+    // so the search goes on a little longer.
+    static bool search_limit_reached() {
+        if (uci.infinite) {
+            return false;
+        }
+        return (uci.depth_limit > 0 &&
+                DepthReached(uci.depth_limit, Nodes_Iteration())) ||
+               (uci.nodes_limit > 0 && search_nodes() >= uci.nodes_limit);
+    }
+
     // Drives Psion towards the state the GUI asked for. Called every tick.
     static void UciStep() {
         unsigned int now = GetTicks();
@@ -1830,9 +1846,13 @@ namespace psion {
                 uci_send("info string Game over (Psion shows %s)\n",
                          game_over_result().c_str());
                 report_move("0000");
-            } else if (!uci.movenow_sent && uci.think_ms &&
-                       now - uci.search_start >=
-                           MoveNowTime(uci.think_ms, setup_time())) {
+            } else if (!uci.movenow_sent &&
+                       ((uci.think_ms &&
+                         now - uci.search_start >=
+                             MoveNowTime(uci.think_ms, setup_time())) ||
+                        (search_limit_reached() &&
+                         now - uci.search_start >=
+                             MoveNowTime(1, setup_time())))) {
                 search_speed(false);
                 press(KBD_m);
                 uci.movenow_sent = true;

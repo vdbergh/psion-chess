@@ -696,6 +696,37 @@ class UciTest(unittest.TestCase):
             'h7g8n', 'f6g8', 'a2a4', 'b7b5', 'a4b5', 'a7a6', 'b5a6', 'c8b7',
             'a6a7', 'b7c6', 'a7b8q'], timeout=60)
 
+    def test_go_depth_nodes(self):
+        """go depth and go nodes, alone and with movetime: the first limit
+        reached ends the search."""
+        e = self.engine
+        moves = ['g2g4', 'a7a6', 'h2h4', 'h7h6']    # out of Psion's book
+        def search(go):
+            e.send('position startpos moves ' + ' '.join(moves))
+            e.ready()
+            start = time.time()
+            e.send(go)
+            line, before = e.expect('bestmove', 60)
+            infos = [l.split() for l in before if l.startswith('info depth')]
+            self.assertTrue(infos, before)
+            self.assertTrue(Board(moves).plausible(line.split()[1]), line)
+            return time.time() - start, infos[-1]
+        # depth 5: until Psion starts its iteration at depth 7
+        used, info = search('go depth 5')
+        self.assertIn(int(info[2]), (5, 7), info)
+        self.assertLess(used, 5, info)
+        # an even depth: Psion's next odd one
+        used, info = search('go depth 6')
+        self.assertIn(int(info[2]), (7, 9), info)
+        # nodes: checked every 10 ms or so, so a little more
+        used, info = search('go nodes 30000')
+        nodes = int(info[info.index('nodes') + 1])
+        self.assertGreaterEqual(nodes, 30000, info)
+        self.assertLess(nodes, 60000, info)
+        # with movetime, the time ends it
+        used, info = search('go depth 15 nodes 100000000 movetime 500')
+        self.assertLess(used, 1.5, info)
+
     def test_takeback_promoted(self):
         """Psion takes back its move to reach the GUI's position, with a
         promoted Black piece on the board: such pieces have codes of their

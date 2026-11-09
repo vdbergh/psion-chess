@@ -46,12 +46,15 @@ namespace psion {
         int movetime;
         bool infinite; // until "stop"
         bool ponder;   // until "ponderhit" or "stop"
+        int depth;     // 0 if not given
+        int nodes;     // 0 if not given
     };
     GoParams ParseGo(const std::vector<std::string> &tokens);
 
     // How long to think (ms) before pressing MOVE-NOW, allowing overhead
     // ms per move for everything else (the move being detected, the GUI,
-    // the network). 0 means until "stop".
+    // the network). 0 means no limit in time: until "stop", or until the
+    // depth or nodes given are reached.
     unsigned int ThinkTime(const GoParams &go, bool white,
                            unsigned int overhead);
 
@@ -133,6 +136,11 @@ namespace psion {
     // (5A67): the ply at which it stops unless it extends (always odd, 15
     // at most; see docs/search-internals.md, "Iterative deepening").
     int IterationDepth(unsigned char counter);
+    // Whether "go depth" depth is reached once Psion's iteration counter
+    // shows counter: Psion has started an iteration deeper than depth
+    // (rounded up to Psion's odd depths, at least 3), so the iteration
+    // that reached it is complete.
+    bool DepthReached(int depth, unsigned char counter);
 
     // Plays pv on board (white to move) to check it. False if a move is
     // not by a piece of the side to move, captures one of its own pieces,

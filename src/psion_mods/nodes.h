@@ -24,9 +24,12 @@ namespace psion {
         unsigned char max_ply;
     };
     bool Nodes_TakePv(MemoryPv &pv);
-    // At the start of a search: forgets the lines queued and the deepest
-    // ply.
+    // At the start of a search: forgets the lines queued, the deepest ply
+    // and the iteration counter.
     void Nodes_ClearPv();
+    // The iteration counter (5A67) as Psion last wrote it since
+    // Nodes_ClearPv(); 0 before that.
+    unsigned char Nodes_Iteration();
 
     // Whether Psion is copying its board to the game board (DS:28AC, 64
     // bytes, copied whole when a move is played): a word of it has been

@@ -223,8 +223,24 @@ parameter of the `go` command or else by
 where `remaining_time` is given by the appropriate `wtime`/`btime`
 parameter, `increment` by `winc`/`binc`, and `n` by the `movestogo`
 parameter, if present. Otherwise `n` is 30 if the increment is non-zero
-and 60 otherwise. (Without `movetime` or a clock, e.g. `go depth`, the
-allocation is 5 seconds; see [Limitations](../README.md#limitations).)
+and 60 otherwise. Without `movetime` or a clock there is no limit in
+time if `go depth` or `go nodes` is given, and 5 seconds otherwise (`go
+mate`; see [Limitations](../README.md#limitations)).
+
+`go depth` and `go nodes` apply together with the time: the first limit
+reached ends the search (not before `ponderhit`, nor with `go
+infinite`), with MOVE-NOW as when the time is up, after at least the
+50 ms below. For the depth the node counter's write handler watches
+Psion's iteration counter at `5A67` (see
+[search-internals.md](search-internals.md#iterative-deepening-the-iteration-counter-5a67)):
+once Psion starts an iteration deeper than the depth asked, rounded up
+to an odd depth of at least 3, the iteration that reached it is
+complete, and Psion plays its best move. Psion stops by itself after
+its iteration at depth 15. The nodes are compared with the node count
+every tick (10 ms), so the search goes on a little longer: 20,145 nodes
+for `go nodes 20000` and 200,179 for `go nodes 200000` on an i5-1135G7.
+`go depth 3` usually shows a line of depth 5 as well: depth 3 is done
+after about 5 ms, before the 50 ms minimum.
 
 There are several complications, however, that have to be dealt with:
 

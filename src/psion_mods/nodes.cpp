@@ -36,6 +36,7 @@ namespace psion {
     static unsigned int pv_base = 0, pv_last = 0;    // linear
     static unsigned int iteration_addr = 0, ply_addr = 0; // linear
     static unsigned int max_ply = 0;
+    static unsigned char iteration = 0;
     static unsigned int game_lo = 0, game_hi = 0;    // linear, [lo, hi)
     static bool game_copying = false;
     static unsigned long long zero_writes = 0;
@@ -66,6 +67,9 @@ namespace psion {
         }
         if (addr <= pv_last + 1 && addr + size > pv_last + 1) {
             queue_pv();
+        }
+        if (addr <= iteration_addr && addr + size > iteration_addr) {
+            iteration = host_readb(MemBase + iteration_addr);
         }
         if (addr <= ply_addr && addr + size > ply_addr) {
             unsigned int ply = host_readb(MemBase + ply_addr) / 2;
@@ -115,6 +119,7 @@ namespace psion {
         iteration_addr = data_segment * 16 + ITERATION_OFFSET;
         ply_addr = data_segment * 16 + PLY_OFFSET;
         MEM_SetPageHandler(ply_addr / MEM_PAGESIZE, 1, &board_handler);
+        MEM_SetPageHandler(iteration_addr / MEM_PAGESIZE, 1, &board_handler);
         MEM_SetPageHandler(pv_base / MEM_PAGESIZE,
                            (pv_last + 1) / MEM_PAGESIZE - pv_base / MEM_PAGESIZE + 1,
                            &board_handler);
@@ -139,6 +144,11 @@ namespace psion {
     void Nodes_ClearPv() {
         pv_size = 0;
         max_ply = 0;
+        iteration = 0;
+    }
+
+    unsigned char Nodes_Iteration() {
+        return iteration;
     }
 
     bool Nodes_BoardCopying() {
