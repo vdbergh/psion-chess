@@ -332,6 +332,10 @@ How the engine handles what the UCI protocol leaves open or forbids:
   moves after that are reported as soon as Psion shows the result, e.g.
   `info string Psion does not accept g1f3: game over (Psion shows
   DRAW)`. A `go` in such a position is answered with `bestmove 0000`.
+  Psion's repetition test ignores castling and en passant rights, so it
+  can also end a game the rules do not, e.g. after a rook moves away and
+  back, losing the right to castle (see
+  [search-internals.md](search-internals.md#repetitions-in-the-search)).
 
 ## Other modes and tools
 

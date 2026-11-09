@@ -795,3 +795,54 @@ copy with only the king, or only the pawn, moved might exist. With
 `Move Overhead` 0 and `isready` before each `go`, 20 moves in a row took
 (median) 209 ms instead of 230 ms at `go movetime 200`, and 60 ms
 instead of 79 ms at `go movetime 0`.
+
+## Repetitions in the search
+
+Psion's only repetition test in the search is in make (`1DE0`..`1E89`),
+and it compares moves, not positions:
+
+- The moves of the game and of the current search path are in one list:
+  `[7264]` points just past the game's last move (`28F4`..`28F6` advance
+  it when a move is played), and make stores the move at ply k at
+  `[7264]` + 2k − 2 (`1DE8`).
+- If the move reverses the same side's move two plies earlier (from and
+  to swapped, `1DED`), and the opponent's move in between has none of the
+  flag bits `1111` (capture, double step, promotion, ...; `1E6B`), make
+  checks with `1A51` whether the opponent could reverse its move as well
+  (side flipped, `1E73`). It returns BP = `0002` or `FF02` (sign set)
+  instead of 2, and sets `5A68`. How the callers score that (`1274` at
+  the root jumps to `1255` on a negative BP) is not decoded.
+
+So only the shortest cycle is seen, a piece going back and forth while the
+opponent does the same (the position four plies earlier, or the start
+of one), also across the game's last moves. Longer cycles, such as two
+pieces of one side moving in turn, are not, and occurrences are not
+counted. The threefold repetition rule itself Psion applies only to the
+game: it announces the draw and stops (see implementation.md, "Quirks").
+
+**In the game** Psion counts positions, not moves, but without the
+castling and en passant rights. Tried through the adapter (`position`,
+then `go`; "DRAW" means `info string Game over (Psion shows DRAW)`):
+
+| Moves | FIDE | Psion |
+|---|---|---|
+| `g1f3 g8f6 f3g1 f6g8`, twice (start position a third time) | draw | DRAW |
+| the same once (twice) | no draw | plays on |
+| `7k/8/8/8/8/8/8/R3K3 w`: rook a1-a2-b2-b1-a1, king h8-g8-h8, twice (a third time, 8-ply cycle) | draw | DRAW |
+| the same once | no draw | plays on |
+| `g1f3 g8f6`, then `h1g1 h8g8 g1h1 g8h8` twice: the third time, but the first had castling rights | no draw | DRAW |
+| `e2e4 b8c6 e4e5 d7d5`, then `g1f3 c6b8 f3g1 b8c6` twice: the third time, but the first allowed `e5d6` | no draw | DRAW |
+
+So Psion can declare a draw where the rules do not, after a king or rook
+shuffles back or after a double pawn step that allowed en passant. It then
+takes no more moves, and a `go` gets `bestmove 0000`.
+
+In a match at 5+0.05 (current main against v2.6.1, both affected) one
+game produced fastchess warnings "PV continues after threefold
+repetition": after `... a2a4 c7d8 f2f4 d8c7 f4f3 c8f8 f1f2 c7d8 f3f4
+f8e8 a4a2`, Black's PV `d8c7 f4f3 b7b5` (score −4) passes through the
+third occurrence of a position: after `d8c7 f4f3` it is the position
+of plies 107 and 115. The cycle there is 8 plies long, with queen and
+rook moves of both sides in turn (`d8c7` follows Black's rook move
+`f8e8`, not the queen move it reverses), so the test above does not see
+it.
