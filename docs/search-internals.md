@@ -470,9 +470,14 @@ slot (`1337`..`1413`):
    for legality by `1A51` and tried if legal.
 4. **All other moves.** `632` calls `30B4`, which generates the moves
    piece by piece (handler table at `6720`/`67A0`: `3213` pawns, `31C8`
-   knights, `3153`, `314B`, `3146`, `3325`/`3320` king). The generator
-   pushes them onto a stack used as the move list (`push cx; push ax`),
-   leaving out the moves already tried in stages 2 and 3 (`cmp ax,bp`,
+   knights, `3153`, `314B`, `3146`, `3325`/`3320` king). Each ply has
+   its own move list, with its top at the word `7078` + ply·2 (e.g.
+   `9074` for the root, `9000` for ply 2, in a dump taken at ply 4). The
+   generator points `sp` at that address (`30B7`..`30BE`, the old `sp`
+   kept in `6FE`; `ss` = `ds`) and pushes the moves (`push cx; push ax`),
+   so a list runs down from its top, 4 bytes per move (the move, then a
+   word of flags), and ends at a 0 move. The lists lie below the call
+   stack, which starts at `947C` (`2420`). It leaves out the moves already tried in stages 2 and 3 (`cmp ax,bp`,
    `cmp ax,[6FC]`).
    - Near the root (ply ≤ `5A66` / 2; `5A66` was 8, so plies 1–4; it changes per
      iteration, see "Iterative deepening") they
@@ -491,10 +496,10 @@ ply). Up to ply 8 (counter below `11`) it is also written to the
 first word of this ply's row in the PV table at `7090` (see "The
 principal variation").
 
-The root moves are in the move list on the stack (4 bytes per move), and
-also in a table at `6E00` (12 bytes per move, filled at `1068`). When a
+The root moves are in the root's move list (top at `[7078]`), and also
+in a table at `6E00` (12 bytes per move, filled at `1068`). When a
 root move becomes the new best, `11A6` moves it to the front of both and
-shifts the moves before it down one place (`11B6`..`11CC` on the stack,
+shifts the moves before it down one place (`11B6`..`11CC` in the list,
 `11D6`..`11E1` in `6E00`), so the next iteration starts with the best
 move so far. There is no history table,
 and no hash move, as no hash table has turned up.
@@ -741,8 +746,8 @@ of 7, 7 and 8 moves at h = 3, 5 and 7: the extensions made them longer
 than h.
 
 **The move played.** After the search (`244A`, `call 0FFD`), the
-think routine plays `[si]`, the move at the front of the root list on
-the stack (`2465`: make on the search board; `246F`..`2471`: the game).
+think routine plays `[si]`, the first move of the root's move list
+(`DS:9070` in our dump: the top `9074` minus 4) (`2465`: make on the search board; `246F`..`2471`: the game).
 That is the move `11A6` put there last, which is the first move of the
 last line shown, with one exception: a root fail high also calls `11A6`
 (`1147`), with no line shown. If the search ends during the re-search
