@@ -48,13 +48,14 @@ namespace psion {
         bool ponder;   // until "ponderhit" or "stop"
         int depth;     // 0 if not given
         int nodes;     // 0 if not given
+        int mate;      // moves, 0 if not given
     };
     GoParams ParseGo(const std::vector<std::string> &tokens);
 
     // How long to think (ms) before pressing MOVE-NOW, allowing overhead
     // ms per move for everything else (the move being detected, the GUI,
     // the network). 0 means no limit in time: until "stop", or until the
-    // depth or nodes given are reached.
+    // depth, nodes or mate given are reached.
     unsigned int ThinkTime(const GoParams &go, bool white,
                            unsigned int overhead);
 
@@ -128,7 +129,8 @@ namespace psion {
     // The line from Psion's memory (see Nodes_TakePv()): score with bias
     // 8000 and 24 per pawn, moves as from and to squares on the search
     // board, at most 8, ending at a 0. The score is not rounded to tenths
-    // of a pawn as on Psion's analysis display. False if there is no move.
+    // of a pawn as on Psion's analysis display. A mate score gives the
+    // moves to the mate. False if there is no move.
     bool MemoryAnalysis(unsigned short score, const unsigned short moves[8],
                         Analysis &a);
 

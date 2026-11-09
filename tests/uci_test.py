@@ -727,6 +727,36 @@ class UciTest(unittest.TestCase):
         used, info = search('go depth 15 nodes 100000000 movetime 500')
         self.assertLess(used, 1.5, info)
 
+    def test_go_mate(self):
+        """go mate: until a mate in at most that many moves is found, or
+        another limit is reached."""
+        e = self.engine
+        # Legal's mate: 1. Bxf7+ Ke7 2. Nd5#
+        legal = ['e2e4', 'e7e5', 'g1f3', 'd7d6', 'f1c4', 'c8g4', 'b1c3',
+                 'g7g6', 'f3e5', 'g4d1']
+        e.send('position startpos moves ' + ' '.join(legal))
+        e.ready()
+        e.send('go mate 2')
+        line, before = e.expect('bestmove', 30)
+        self.assertEqual(line.split()[:2], ['bestmove', 'c4f7'])
+        self.assertIn('score mate 2 pv c4f7 e8e7 c3d5', ' '.join(before))
+        # A mate in 3, from the score (2 units per ply), not the line.
+        e.send('position fen 8/8/6k1/8/8/8/1K2R3/7Q w - - 0 1')
+        e.ready()
+        e.send('go mate 3')
+        line, before = e.expect('bestmove', 30)
+        self.assertIn('score mate 3', ' '.join(before))
+        # No mate: the other limits end the search.
+        moves = ['g2g4', 'a7a6', 'h2h4', 'h7h6']
+        e.send('position startpos moves ' + ' '.join(moves))
+        e.ready()
+        start = time.time()
+        e.send('go mate 3 movetime 800')
+        line, before = e.expect('bestmove', 30)
+        self.assertTrue(Board(moves).plausible(line.split()[1]), line)
+        self.assertLess(time.time() - start, 2.0)
+        self.assertNotIn('score mate', ' '.join(before))
+
     def test_takeback_promoted(self):
         """Psion takes back its move to reach the GUI's position, with a
         promoted Black piece on the board: such pieces have codes of their

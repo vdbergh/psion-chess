@@ -225,12 +225,17 @@ namespace psion {
         int value = (int)score - 0x8000;
         int units = abs(value);
         if (units / 24 >= 256) {
-            // A mate (shown as 99.9). The moves to mate come from the
-            // length of the line: the side to move mates with its last
-            // move, or is mated by the opponent's.
-            int n = a.pv.size();
+            // A mate (shown as 99.9): 2 units per ply to the mate, from
+            // 10000 down when the side to move mates, from 0 up when it is
+            // mated (see docs/search-internals.md, "Mate scores").
             a.mate = true;
-            a.score = value < 0 ? -std::max(1, n / 2) : (n + 1) / 2;
+            if (value > 0) {
+                int plies = (0x10000 - score) / 2;
+                a.score = std::max(1, (plies + 1) / 2);
+            } else {
+                int plies = score / 2;
+                a.score = -std::max(1, plies / 2);
+            }
         } else {
             a.score = (value < 0 ? -1 : 1) * ((units * 100 + 12) / 24);
         }
@@ -473,7 +478,7 @@ namespace psion {
         go.wtime = go.btime = 0;
         go.winc = go.binc = go.movestogo = go.movetime = 0;
         go.infinite = go.ponder = false;
-        go.depth = go.nodes = 0;
+        go.depth = go.nodes = go.mate = 0;
         for (i = 1; i < tokens.size(); i++) {
             const std::string &t = tokens[i];
             int v = go_value(tokens, i + 1);
@@ -500,6 +505,8 @@ namespace psion {
                 go.depth = v;
             } else if (t == "nodes") {
                 go.nodes = v;
+            } else if (t == "mate") {
+                go.mate = v;
             }
         }
         return go;
@@ -523,10 +530,10 @@ namespace psion {
             long long n = go.movestogo > 0 ? go.movestogo : inc > 0 ? 30 : 60;
             t = time / n + 3 * inc / 4;
             t = std::min(t, 3 * time / 4);
-        } else if (go.depth > 0 || go.nodes > 0) {
-            return 0; // until the depth or the nodes are reached
+        } else if (go.depth > 0 || go.nodes > 0 || go.mate > 0) {
+            return 0; // until the depth, the nodes or a mate is reached
         } else {
-            t = 5000; // mate: not supported
+            t = 5000; // a go without any limit
         }
         // Over the n moves this keeps overhead per move in reserve:
         // time/n - overhead = (time - n * overhead) / n.

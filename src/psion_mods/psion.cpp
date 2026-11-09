@@ -1209,6 +1209,7 @@ namespace psion {
         unsigned int think_ms;       // 0: no limit in time
         int depth_limit;             // "go depth", 0 if none
         unsigned long nodes_limit;   // "go nodes", 0 if none
+        int mate_limit;              // "go mate", 0 if none
         unsigned int ponderhit_ms;   // think_ms from "ponderhit" on
         unsigned int search_start;   // when "go" was received
         unsigned int thinking_start; // when Psion started to think
@@ -1432,6 +1433,7 @@ namespace psion {
         uci.think_ms = go.ponder ? 0 : uci.ponderhit_ms;
         uci.depth_limit = go.depth;
         uci.nodes_limit = (unsigned long)go.nodes;
+        uci.mate_limit = go.mate;
         uci.stop_received = false;
         uci.go_pending = true;
         // The GUI's clock runs from now, including the time it takes to set
@@ -1801,16 +1803,19 @@ namespace psion {
     // to do until the next command.
     static bool uci_done = false;
 
-    // Whether "go depth" or "go nodes" is reached (not before "ponderhit",
-    // nor in an infinite search). The node count is checked every tick,
-    // so the search goes on a little longer.
+    // Whether "go depth", "go nodes" or "go mate" is reached (not before
+    // "ponderhit", nor in an infinite search). The node count is checked
+    // every tick, so the search goes on a little longer. "go mate": a line
+    // of this search mates in at most that many moves.
     static bool search_limit_reached() {
         if (uci.infinite) {
             return false;
         }
         return (uci.depth_limit > 0 &&
                 DepthReached(uci.depth_limit, Nodes_Iteration())) ||
-               (uci.nodes_limit > 0 && search_nodes() >= uci.nodes_limit);
+               (uci.nodes_limit > 0 && search_nodes() >= uci.nodes_limit) ||
+               (uci.mate_limit > 0 && !uci.info_pv.empty() && uci.info_mate &&
+                uci.info_score > 0 && uci.info_score <= uci.mate_limit);
     }
 
     // Drives Psion towards the state the GUI asked for. Called every tick.

@@ -158,8 +158,10 @@ about 0.6%. Nearly all the time goes to emulating the CPU.
   and queues it, and each copy becomes an `info` line if its moves are
   legal on the board (castling rights are not checked). The score has 24
   units per pawn and is converted to centipawns (not rounded to tenths
-  as on the display); 256 pawns or more is a mate, whose number of moves
-  is taken from the length of the line. Moves are stored as from and to
+  as on the display); 256 pawns or more is a mate. Its number of moves
+  comes from the score too, which counts 2 per ply to the mate (see
+  [search-internals.md](search-internals.md#mate-scores)), so also a
+  mate beyond the 8 moves of the line is counted right. Moves are stored as from and to
   squares of the search board, without the piece promoted to: the first
   of queen, knight, rook and bishop with which the rest of the line is
   legal is assumed. If Psion then plays the promotion to another piece,
@@ -224,10 +226,10 @@ where `remaining_time` is given by the appropriate `wtime`/`btime`
 parameter, `increment` by `winc`/`binc`, and `n` by the `movestogo`
 parameter, if present. Otherwise `n` is 30 if the increment is non-zero
 and 60 otherwise. Without `movetime` or a clock there is no limit in
-time if `go depth` or `go nodes` is given, and 5 seconds otherwise (`go
-mate`; see [Limitations](../README.md#limitations)).
+time if `go depth`, `go nodes` or `go mate` is given, and 5 seconds if
+none is.
 
-`go depth` and `go nodes` apply together with the time: the first limit
+`go depth`, `go nodes` and `go mate` apply together with the time: the first limit
 reached ends the search (not before `ponderhit`, nor with `go
 infinite`), with MOVE-NOW as when the time is up, after at least the
 50 ms below. For the depth the node counter's write handler watches
@@ -240,7 +242,12 @@ its iteration at depth 15. The nodes are compared with the node count
 every tick (10 ms), so the search goes on a little longer: 20,145 nodes
 for `go nodes 20000` and 200,179 for `go nodes 200000` on an i5-1135G7.
 `go depth 3` usually shows a line of depth 5 as well: depth 3 is done
-after about 5 ms, before the 50 ms minimum.
+after about 5 ms, before the 50 ms minimum. `go mate n` is reached by a
+line of this search that mates in at most n moves. Psion itself ends its
+search when it has found a mate, also a longer one: `go mate 2` in a
+position with a mate in 3 plays that mate (after 30 ms). Without a mate
+the search goes on, like Stockfish's, until another limit, or until
+Psion stops after its iteration at depth 15.
 
 There are several complications, however, that have to be dealt with:
 

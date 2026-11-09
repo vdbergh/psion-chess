@@ -582,8 +582,12 @@ static void test_think_time(){
     CHECK_EQ(ThinkTime(go,false,0),(unsigned int)(2147483647LL/60));
     go=ParseGo(split("go wtime 99999999999 btime 1"));
     CHECK_EQ(ThinkTime(go,true,0),(unsigned int)(2147483647LL/60));
-    // no time information at all (mate): a fixed default
+    // mate without a time: no limit in time either
     go=ParseGo(split("go mate 3"));
+    CHECK_EQ(go.mate,3);
+    CHECK_EQ(ThinkTime(go,true,400),0u);
+    // no limit at all: a fixed default
+    go=ParseGo(split("go"));
     CHECK_EQ(ThinkTime(go,true,400),4600u);
     go=ParseGo(split("go infinite"));
     CHECK_EQ(ThinkTime(go,true,400),0u);
@@ -930,12 +934,23 @@ static void test_memory_analysis(){
     CHECK_EQ(memory_analysis(0x8000+24*255+23,{0xC841}),"cp 25596 e2a6");
     // corner squares
     CHECK_EQ(memory_analysis(0x8000,{0x00EE}),"cp 0 a8h1");
-    // a mate (256 pawns or more): the moves from the length of the line
-    CHECK_EQ(memory_analysis(0x8000+24*256,{0xC841}),"mate 1 e2a6");
-    CHECK_EQ(memory_analysis(0x8000+24*256,{0xC841,0x2766,0xECAA}),
+    // a mate (256 pawns or more): 2 units per ply to the mate, as seen
+    // in Psion's searches (FFFE: mate in 1, FFFA: in 2, FFF6: in 3,
+    // 0004: mated in 1), whatever the length of the line
+    CHECK_EQ(memory_analysis(0xFFFE,{0xC841}),"mate 1 e2a6");
+    CHECK_EQ(memory_analysis(0xFFFA,{0xC841,0x2766,0xECAA}),
 	     "mate 2 e2a6 d7d5 g1f3");
-    CHECK_EQ(memory_analysis(0x8000-24*256,{0xC841,0x2766}),
+    CHECK_EQ(memory_analysis(0xFFF6,{0xC841}),"mate 3 e2a6");
+    CHECK_EQ(memory_analysis(0x0004,{0xC841,0x2766}),
 	     "mate -1 e2a6 d7d5");
+    CHECK_EQ(memory_analysis(0x0008,{0xC841}),"mate -2 e2a6");
+    // a mate in 6, beyond the 8 moves of the line
+    CHECK_EQ(memory_analysis(0x10000-2*11,{0xC841,0x2766,0xECAA,0x0C4A,
+					       0xC841,0x2766,0xECAA,0x0C4A}),
+	     "mate 6 e2a6 d7d5 g1f3 g8f6 e2a6 d7d5 g1f3 g8f6");
+    // the edges of the range
+    CHECK_EQ(memory_analysis(0x8000+24*256,{0xC841}).substr(0,4),"mate");
+    CHECK_EQ(memory_analysis(0x8000-24*256,{0xC841}).substr(0,4),"mate");
     // no line
     CHECK_EQ(memory_analysis(0x8000,{}),"");
 }

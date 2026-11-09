@@ -92,9 +92,9 @@ How the engine handles the gray areas of the protocol is described under
 
 ### Limitations
 
-- `go mate` is not supported; it results in a fallback search of 5 s.
-  `go depth` and `go nodes` are (see [Time allocation](#time-allocation)),
-  but Psion's depths are odd: `go depth 6` searches to depth 7.
+- Psion's depths are odd: `go depth 6` searches to depth 7 (see [Time
+  allocation](#time-allocation)). Psion ends its search as soon as it
+  has found a mate, so `go mate 2` can also give a mate in 3.
 - Psion ends a search by itself after about 3–4 minutes (its level 11,
   "4 minutes per move"), so longer `movetime` searches end earlier. Its
   level *Infinite* has no such limit, but there Psion stops reading the
@@ -112,8 +112,6 @@ How the engine handles the gray areas of the protocol is described under
     The principal variation has at most 8 moves, as Psion keeps no more.
   - The score has a resolution of about 4 centipawns (Psion counts 24
     units per pawn).
-  - The number of moves to a mate is derived from the length of the
-    principal variation.
   - A book move gets only `info depth 1 time T nodes 1 pv` and the move,
     without a score: Psion does not search it.
 - Psion searches to a fixed maximum depth (15 plies) and moves as soon as it is
@@ -181,11 +179,14 @@ if the position still has to be set up after `go`). Increase
 `Move Overhead` if the engine loses on time. The details are in [Time
 management](docs/implementation.md#time-management).
 
-`go depth` and `go nodes` end the search as well, whichever limit comes
-first; without a time they are the only limits. The depth is rounded up
-to Psion's next depth (3, 5, ..., 15), and Psion plays the best move of
-the iteration that reached it. The node count is checked about every
-10 ms, so a search goes on for a few thousand nodes more.
+`go depth`, `go nodes` and `go mate` end the search as well, whichever
+limit comes first; without a time they are the only limits. The depth is
+rounded up to Psion's next depth (3, 5, ..., 15), and Psion plays the
+best move of the iteration that reached it. The node count is checked
+about every 10 ms, so a search goes on for a few thousand nodes more.
+`go mate n` ends the search once a mate in at most n moves is found; if
+there is none, the search goes on until another limit (or Psion's own
+maximum depth of 15).
 
 ### Implementation
 

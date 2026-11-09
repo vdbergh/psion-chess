@@ -729,6 +729,29 @@ Never more than 4: past ply h the table holds only `186D 175A 186D
 the middlegame showed +4 in every line (3/7, 5/9, 7/11), the opening and
 the pawn ending 0.
 
+## Mate scores
+
+A mate score counts the plies to the mate, 2 units per ply (the ply
+counter `7076` holds ply × 2), from the top of the scale for the side
+that mates and from the bottom for the side that is mated. Seen in the
+copies of the root score at `7150` (positions checked with python-chess,
+the mates in 3 and the mated in 1 found by a brute-force solver):
+
+| Position | Plies to the mate | Score |
+|---|---|---|
+| The side to move mates in 1 | 1 | `FFFE` = `10000` − 2·1 |
+| Mates in 2 (Legal's mate) | 3 | `FFFA` = `10000` − 2·3 |
+| Mates in 3 (`8/8/6k1/8/8/8/1K2R3/7Q w`) | 5 | `FFF6` = `10000` − 2·5 |
+| Is mated in 1 (`8/8/8/1Q6/4R3/8/k1K5/8 b`) | 2 | `0004` = 2·2 |
+
+So a mate in n moves is `10000` − 2(2n − 1), and being mated in n moves
+is 4n. Until the search reaches the mate, the score is an ordinary one:
+K+Q against K about +8 pawns (`80C0`), the mate in 3 +13 pawns until
+depth 5 found it, and a mated in 2 (`8/7Q/8/8/3K4/8/3k4/4R3 b`) stayed at
+−8.6 pawns within 3 s. Ordinary scores stay within a few hundred units
+of `8000`, so the adapter takes 256 pawns (6144 units) or more from it as
+a mate.
+
 ## The principal variation
 
 **The PV table** at `7090` is a triangular table: one row of 9 words per
