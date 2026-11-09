@@ -113,7 +113,8 @@ How the engine handles the gray areas of the protocol is described under
     units per pawn).
   - The number of moves to a mate is derived from the length of the
     principal variation.
-  - Book moves come without `info`.
+  - A book move gets only `info depth 1 time T nodes 1 pv` and the move,
+    without a score: Psion does not search it.
 - Psion searches to a fixed maximum depth (15 plies) and moves as soon as it is
   reached, whatever the time left. So in a locked pawn ending, with few moves
   per ply (like Fine 70), Psion moves almost at once even at
@@ -125,9 +126,9 @@ How the engine handles the gray areas of the protocol is described under
   forced move. A ponder miss costs about 50 ms of the
   engine's clock.
 - Entering the opponent's move and reporting the engine's take about
-  80 ms per move on an i5-1135G7. This time is taken from the engine's
-  own clock, so very fast time controls leave little time for thinking
-  (see [Time allocation](#time-allocation)).
+  30 ms per move on an i5-1135G7 (20 ms and 10 ms). This time is taken
+  from the engine's own clock, so very fast time controls leave little
+  time for thinking (see [Time allocation](#time-allocation)).
 - Psion ends the game itself at a threefold repetition (and by the
   fifty-move rule) and then refuses to play on. A GUI that continues
   after a threefold repetition gets `bestmove 0000`, after `info string
