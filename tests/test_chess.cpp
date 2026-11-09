@@ -110,10 +110,10 @@ static void test_decode_search_square(){
     CHECK_EQ(DecodeSearchSquare(0x8A),'r');
     CHECK_EQ(DecodeSearchSquare(0x98),'b');
     CHECK_EQ(DecodeSearchSquare(0xE0),'n');
-    // only on the search board
-    CHECK_EQ(DecodeSquare(0xD3),'?');
+    // on the game board too, but for the bishop (98 is a prompt code too)
+    CHECK_EQ(DecodeSquare(0xD3),'q');
     CHECK_EQ(DecodeSquare(0x98),'?');
-    CHECK_EQ(DecodeSquare(0xE0),'?');
+    CHECK_EQ(DecodeSquare(0xE0),'n');
     // the codes of the promotion prompt are no pieces
     CHECK_EQ(DecodeSquare(0x08),'?');
     CHECK_EQ(DecodeSquare(0x10),'?');
@@ -123,6 +123,9 @@ static void test_decode_search_square(){
     CHECK_EQ(DecodeSearchSquare(0x18),'?');
     CHECK_EQ(DecodeSearchSquare(0x20),'?');
     CHECK_EQ(DecodeSearchSquare(0x90),'?');
+    CHECK_EQ(DecodeSquare(0x88),'?');
+    CHECK_EQ(DecodeSquare(0x90),'?');
+    CHECK_EQ(DecodeSquare(0xA0),'?');
 }
 
 static void test_is_start_position(){

@@ -14,14 +14,14 @@ namespace psion {
     typedef char Board[8][8];
 
     // Decodes a square of Psion's board array; '?' for unknown codes.
-    // Promoted pieces in particular can have other codes there: a Black
-    // one until it moves, and any one while Psion's promotion prompt is
-    // up (it cycles the square through 08, 10, 18 and 20, +80 for Black,
-    // and the last of these can stay until the board is redrawn).
+    // Promoted Black pieces have codes of their own until they move
+    // (queen D3, bishop 98, knight E0; a rook gets 8A). While Psion's
+    // promotion prompt is up, it cycles the square through 08, 10, 18 and
+    // 20 (+80 for Black), and the last of these can stay until the board
+    // is redrawn. So 98 is '?' here: it can be either.
     char DecodeSquare(unsigned char v);
-    // Decodes a square of Psion's search board (low byte of the word):
-    // the same codes, and those of promoted Black pieces until they move
-    // (queen D3, bishop 98, knight E0; a rook gets 8A).
+    // Decodes a square of Psion's search board (low byte of the word),
+    // which has no prompt codes: 98 is a promoted Black bishop.
     char DecodeSearchSquare(unsigned char v);
 
     bool IsStartPosition(const Board board);

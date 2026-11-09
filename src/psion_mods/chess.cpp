@@ -22,6 +22,16 @@ namespace psion {
         if (v == 0) {
             return '.';
         }
+        // Make gives a promoted piece the White code with bit 04 toggled
+        // and 80 added for Black (1C5C..1D59 in docs/search-internals.md).
+        // Bit 04 is set again once the piece moves, which gives the usual
+        // codes.
+        if (v == 0xD3) {
+            return 'q';
+        }
+        if (v == 0xE0) {
+            return 'n';
+        }
         switch (v & 0x3F) {
         case 0x2C:
             c = 'P';
@@ -50,22 +60,7 @@ namespace psion {
     }
 
     char DecodeSearchSquare(unsigned char v) {
-        char c = DecodeSquare(v);
-        if (c != '?' || !(v & 0x80)) {
-            return c;
-        }
-        // Make gives a promoted piece the White code with bit 04 toggled
-        // and 80 added (1C5C..1D59 in docs/search-internals.md). Bit 04 is
-        // set again once the piece moves, which gives the usual codes.
-        switch (v & 0x3F) {
-        case 0x13:
-            return 'q';
-        case 0x18:
-            return 'b';
-        case 0x20:
-            return 'n';
-        }
-        return '?';
+        return v == 0x98 ? 'b' : DecodeSquare(v);
     }
 
     bool IsStartPosition(const Board board) {

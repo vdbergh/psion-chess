@@ -696,6 +696,34 @@ class UciTest(unittest.TestCase):
             'h7g8n', 'f6g8', 'a2a4', 'b7b5', 'a4b5', 'a7a6', 'b5a6', 'c8b7',
             'a6a7', 'b7c6', 'a7b8q'], timeout=60)
 
+    def test_takeback_promoted(self):
+        """Psion takes back its move to reach the GUI's position, with a
+        promoted Black piece on the board: such pieces have codes of their
+        own until they move (D3 for a queen), and a takeback restores them.
+        v2.7 did not recognize the position the takeback led to, waited
+        for two timeouts (5 s each) and set it up again: 16 s for a move
+        after a ponder miss, found with python-chess."""
+        e = self.engine
+        fen = 'position fen K7/8/8/8/8/8/p7/7k b - - 0 1 moves a2a1q'
+        king = ['a8b8', 'a8b7']   # a8a7: the queen covers the a-file
+        for before in ([], ['a8b7']):
+            e.send('ucinewgame')
+            e.send(' '.join([fen] + before))
+            e.send('go movetime 300')
+            move = bestmove(e, 15)
+            self.assertNotEqual(move, '0000')
+            # The GUI's game goes another way: Psion takes back its move
+            # (and with before, the one before it as well).
+            other = [m for m in king if m != move and m not in before][0]
+            start = time.time()
+            e.send(' '.join([fen, other]))
+            e.ready()
+            e.send('go movetime 300')
+            line, lines = e.expect('bestmove', 30)
+            used = time.time() - start
+            self.assertNotEqual(line, 'bestmove 0000', lines)
+            self.assertLess(used, 3.0, (before, move, other, lines))
+
     def test_game_over(self):
         """In a position Psion considers over (mate, stalemate) there is no
         move: bestmove 0000 at once, not after a search that never starts."""

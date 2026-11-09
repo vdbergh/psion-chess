@@ -690,40 +690,67 @@ namespace psion {
 
     static bool promotion_in_progress();
 
-    // The pieces on squares with unknown codes (promoted pieces, see
-    // DecodeSquare()). A code seen there before stands for the piece known
-    // there. A new one only appears when Psion plays a move, its own or a
-    // typed one, and is looked up on Psion's search board, which then
-    // holds the position after that move. (A typed promotion gets there
-    // once the piece is chosen; until then the square does not hold a
-    // piece of that colour, and the state is not accepted yet.)
-    static bool resolve_unknown_squares(PsionState &cur,
-                                        const PsionState *before) {
+    // The piece a code that DecodeSquare() does not know stands for in
+    // state: the piece on a square with that code, or 0.
+    static char known_code(const PsionState &state, unsigned char code) {
         int f, r;
+        for (f = 0; f < 8; f++) {
+            for (r = 0; r < 8; r++) {
+                if (state.codes[f][r] == code && state.board[f][r] != '?' &&
+                    state.board[f][r] != '.') {
+                    return state.board[f][r];
+                }
+            }
+        }
+        return 0;
+    }
+
+    // The pieces on squares with unknown codes (see DecodeSquare(): a
+    // promoted Black bishop, or a code the promotion prompt left). A code
+    // in the last state accepted stands for the piece it had there. A new
+    // one appears when Psion plays a move, its own or a typed one, and is
+    // looked up on Psion's search board, which then holds the position
+    // after that move. (A typed promotion gets there once the piece is
+    // chosen; until then the square does not hold a piece of that colour,
+    // and the state is not accepted yet.) After a takeback, which restores
+    // a code a piece had before it moved, the position the takeback leads
+    // to (expected) gives the piece. Afterwards cur.unknown counts only the
+    // pieces taken from the search board.
+    static bool resolve_unknown_squares(PsionState &cur,
+                                        const PsionState *before,
+                                        const char (*expected)[8]) {
+        int f, r;
+        if (!cur.unknown) {
+            return true;
+        }
         if (promotion_in_progress()) {
             return false; // the board is in flux until a piece is chosen
         }
+        int looked_up = 0;
         for (f = 0; f < 8; f++) {
             for (r = 0; r < 8; r++) {
                 if (cur.board[f][r] != '?') {
                     continue;
                 }
-                char c;
-                if (before && before->codes[f][r] == cur.codes[f][r] &&
-                    before->board[f][r] != '.') {
-                    c = before->board[f][r];
-                } else {
+                bool white = !(cur.codes[f][r] & 0x80);
+                char c = before ? known_code(*before, cur.codes[f][r]) : 0;
+                if (!c && expected && expected[f][r] != '.' &&
+                    (isupper(expected[f][r]) != 0) == white) {
+                    c = expected[f][r];
+                }
+                if (!c) {
                     c = DecodeSearchSquare(mem_readb(
                         cur.segment * 16 + MEM_SEARCH_BOARD +
                         32 * (7 - r) + 2 * f));
+                    looked_up++;
                 }
-                bool white = !(cur.codes[f][r] & 0x80);
                 if (c == '?' || c == '.' || (isupper(c) != 0) != white) {
                     return false;
                 }
                 cur.board[f][r] = c;
             }
         }
+        cur.unknown = looked_up;
         return true;
     }
 
@@ -813,6 +840,19 @@ namespace psion {
             settled = true;
             return false;
         }
+        // Before the board is compared with anything.
+        Board takeback_board;
+        bool takeback_target =
+            takeback_to >= 0 && cur.ply == game_state.base_ply + takeback_to;
+        if (takeback_target) {
+            BoardAfter(game_state.start, game_state.moves, takeback_to,
+                       takeback_board);
+        }
+        if (!resolve_unknown_squares(cur, have_known ? &known : NULL,
+                                     takeback_target ? takeback_board
+                                                     : NULL)) {
+            return false;
+        }
         std::string candidate;
         bool one_move =
             have_known && !cur.unknown &&
@@ -827,22 +867,16 @@ namespace psion {
                             cur.white_to_move == known.white_to_move) ||
                            pieces_lifted(known.board, cur.board));
         // The position the takebacks lead to counts at once, like a move.
-        if (takeback_to >= 0 && !one_move && !cur.unknown &&
-            !game_state.thinking &&
-            cur.ply == game_state.base_ply + takeback_to) {
-            Board b;
-            BoardAfter(game_state.start, game_state.moves, takeback_to, b);
-            one_move = memcmp(b, cur.board, sizeof(b)) == 0;
+        if (takeback_target && !one_move && !cur.unknown &&
+            !game_state.thinking) {
+            one_move = memcmp(takeback_board, cur.board,
+                              sizeof(takeback_board)) == 0;
             mid_move = mid_move && !one_move;
         }
         if (!written &&
             GetTicks() - pending_since < (one_move   ? MOVE_STABLE_MS
                                           : mid_move ? MID_MOVE_STABLE_MS
                                                      : STABLE_MS)) {
-            return false;
-        }
-        if (cur.unknown &&
-            !resolve_unknown_squares(cur, have_known ? &known : NULL)) {
             return false;
         }
         // While the engine searches its own move, the side byte (and hence
@@ -861,7 +895,7 @@ namespace psion {
         bool ok = have_known &&
                   DeriveMove(known.board, cur.board, known.white_to_move, move);
         if (!ok && cur.unknown) {
-            return false; // only trust a guessed piece if it explains a move
+            return false; // only trust a looked-up piece if it explains a move
         }
         if (ok) {
             cur.ply = known.ply + 1;
