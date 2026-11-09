@@ -231,8 +231,9 @@ none is.
 
 `go depth`, `go nodes` and `go mate` apply together with the time: the first limit
 reached ends the search (not before `ponderhit`, nor with `go
-infinite`), with MOVE-NOW as when the time is up, after at least the
-50 ms below. For the depth the node counter's write handler watches
+infinite`), with MOVE-NOW as when the time is up, but without the 50 ms
+minimum below: the GUI asked for these limits, and Psion is searching
+once they are reached. For the depth the node counter's write handler watches
 Psion's iteration counter at `5A67` (see
 [search-internals.md](search-internals.md#iterative-deepening-the-iteration-counter-5a67)):
 once Psion starts an iteration deeper than the depth asked, rounded up
@@ -241,8 +242,9 @@ complete, and Psion plays its best move. Psion stops by itself after
 its iteration at depth 15. The nodes are compared with the node count
 every tick (10 ms), so the search goes on a little longer: 20,145 nodes
 for `go nodes 20000` and 200,179 for `go nodes 200000` on an i5-1135G7.
-`go depth 3` usually shows a line of depth 5 as well: depth 3 is done
-after about 5 ms, before the 50 ms minimum. `go mate n` is reached by a
+`go depth 2` after 1.a4 h5 stops after 10 ms with depth 3 (with the
+50 ms minimum it went on into depth 5, and played the move that depth
+preferred). `go mate n` is reached by a
 line of this search that mates in at most n moves. Psion itself ends its
 search when it has found a mate, also a longer one: `go mate 2` in a
 position with a mate in 3 plays that mate (after 30 ms). Without a mate

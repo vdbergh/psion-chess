@@ -718,6 +718,10 @@ class UciTest(unittest.TestCase):
         # an even depth: Psion's next odd one
         used, info = search('go depth 6')
         self.assertIn(int(info[2]), (7, 9), info)
+        # depth 3 is done within a few ms: no 50 ms minimum to wait for,
+        # which would take Psion into its iteration at depth 5
+        used, info = search('go depth 2')
+        self.assertEqual(int(info[2]), 3, info)
         # nodes: checked every 10 ms or so, so a little more
         used, info = search('go nodes 30000')
         nodes = int(info[info.index('nodes') + 1])

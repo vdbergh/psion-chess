@@ -1806,7 +1806,9 @@ namespace psion {
     // Whether "go depth", "go nodes" or "go mate" is reached (not before
     // "ponderhit", nor in an infinite search). The node count is checked
     // every tick, so the search goes on a little longer. "go mate": a line
-    // of this search mates in at most that many moves.
+    // of this search mates in at most that many moves. Unlike the time,
+    // these limits do not wait for MIN_THINK_MS: the GUI asked for them,
+    // and Psion is searching once they are reached.
     static bool search_limit_reached() {
         if (uci.infinite) {
             return false;
@@ -1855,9 +1857,7 @@ namespace psion {
                        ((uci.think_ms &&
                          now - uci.search_start >=
                              MoveNowTime(uci.think_ms, setup_time())) ||
-                        (search_limit_reached() &&
-                         now - uci.search_start >=
-                             MoveNowTime(1, setup_time())))) {
+                        search_limit_reached())) {
                 search_speed(false);
                 press(KBD_m);
                 uci.movenow_sent = true;
