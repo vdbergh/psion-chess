@@ -675,6 +675,17 @@ A step of 2 goes from d = 1 to d = 3 two plies deeper (`09` → `0B`), or
 from d = 3 to d = 1 at the same depth (`0B` → `0D`). The value is capped at
 `1B`, and the loop stops after the iteration at `1B` (`10BC`) unless
 `725A` is `0D`. So Psion never searches more than 15 plies nominally.
+With the extensions, `seldepth` could reach 19 (h + 4, see below).
+
+In a locked pawn ending such as Fine 70 (`8/k7/3p4/p2P1p2/P2P1P2/8/8/K7
+w`) Psion therefore runs through all its iterations at once and moves,
+whatever the time left: with `go movetime 60000` it showed depth 15
+after 0.7 s and played `a1b2` after 0.8 s. There are hardly any captures
+or checks to extend on, so `seldepth` stays at the depth (15/15). The
+winning `Kb1` needs a
+far deeper search (usually given as about 25 plies or more), which Psion
+cannot do; raising the limit would mean patching its search, which we do
+not do.
 
 **Measured** (searches of 15 s, normal core; experiment not kept), with
 makes counted per value of `5A67` and the deepest ply made:
