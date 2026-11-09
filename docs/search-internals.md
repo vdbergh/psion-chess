@@ -487,12 +487,14 @@ slot (`1337`..`1413`):
 
 **Killer update** (`15FF`, on a beta cutoff): if the move came from
 stage 4 (`[si+3] & 3` = 0), it becomes the killer for this ply (`6FFE` +
-ply). Up to ply 8 (counter below `11`) it is also stored in a table of 9 bytes per
-ply at `7090` (purpose not known).
+ply). Up to ply 8 (counter below `11`) it is also written to the
+first word of this ply's row in the PV table at `7090` (see "The
+principal variation").
 
 The root moves are kept in a table at `6E00` (12 bytes per move, filled
-at `1068`), and `11A6` works through it at each iteration; how they are
-reordered between iterations is not decoded. There is no history table,
+at `1068`). When a root move becomes the new best, `11A6` moves its entry
+to the front and shifts the others down (`11D6`..`11E1`), so the next
+iteration starts with the best move so far. There is no history table,
 and no hash move, as no hash table has turned up.
 
 ## Selective filter at the deep plies (`155F`)
@@ -677,3 +679,63 @@ stopped after 2.1 s, which is why Psion moves fast in locked endings.
 Within 15 s Psion finished a nominal 9 plies in the opening and 7 in the
 middlegame. Our info lines show 8 for all of these, as the PV is capped
 at 8 moves.
+
+## The principal variation
+
+**The PV table** at `7090` is a triangular table: one row of 9 words per
+ply, row k at `7090` + 18k (so ply 1 at `70A2`), each a list of moves
+ending in 0. It is kept only up to ply 8 (`cmp al,11` at `15CE`,
+`15FF` and `17D6`); deeper plies write nothing.
+
+- When a searched move at ply k becomes the node's new best (`14B0`),
+  `15CE` writes it into row k and copies row k + 1 (the child's line)
+  after it, up to the 0. At ply 8 only the move is written.
+- When a leaf at ply k (the leaf test at `1799`, see "Iterative
+  deepening") beats the node's best, `17E4` writes the move and a 0 into
+  row k, and clears row k + 1.
+- A node with no legal move clears row k + 1 (`1452`).
+
+A child improves its parent only if it raised its own alpha (a child that
+returns its alpha makes the parent cut off), so the row it passes up is
+always fresh. Row 1 is the PV of the root. Its length is h plus the
+extensions on that line, capped at 8. This is why our PVs, and the depth
+we derive from them, never pass 8.
+
+**When it is shown.** When a root move becomes the new best (ply 1 at
+`14B6`), `0AEF` calls `043E` with the new root best (`704E`), provided
+bit `80` of `5A6B` is set (it was `FF` in all our searches). `043E`
+copies the score to `7150` and the first 8 words of row 1 to `7152`. If
+the analysis display is on (`7259`, toggled by the `a` key at `0A64`) and
+the score and first move are non-zero, it draws the line on the screen.
+That screen line is what our info lines are parsed from. The end of the
+search (`06F7`) shows it once more, with `5A76`.
+
+So Psion shows a new line each time the root best changes. Because the
+best move so far is searched first in each iteration, that is at least
+once per iteration (as soon as the first root move has been searched),
+and again whenever another root move beats it. A root fail high
+(`114C`) shows nothing (the call at `1160` goes to a bare `ret`); the
+re-search with beta = +∞ that follows does. After a fail low (`1125`)
+alpha is −∞, so the first move searched again shows a line.
+
+Logged at each write of the last PV word at `7160` and of row 1 at ply 1
+(15 s from 1.a4 h5, normal core; experiment not kept):
+
+| Nodes | `5A67` | Score (`7150`) | Moves in row 1 | Our info line |
+|---|---|---|---|---|
+| 328 | 05 | `7FFF` | 3 (e2e4 …) | none (not stable for long enough) |
+| 2,304 | 09 | `7FF7` | 5 (e2e4 …) | none |
+| 4,579 | 09 | `7FFE` | 5 (d2d4 …) | depth 5, cp 0 |
+| 32,653 | 0D | `7FFB` | 7 (d2d4 …) | depth 7, cp −20 |
+| 633,463 | 11 | `7FF7` | 8 (d2d4 …) | depth 8, cp −40 |
+| 1,341,779 | 11 | `7FF9` | 8 (e2e4 …) | depth 8, cp −30 |
+
+The lines shown at 328 and 2,304 nodes were replaced within a few
+milliseconds, before our parser took them (`ANALYSIS_STABLE_MS`). In the
+Kiwipete-like middlegame each iteration showed one line, all with e2a6,
+of 7, 7 and 8 moves at h = 3, 5 and 7: the extensions made them longer
+than h.
+
+`1166` also copies the first 5 words of row 2 into the current root
+move's entry in `6E00`, and `11E4` copies 6 words of row 1 into the
+entry of a new best. What reads these stored lines is not decoded.
