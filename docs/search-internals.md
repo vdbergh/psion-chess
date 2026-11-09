@@ -752,6 +752,36 @@ depth 5 found it, and a mated in 2 (`8/7Q/8/8/3K4/8/3k4/4R3 b`) stayed at
 of `8000`, so the adapter takes 256 pawns (6144 units) or more from it as
 a mate.
 
+**Mates at the horizon.** A mate needs the mated side's next ply: with no
+legal move there, the score becomes a mate score. At the horizon (`1778`
+at ply h, `1796` at h + 4) there is no such ply, and the leaf test at
+`1799` looks for a mate only after the static score: it first compares
+the score after the move with the bound and cuts the move if it is not
+better (`neg bp; cmp bp,dx; jbe 1754`), and only then, for a checking
+move, asks `206B` whether the opponent has a reply (`17A1`..`17B4`). So a
+mate by the horizon move counts only when the mating side is ahead
+anyway, and a mate after a sacrifice is found only in an iteration in
+which it lies inside the tree, or through an extension (`714C`).
+(Read from the code, not instrumented.)
+
+Example, a mate in 2 (3 plies) with a queen sacrifice,
+`r4br1/3b1kpp/1q1P4/1pp1RP1N/p7/6Q1/PPB3PP/2KR4 w`: 1. Qg6+ hxg6 2. fxg6#.
+At depth 3, fxg6# is the horizon move, a queen down, and is cut; the
+lines show seldepth 3. Depth 5 searches ply 4, finds no reply and scores
+`FFFA` (mate in 2), after 278 ms (seldepth 9):
+
+```
+info depth 3 seldepth 3 time 11 nodes 641 ... score cp 17 pv g3d3 a8a6 e5d5
+info depth 5 seldepth 9 time 164 nodes 10506 ... score cp 54 pv c2e4 d7c6 e4c6 b6c6 d6d7
+info depth 5 seldepth 9 time 278 nodes 18078 ... score mate 2 pv g3g6 h7g6 f5g6
+```
+
+Legal's mate (1. Bxf7+ Ke7 2. Nd5#) is found at depth 3, but with
+seldepth 5: the extension after the checks took the line past the
+horizon. The same blindness at the leaf makes Psion miss a stalemate at
+the horizon: the leaf evaluates statically and asks about replies only
+after a check.
+
 ## The principal variation
 
 **The PV table** at `7090` is a triangular table: one row of 9 words per
