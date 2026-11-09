@@ -77,6 +77,9 @@ second rank, and the flag is bit `04` of the square words.
 | `6FFE` + ply | A move per ply, tried early (probably the killer move) |
 | `7076` | Current ply (times 2, used as a word index) |
 | `5A92` + ply | Per-ply table of search routines, called with `call [di]` |
+| `5A67` | Iteration counter: the root depth (see "Iterative deepening") |
+| `5A66` | `5A67 & 1C`: moves are pre-sorted at plies up to `5A66` / 2 |
+| `714C` | Extension counter, set per iteration from the table at `0408` |
 
 ## Writers of the search board
 
@@ -471,7 +474,8 @@ slot (`1337`..`1413`):
    pushes them onto a stack used as the move list (`push cx; push ax`),
    leaving out the moves already tried in stages 2 and 3 (`cmp ax,bp`,
    `cmp ax,[6FC]`).
-   - Near the root (ply ≤ `5A66` / 2; `5A66` was 8, so plies 1–4) they
+   - Near the root (ply ≤ `5A66` / 2; `5A66` was 8, so plies 1–4; it changes per
+     iteration, see "Iterative deepening") they
      are sorted first (`0D92`..`0E60`). Every move is made, evaluated
      statically (`5A94` = `1633`, which calls `2974`) and unmade. A
      capture or a move flagged `80` (probably check) gets +8. The 10
@@ -596,3 +600,80 @@ This is the capture search that we did not see in the capture share per
 ply. It runs only after tactical moves and makes up a small part of the
 tree. The evaluation's static exchange evaluation still stands in for it
 at all other leaves.
+
+## Iterative deepening: the iteration counter (`5A67`)
+
+The root depth is the byte at `5A67`. `0EB1` sets it to 0 before the
+search. Before each iteration the loop at `107E` calls `0F46`, which
+sets the next value, and `195B`, which rebuilds the per-ply routine
+table (`5A94` for ply 1 on) from it. Its bits `03` are a variant d (1
+or 3), its bits `1C` a number A, which also goes to `5A66`.
+
+`195B` copies 19 routines from the table at `0416` + 16·d, starting A − 8
+bytes before that base; entries before the base become `1633`. With
+h = A/2 + 1 for d = 1 and h = A/2 + 3 for d = 3, the plies get:
+
+| Plies | d = 1 | d = 3 |
+|---|---|---|
+| 1 .. h − 5 | `1633` | `1633` |
+| h − 4 .. h − 1 | `1919 1919 18FC 1895` | `1934 18DA 1821 186D` |
+| h | `1778` | `1778` |
+| h + 1 .. h + 4 | `186D 175A 186D 1796` | `186D 175A 186D 1796` |
+
+(for small h the first entries are left out). `1778` at ply h evaluates
+the position and stops there (the leaf test at `1799`), unless the
+extension counter `714C` has gone negative (see "Which routines set the
+flag"). So h is the nominal depth. The plies beyond h are reached only
+through that extension, and `1796` at ply h + 4 always stops.
+
+As a formula, h = 2·⌊(`5A67` + 1)/4⌋ + 1, so the nominal depth is always
+odd:
+
+| `5A67` | 03 | 05 | 07 | 09 | 0B | 0D | 0F | 11 | 13 | 15 | 17 | 19 | 1B |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| h (plies) | 3 | 3 | 5 | 5 | 7 | 7 | 9 | 9 | 11 | 11 | 13 | 13 | 15 |
+| `714C` at start | 09 | 05 | 07 | 07 | 0B | 0B | 0F | 0F | 11 | 11 | 15 | 15 | 19 |
+
+The two variants with the same h differ in the four plies before the
+horizon and in the pre-sort depth (`5A66` / 2 is h − 1 for d = 1 and
+h − 3 for d = 3). How the routines of d = 3 differ is not decoded.
+
+**The steps** (`0F72`..`0FD6`). The first iteration is `05`, or `03`
+when the byte at `725A` (`0B` in our runs) is 0, 1 or `0D`. After that
+`5A67` normally goes up by 4: the same variant, two plies deeper. With
+t = `5A7C` + `713C` (probably the time used) and T = `5A78` (probably the
+time allotted, set at `0F00`; `F2` and `114` in the runs below):
+
+- t < 3T/32: + 4 (but + 2 from `09` once t ≥ 3T/64);
+- 3T/32 ≤ t < T/2: + 2;
+- t ≥ T/2: stop if bit `80` of `5A6B` is set, otherwise + 2 (and
+  `5A6C` = 2).
+
+A step of 2 goes from d = 1 to d = 3 two plies deeper (`09` → `0B`), or
+from d = 3 to d = 1 at the same depth (`0B` → `0D`). The value is capped at
+`1B`, and the loop stops after the iteration at `1B` (`10BC`) unless
+`725A` is `0D`. So Psion never searches more than 15 plies nominally.
+
+**Measured** (searches of 15 s, normal core; experiment not kept), with
+makes counted per value of `5A67` and the deepest ply made:
+
+| `5A67` | h | 1.a4 h5 | Middlegame | Pawn ending |
+|---|---|---|---|---|
+| 00 | | 188, ply 1 | 217, ply 1 | 126, ply 1 |
+| 05 | 3 | 188, ply 3 | 6,381, ply 7 | 33, ply 3 |
+| 09 | 5 | 5,305, ply 5 | 108,269, ply 9 | 348, ply 5 |
+| 0D | 7 | 57,058, ply 7 | 914,057, ply 11 | 1,738, ply 7 |
+| 11 | 9 | 1,876,589, ply 9 | 594,256, ply 13 (stopped) | 8,874, ply 9 |
+| 15 | 11 | 604,301, ply 11 (stopped) | | 75,592, ply 11 |
+| 19 | 13 | | | 270,772, ply 13 |
+| 1B | 15 | | | 517,273, ply 15 |
+
+(Middlegame is the Kiwipete-like position, pawn ending the locked one
+from "Search depth".) The makes at `00` are the root moves, made once
+before the first iteration. In the quiet opening and the pawn ending the
+deepest ply is exactly h. In the middlegame it is h + 4: the extension
+reaches `1796`. The pawn ending ran through all iterations up to `1B` and
+stopped after 2.1 s, which is why Psion moves fast in locked endings.
+Within 15 s Psion finished a nominal 9 plies in the opening and 7 in the
+middlegame. Our info lines show 8 for all of these, as the PV is capped
+at 8 moves.
