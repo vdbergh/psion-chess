@@ -873,6 +873,15 @@ static std::string memory_analysis(unsigned short score,
 }
 
 static void test_memory_analysis(){
+    // the iteration counter: 05, 09, ... or 03, 07, ... up to 1B
+    CHECK_EQ(IterationDepth(0x03),3);
+    CHECK_EQ(IterationDepth(0x05),3);
+    CHECK_EQ(IterationDepth(0x07),5);
+    CHECK_EQ(IterationDepth(0x09),5);
+    CHECK_EQ(IterationDepth(0x11),9);
+    CHECK_EQ(IterationDepth(0x15),11);
+    CHECK_EQ(IterationDepth(0x19),13);
+    CHECK_EQ(IterationDepth(0x1B),15);
     // seen in searches: from square in the high byte, to square in the
     // low one; bit 0 marks a double pawn move (from) and a capture (to)
     CHECK_EQ(memory_analysis(0x7FF9,{0xC988,0x2968,0xECAA,0x0C4A,0xC786,

@@ -1197,7 +1197,8 @@ namespace psion {
         std::vector<std::string> info_pv; // ... and all of it
         bool info_mate;            // the score of the last info pv:
         int info_score;            // mate in moves or centipawns
-        size_t info_depth;         // longest pv in this search
+        int info_depth;            // of the last info pv
+        int info_seldepth;
         size_t sync_progress_size; // moves played when last checked
         unsigned int sync_progress_ticks;
     } uci;
@@ -1217,8 +1218,8 @@ namespace psion {
         unsigned long nodes = search_nodes();
         std::string info;
         char buf[80];
-        snprintf(buf, sizeof(buf), "info depth %u time %u",
-                 (unsigned int)uci.info_depth, time_ms);
+        snprintf(buf, sizeof(buf), "info depth %d seldepth %d time %u",
+                 uci.info_depth, uci.info_seldepth, time_ms);
         info = buf;
         if (nodes > 0) {
             snprintf(buf, sizeof(buf), " nodes %lu", nodes);
@@ -1632,9 +1633,8 @@ namespace psion {
 
     // Sends an info line for a line of Psion's analysis.
     static void send_analysis(Analysis &a) {
-        // Psion does not show the depth; the length of the longest line
-        // seen comes close (and GUIs such as Polyglot need a depth).
-        uci.info_depth = std::max(uci.info_depth, a.pv.size());
+        uci.info_depth = a.depth;
+        uci.info_seldepth = a.seldepth;
         std::string info = info_head(a.mate, a.score) + " pv";
         for (size_t i = 0; i < a.pv.size(); i++) {
             info += " " + a.pv[i];
@@ -1660,6 +1660,8 @@ namespace psion {
             if (!MemoryAnalysis(p.score, p.moves, a)) {
                 continue;
             }
+            a.depth = IterationDepth(p.iteration);
+            a.seldepth = std::max(a.depth, (int)p.max_ply);
             // The position searched: Psion may have played its move already.
             if (!CheckPv(uci.search_board, uci.search_white, a.pv)) {
                 say("Memory line not used: %04X ...\n", p.moves[0]);
@@ -1965,6 +1967,7 @@ namespace psion {
             uci.info_ponder.clear();
             uci.info_pv.clear();
             uci.info_depth = 0;
+            uci.info_seldepth = 0;
             uci.movenow_sent = false;
             uci.saw_program = false;
             memcpy(uci.search_board, known.board, sizeof(uci.search_board));

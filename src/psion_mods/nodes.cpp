@@ -16,7 +16,8 @@
  *
  * The same handler watches the copy of the principal variation that
  * Psion makes for its analysis display (score at DS:7150, moves at
- * 7152..7161), and the copies of its board to the game board (DS:28AC).
+ * 7152..7161), the ply counter of the search (DS:7076), and the copies of
+ * its board to the game board (DS:28AC).
  */
 
 namespace psion {
@@ -26,11 +27,15 @@ namespace psion {
 
     static const unsigned int PV_OFFSET = 0x7150;
     static const unsigned int PV_LAST = PV_OFFSET + 2 + 7 * 2; // last move
+    static const unsigned int ITERATION_OFFSET = 0x5A67;
+    static const unsigned int PLY_OFFSET = 0x7076; // ply * 2
     static const unsigned int GAME_OFFSET = 0x28AC;
     static const unsigned int GAME_SIZE = 64;
 
     static unsigned int board_lo = 0, board_hi = 0; // linear, [lo, hi)
     static unsigned int pv_base = 0, pv_last = 0;    // linear
+    static unsigned int iteration_addr = 0, ply_addr = 0; // linear
+    static unsigned int max_ply = 0;
     static unsigned int game_lo = 0, game_hi = 0;    // linear, [lo, hi)
     static bool game_copying = false;
     static unsigned long long zero_writes = 0;
@@ -45,6 +50,8 @@ namespace psion {
         for (int i = 0; i < 8; i++) {
             pv.moves[i] = host_readw(MemBase + pv_base + 2 + 2 * i);
         }
+        pv.iteration = host_readb(MemBase + iteration_addr);
+        pv.max_ply = (unsigned char)max_ply;
         if (pv_size < PV_QUEUE) {
             pv_size++;
         } else {
@@ -59,6 +66,12 @@ namespace psion {
         }
         if (addr <= pv_last + 1 && addr + size > pv_last + 1) {
             queue_pv();
+        }
+        if (addr <= ply_addr && addr + size > ply_addr) {
+            unsigned int ply = host_readb(MemBase + ply_addr) / 2;
+            if (ply > max_ply) {
+                max_ply = ply;
+            }
         }
         if (addr < game_hi && addr + size > game_lo) {
             game_copying = addr + size < game_hi;
@@ -99,6 +112,9 @@ namespace psion {
         MEM_SetPageHandler(first, last - first + 1, &board_handler);
         pv_base = data_segment * 16 + PV_OFFSET;
         pv_last = data_segment * 16 + PV_LAST;
+        iteration_addr = data_segment * 16 + ITERATION_OFFSET;
+        ply_addr = data_segment * 16 + PLY_OFFSET;
+        MEM_SetPageHandler(ply_addr / MEM_PAGESIZE, 1, &board_handler);
         MEM_SetPageHandler(pv_base / MEM_PAGESIZE,
                            (pv_last + 1) / MEM_PAGESIZE - pv_base / MEM_PAGESIZE + 1,
                            &board_handler);
@@ -122,6 +138,7 @@ namespace psion {
 
     void Nodes_ClearPv() {
         pv_size = 0;
+        max_ply = 0;
     }
 
     bool Nodes_BoardCopying() {

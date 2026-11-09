@@ -106,13 +106,15 @@ How the engine handles the gray areas of the protocol is described under
   - The node count is counted by the adapter from Psion's board writes
     (see [docs/search-internals.md](docs/search-internals.md)); it is
     within about 0.5% of the moves Psion searched.
-  - The depth given is the length of the longest principal variation so
-    far in the search, as Psion does not show its search depth.
-  - The score has a resolution of 10 centipawns.
+  - The depth is the nominal depth of Psion's iteration (always odd:
+    3, 5, ..., 15), the selective depth the deepest ply searched so far.
+    The principal variation has at most 8 moves, as Psion keeps no more.
+  - The score has a resolution of about 4 centipawns (Psion counts 24
+    units per pawn).
   - The number of moves to a mate is derived from the length of the
     principal variation.
-  - Book moves and moves found instantly come without `info`.
-- Psion searches to a fixed maximum depth and moves as soon as it is
+  - Book moves come without `info`.
+- Psion searches to a fixed maximum depth (15 plies) and moves as soon as it is
   reached, whatever the time left. So in a locked pawn ending, with few moves
   per ply (like Fine 70), Psion moves almost at once even at
   long time controls. This depth limit, which inherently limits Psion's

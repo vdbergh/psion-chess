@@ -119,6 +119,8 @@ namespace psion {
         bool mate;
         int score; // centipawns, or moves to mate (< 0: being mated)
         std::vector<std::string> pv; // UCI notation
+        int depth;    // nominal depth of the iteration, in plies
+        int seldepth; // deepest ply searched so far
     };
     // The line from Psion's memory (see Nodes_TakePv()): score with bias
     // 8000 and 24 per pawn, moves as from and to squares on the search
@@ -126,6 +128,11 @@ namespace psion {
     // of a pawn as on Psion's analysis display. False if there is no move.
     bool MemoryAnalysis(unsigned short score, const unsigned short moves[8],
                         Analysis &a);
+
+    // The nominal depth of an iteration from Psion's iteration counter
+    // (5A67): the ply at which it stops unless it extends (always odd, 15
+    // at most; see docs/search-internals.md, "Iterative deepening").
+    int IterationDepth(unsigned char counter);
 
     // Plays pv on board (white to move) to check it. False if a move is
     // not by a piece of the side to move, captures one of its own pieces,

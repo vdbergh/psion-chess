@@ -431,6 +431,16 @@ class UciTest(unittest.TestCase):
         line, before = e.expect('bestmove', 15)
         infos = [l.split() for l in before if l.startswith('info ')]
         self.assertTrue(infos, before)
+        # The selective depth, after the depth: the deepest ply searched,
+        # so at least the depth, and it only grows during a search.
+        # Without it the rest is checked as before.
+        seldepth = 0
+        for i, info in enumerate(infos):
+            self.assertEqual(info[3], 'seldepth', info)
+            self.assertGreaterEqual(int(info[4]), int(info[2]), info)
+            self.assertGreaterEqual(int(info[4]), seldepth, info)
+            seldepth = int(info[4])
+            infos[i] = info[:3] + info[5:]
         # The node count, after the time: it only grows during a search,
         # and nps goes with it. Without it the rest is checked as before.
         nodes = []
@@ -470,9 +480,11 @@ class UciTest(unittest.TestCase):
             pv = info[9:]
             self.assertTrue(pv, info)
             self.assertTrue(Board(moves).plausible(pv[0]), info)
-            # the depth: the longest pv so far
-            depth = max(depth, len(pv))
-            self.assertEqual(int(info[2]), depth, info)
+            # the depth: that of Psion's iteration, odd and at most 15,
+            # and it only grows during a search
+            self.assertIn(int(info[2]), range(3, 16, 2), info)
+            self.assertGreaterEqual(int(info[2]), depth, info)
+            depth = int(info[2])
         self.assertTrue(Board(moves).plausible(line.split()[1]), line)
 
     def test_info_book_move(self):
@@ -497,7 +509,7 @@ class UciTest(unittest.TestCase):
         e.send('go movetime 2000')
         line, before = e.expect('bestmove', 30)
         self.assertEqual(line.split()[:2], ['bestmove', 'c4f7'])
-        self.assertIn('depth 3 time',
+        self.assertIn('depth 3 seldepth',
                       ' '.join(l for l in before if l.startswith('info ')))
         self.assertIn('score mate 2 pv c4f7 e8e7 c3d5',
                       ' '.join(l for l in before if l.startswith('info ')))

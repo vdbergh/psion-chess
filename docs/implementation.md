@@ -45,11 +45,14 @@ Psion](#controlling-psion)). To the GUI this is invisible, apart from the
 time it takes: a `go` without a new `position`, for example, first takes
 back the move Psion has just played.
 
-Psion keeps no node count, and its search depth is not found in memory
-or on the screen. The adapter counts the nodes itself, by counting the
-writes to the board Psion searches on (`nodes.cpp`, see
+Psion keeps no node count. The adapter counts the nodes itself, by
+counting the writes to the board Psion searches on (`nodes.cpp`, see
 [search-internals.md](search-internals.md#node-count)). The depth is the
-length of the longest principal variation seen, and the time (also for
+nominal depth of the iteration that found the line, from Psion's
+iteration counter at `5A67` when it copied the line (see
+[search-internals.md](search-internals.md#iterative-deepening-the-iteration-counter-5a67)),
+and the selective depth the deepest ply searched since `go`, from the
+writes to Psion's ply counter at `7076`. The time (also for
 `nps`) is measured by the adapter itself: from when Psion started to
 think, so without entering the opponent's move. The last `info` line is
 repeated before `bestmove` with the time and nodes of the whole search.
@@ -162,8 +165,8 @@ about 0.6%. Nearly all the time goes to emulating the CPU.
   the previous best move) and for each better move; the copy at the end
   of the search, a repeat, is not reported. Should Psion play a move
   other than that of the last line, a last `info` line gives that move
-  alone, with the last score as a lower bound, e.g. `info depth 7 time
-  2950 score cp -10 lowerbound pv f3e5`. So does a promotion with which
+  alone, with the last score as a lower bound, e.g. `info depth 7
+  seldepth 11 time 2950 score cp -10 lowerbound pv f3e5`. So does a promotion with which
   the line does not work.
 - `2` sets 2-player mode, in which moves for both sides can be entered.
 - `c` (Compute) starts a search, `m` (Move now) ends it when the time

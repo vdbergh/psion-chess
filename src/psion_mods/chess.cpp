@@ -205,11 +205,17 @@ namespace psion {
         return s;
     }
 
+    int IterationDepth(unsigned char counter) {
+        return 2 * ((counter + 1) / 4) + 1;
+    }
+
     bool MemoryAnalysis(unsigned short score, const unsigned short moves[8],
                         Analysis &a) {
         a.mate = false;
         a.score = 0;
         a.pv.clear();
+        a.depth = 0;
+        a.seldepth = 0;
         for (int i = 0; i < 8 && moves[i]; i++) {
             a.pv.push_back(search_square(moves[i] >> 8) +
                            search_square(moves[i] & 0xFF));
