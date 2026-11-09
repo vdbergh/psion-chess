@@ -57,8 +57,7 @@ once in the directory where you unpacked the package to get it to run. A self co
 (`wtime`, `btime`, `winc`, `binc`, `movestogo`, `movetime`, `depth`,
 `nodes`, `mate`, `infinite`, `ponder`; the first limit reached ends the
 search, see [Time allocation](#time-allocation)), `ponderhit`, `stop`,
-`setoption`, `debug on|off` and `quit`. `go searchmoves` is ignored:
-Psion searches all moves.
+`setoption`, `debug on|off` and `quit`.
 How the engine handles the gray areas of the protocol is described under
 [Quirks](docs/implementation.md#quirks).
 
@@ -95,6 +94,7 @@ How the engine handles the gray areas of the protocol is described under
 
 ### Limitations
 
+- `go searchmoves` is ignored: Psion searches all moves.
 - Psion's depths are odd: `go depth 6` searches to depth 7 (see [Time
   allocation](#time-allocation)). Psion ends its search as soon as it
   has found a mate, so `go mate 2` can also give a mate in 3.
