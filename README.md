@@ -54,8 +54,11 @@ once in the directory where you unpacked the package to get it to run. A self co
 ### Supported UCI commands
 
 `uci`, `isready`, `ucinewgame`, `position startpos|fen ... [moves ...]`, `go`
-(`wtime`, `btime`, `winc`, `binc`, `movestogo`, `movetime`, `infinite`,
-`ponder`), `ponderhit`, `stop`, `setoption`, `debug on|off` and `quit`.
+(`wtime`, `btime`, `winc`, `binc`, `movestogo`, `movetime`, `depth`,
+`nodes`, `mate`, `infinite`, `ponder`; the first limit reached ends the
+search, see [Time allocation](#time-allocation)), `ponderhit`, `stop`,
+`setoption`, `debug on|off` and `quit`. `go searchmoves` is ignored:
+Psion searches all moves.
 How the engine handles the gray areas of the protocol is described under
 [Quirks](docs/implementation.md#quirks).
 
