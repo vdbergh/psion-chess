@@ -491,10 +491,12 @@ ply). Up to ply 8 (counter below `11`) it is also written to the
 first word of this ply's row in the PV table at `7090` (see "The
 principal variation").
 
-The root moves are kept in a table at `6E00` (12 bytes per move, filled
-at `1068`). When a root move becomes the new best, `11A6` moves its entry
-to the front and shifts the others down (`11D6`..`11E1`), so the next
-iteration starts with the best move so far. There is no history table,
+The root moves are in the move list on the stack (4 bytes per move), and
+also in a table at `6E00` (12 bytes per move, filled at `1068`). When a
+root move becomes the new best, `11A6` moves it to the front of both and
+shifts the moves before it down one place (`11B6`..`11CC` on the stack,
+`11D6`..`11E1` in `6E00`), so the next iteration starts with the best
+move so far. There is no history table,
 and no hash move, as no hash table has turned up.
 
 ## Selective filter at the deep plies (`155F`)
@@ -737,6 +739,18 @@ memory instead (see implementation.md). In the
 Kiwipete-like middlegame each iteration showed one line, all with e2a6,
 of 7, 7 and 8 moves at h = 3, 5 and 7: the extensions made them longer
 than h.
+
+**The move played.** After the search (`244A`, `call 0FFD`), the
+think routine plays `[si]`, the move at the front of the root list on
+the stack (`2465`: make on the search board; `246F`..`2471`: the game).
+That is the move `11A6` put there last, which is the first move of the
+last line shown, with one exception: a root fail high also calls `11A6`
+(`1147`), with no line shown. If the search ends during the re-search
+that follows, before that move becomes the new best, Psion plays it
+although no line had it. Our last `info` line then gives it as a lower
+bound, which is right: it scored at least beta. In self-play of 80
+plies at 600 ms and 150 plies at 250 ms per move (217 searches), the
+played move was always the first move of the last line.
 
 `1166` also copies the first 5 words of row 2 into the current root
 move's entry in `6E00`, and `11E4` copies 6 words of row 1 into the
