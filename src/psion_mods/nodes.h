@@ -9,6 +9,19 @@ namespace psion {
     void Nodes_Install(unsigned int data_segment);
     unsigned long long Nodes_Count();
 
+    // Psion's principal variation, as 043E copies it for the analysis
+    // display: the score (bias 8000, 24 per pawn, for the side to move)
+    // and up to 8 moves (high byte the from square, low byte the to
+    // square, as offsets on the search board; 0 ends the line). Each copy
+    // is queued when its last word is written; Nodes_TakePv() returns the
+    // oldest one not yet taken.
+    struct MemoryPv {
+        unsigned short score;
+        unsigned short moves[8];
+    };
+    bool Nodes_TakePv(MemoryPv &pv);
+    void Nodes_ClearPv();
+
 } // namespace psion
 
 #endif

@@ -953,18 +953,8 @@ namespace psion {
         return screen_rows[22].compare(0, 8, "LEVEL E ") == 0;
     }
 
-    // In analysis mode Psion shows its score and principal variation on
-    // the bottom row while it thinks.
-    static bool analysis_on() {
-        return screen_rows[22].find("ANALYSIS ON") != std::string::npos;
-    }
-
-    // The bottom row as last drawn (screen_rows keeps old contents), and
-    // since when. It is used once it has not changed for a while: when
-    // Psion redraws it, the characters that change are erased first.
-    static std::string analysis_row;
-    static unsigned int analysis_row_since;
-    const unsigned int ANALYSIS_STABLE_MS = 50;
+    // The bottom row as last drawn (screen_rows keeps old contents).
+    static std::string bottom_row;
 
     // The piece to promote to, typed once Psion asks for it. Typed any
     // earlier, the letter would be taken as a command (Q is QUIT).
@@ -1175,17 +1165,13 @@ namespace psion {
         bool saw_program;        // the screen showed Psion thinking
         Board search_board;      // the position searched
         bool search_white;
-        std::string reported_move;   // played, to report after the last
-        unsigned int reported_since; // analysis line
         bool inflight;               // a position move has been sent
         size_t inflight_size;
         unsigned int inflight_since;
         int retries;
         bool level_set;
         int two_player_presses;    // '2' pressed without effect
-        int analysis_presses;      // 'a' pressed without effect
         int easy_presses;          // 'e' pressed without effect
-        std::string last_analysis; // analysis row last seen
         std::string info_move;     // first move of the last info pv
         std::string info_ponder;   // ... and the second, to ponder on
         std::vector<std::string> info_pv; // ... and all of it
@@ -1322,7 +1308,6 @@ namespace psion {
     }
 
     static void report_move(const std::string move) {
-        uci.reported_move.clear();
         if (uci.infinite && !uci.stop_received) {
             uci.held_move = move;
             uci.search = SEARCH_HOLDING;
@@ -1330,6 +1315,8 @@ namespace psion {
             finish_search(move);
         }
     }
+
+    static void UciAnalysis();
 
     // Called when Psion plays a move during a search.
     static void UciEngineMoved(const std::string &move) {
@@ -1345,14 +1332,9 @@ namespace psion {
             uci.target.push_back(move);
             uci.move_added = true;
         }
-        // Psion may have just drawn the analysis line for this move (e.g.
-        // a mate it found at once): report that first.
-        if (analysis_row != uci.last_analysis &&
-            GetTicks() - analysis_row_since < ANALYSIS_STABLE_MS) {
-            uci.reported_move = move;
-            uci.reported_since = GetTicks();
-            return;
-        }
+        // Psion may have found the line for this move just now (e.g. a
+        // mate it found at once): report that first.
+        UciAnalysis();
         report_move(move);
     }
 
@@ -1530,8 +1512,7 @@ namespace psion {
             uci.ponder = false;
             if (uci.search == SEARCH_HOLDING) {
                 finish_search(uci.held_move);
-            } else if (uci.search == SEARCH_RUNNING && !uci.movenow_sent &&
-                       uci.reported_move.empty()) {
+            } else if (uci.search == SEARCH_RUNNING && !uci.movenow_sent) {
                 search_speed(false);
                 press(KBD_m);
                 uci.movenow_sent = true;
@@ -1629,41 +1610,8 @@ namespace psion {
         return false;
     }
 
-    // Switches analysis mode on (for info lines). Returns true once that
-    // is done, or when it does not work: the engine plays without.
-    const int MAX_ANALYSIS_PRESSES = 4;
-    static bool analysis_check() {
-        if (analysis_on()) {
-            uci.analysis_presses = 0;
-            return true;
-        }
-        if (uci.analysis_presses >= MAX_ANALYSIS_PRESSES) {
-            return true;
-        }
-        uci.analysis_presses++;
-        press(KBD_a);
-        return false;
-    }
-
-    // Sends an info line for each new line on Psion's analysis display
-    // during a search.
-    static void UciAnalysis() {
-        if (uci.search != SEARCH_RUNNING || analysis_row == uci.last_analysis ||
-            GetTicks() - analysis_row_since < ANALYSIS_STABLE_MS) {
-            return;
-        }
-        uci.last_analysis = analysis_row;
-        // The position searched: Psion may have played its move already.
-        bool white = uci.search_white;
-        Analysis a;
-        if (!ParseAnalysis(analysis_row, white, a)) {
-            return;
-        }
-        // Only complete lines for this position.
-        if (!a.complete || !CheckPv(uci.search_board, white, a.pv)) {
-            say("Analysis line not used: %s\n", analysis_row.c_str());
-            return;
-        }
+    // Sends an info line for a line of Psion's analysis.
+    static void send_analysis(Analysis &a) {
         // Psion does not show the depth; the length of the longest line
         // seen comes close (and GUIs such as Polyglot need a depth).
         uci.info_depth = std::max(uci.info_depth, a.pv.size());
@@ -1677,6 +1625,33 @@ namespace psion {
         uci.info_pv = a.pv;
         uci.info_mate = a.mate;
         uci.info_score = a.score;
+    }
+
+    // Sends an info line for each line Psion has found during a search,
+    // read from its memory: the line it would put on its analysis display
+    // (which stays off), up to 8 moves.
+    static void UciAnalysis() {
+        MemoryPv p;
+        while (Nodes_TakePv(p)) {
+            if (uci.search != SEARCH_RUNNING) {
+                continue;
+            }
+            Analysis a;
+            if (!MemoryAnalysis(p.score, p.moves, a)) {
+                continue;
+            }
+            // The position searched: Psion may have played its move already.
+            if (!CheckPv(uci.search_board, uci.search_white, a.pv)) {
+                say("Memory line not used: %04X ...\n", p.moves[0]);
+                continue;
+            }
+            // The end of the search shows the last line again.
+            if (a.pv == uci.info_pv && a.mate == uci.info_mate &&
+                a.score == uci.info_score) {
+                continue;
+            }
+            send_analysis(a);
+        }
     }
 
     // Sets up uci.target_start in Psion's set-up mode: F3, then the keys
@@ -1743,7 +1718,7 @@ namespace psion {
             // Called once the keys have been taken: the timeout runs from now.
             uci.setup_keys_done = true;
             uci.setup_since = now;
-        } else if (analysis_row.find("ILLEGAL POSITION") != std::string::npos ||
+        } else if (bottom_row.find("ILLEGAL POSITION") != std::string::npos ||
                    now - uci.setup_since > SETUP_TIMEOUT_MS) {
             setup_failed();
         }
@@ -1789,14 +1764,6 @@ namespace psion {
                     (uci.action_done || now - uci.last_action >= ACTION_GAP_MS);
         uci_done = false;
         if (uci.search == SEARCH_RUNNING) {
-            if (!uci.reported_move.empty()) {
-                // UciAnalysis has had its chance to send the line.
-                if (now - analysis_row_since >= ANALYSIS_STABLE_MS ||
-                    now - uci.reported_since >= 2 * ANALYSIS_STABLE_MS) {
-                    report_move(uci.reported_move);
-                }
-                return;
-            }
             if (!two_player_mode()) {
                 uci.saw_program = true;
             }
@@ -1832,7 +1799,7 @@ namespace psion {
             step_setup();
             return;
         }
-        if (!level_set_check() || !easy_check() || !analysis_check()) {
+        if (!level_set_check() || !easy_check()) {
             return;
         }
         if (!uci_synced()) {
@@ -1973,7 +1940,7 @@ namespace psion {
             uci.thinking_start = GetTicks();
             game_state.thinking = true;
             uci.search = SEARCH_RUNNING;
-            uci.last_analysis = analysis_row; // from an earlier search
+            Nodes_ClearPv(); // lines from an earlier search
             uci.info_move.clear();
             uci.info_ponder.clear();
             uci.info_pv.clear();
@@ -2037,10 +2004,7 @@ namespace psion {
             }
         }
         std::string row(txt_buf[24], TEXT_WIDTH);
-        if (row != analysis_row) {
-            analysis_row = row;
-            analysis_row_since = GetTicks();
-        }
+        bottom_row = row;
         ocr_board(board, (unsigned char *)pixels);
         if (MemScan_Enabled()) {
             // memscan uses the screen as ground truth

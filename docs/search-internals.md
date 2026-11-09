@@ -731,7 +731,9 @@ Logged at each write of the last PV word at `7160` and of row 1 at ply 1
 | 1,341,779 | 11 | `7FF9` | 8 (e2e4 …) | depth 8, cp −30 |
 
 The lines shown at 328 and 2,304 nodes were replaced within a few
-milliseconds, before our parser took them (`ANALYSIS_STABLE_MS`). In the
+milliseconds, before the screen parser we used then took them (it waited
+for the row to be unchanged for 50 ms). We now read these copies from
+memory instead (see implementation.md). In the
 Kiwipete-like middlegame each iteration showed one line, all with e2a6,
 of 7, 7 and 8 moves at h = 3, 5 and 7: the extensions made them longer
 than h.

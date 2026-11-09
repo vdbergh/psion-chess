@@ -423,7 +423,7 @@ class UciTest(unittest.TestCase):
         self.assertTrue(Board(moves).plausible(move), move)
 
     def test_info(self):
-        """Psion's analysis display is reported as info lines."""
+        """Psion's analysis (read from its memory) is reported as info lines."""
         e = self.engine
         moves = ['g2g4', 'a7a6', 'h2h4', 'h7h6']    # out of Psion's book
         e.send('position startpos moves ' + ' '.join(moves))

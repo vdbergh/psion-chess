@@ -838,11 +838,15 @@ static void test_plan_sync(){
     CHECK_EQ(PlanSync(game,split("d2d4 d7d5")),SYNC_TAKEBACK);
 }
 
-// Parses an analysis row, "" if it is not one; else "cp|mate N pv...",
-// with "?" at the end if the line was not completely understood.
-static std::string analysis(const char *row, bool white){
+// A line from Psion's memory as "cp|mate N pv...", "" if there is none.
+static std::string memory_analysis(unsigned short score,
+				   std::vector<unsigned short> moves){
+    unsigned short m[8]={0};
+    for(size_t i=0;i<moves.size();i++){
+	m[i]=moves[i];
+    }
     Analysis a;
-    if(!ParseAnalysis(row,white,a)){
+    if(!MemoryAnalysis(score,m,a)){
 	return "";
     }
     char buf[32];
@@ -851,43 +855,30 @@ static std::string analysis(const char *row, bool white){
     for(size_t i=0;i<a.pv.size();i++){
 	r+=" "+a.pv[i];
     }
-    return a.complete?r:r+" ?";
+    return r;
 }
 
-static void test_parse_analysis(){
-    // as shown by Psion (rows are padded to 80 columns)
-    CHECK_EQ(analysis("-00.4 E2-E4 D7-D5 B1-C3 G8-F6 C3xD5 F6xE4 D5-C3 D8-D4"
-		      "                         ",true),
-	     "cp -40 e2e4 d7d5 b1c3 g8f6 c3d5 f6e4 d5c3 d8d4");
-    CHECK_EQ(analysis(" 00.1 E2-E4 D7-D5",true),"cp 10 e2e4 d7d5");
-    CHECK_EQ(analysis("-00.0 E2-E4",true),"cp 0 e2e4");
-    CHECK_EQ(analysis(" 23.0 E7xC5 G8-F7 C7-C8",true),"cp 2300 e7c5 g8f7 c7c8");
-    // castling is shown as a king move; other notations are accepted too
-    CHECK_EQ(analysis(" 00.4 G6-H5 C8-D7 E1-G1",false),
-	     "cp 40 g6h5 c8d7 e1g1");
-    CHECK_EQ(analysis(" 00.4 O-O E8-G8 O-O-O",true),
-	     "cp 40 e1g1 e8g8 e1c1");
-    CHECK_EQ(analysis(" 00.4 A7-A8Q B2xA1=N C7-C8(R)",true),
-	     "cp 40 a7a8q b2a1n c7c8r");
-    CHECK_EQ(analysis(" 00.4 E2-E4+ D7-D5#",true),"cp 40 e2e4 d7d5");
-    // mates: the length of the line gives the number of moves
-    CHECK_EQ(analysis(" 99.9 C4xF7 E8-E7 C3-D5",true),"mate 2 c4f7 e8e7 c3d5");
-    CHECK_EQ(analysis(" 99.9 H5xF7",true),"mate 1 h5f7");
-    CHECK_EQ(analysis("-99.9 E8-E7 C3-D5",false),"mate -1 e8e7 c3d5");
-    CHECK_EQ(analysis("-99.9 G7-G6 H5xF7 E8-E7 F7-F6",false),
-	     "mate -2 g7g6 h5f7 e8e7 f7f6");
-    // a row Psion was redrawing: blanks in place of changed characters
-    CHECK_EQ(analysis(" 12.  C6-C7 D4- 5 C7-C8",true),"");
-    CHECK_EQ(analysis(" 12.4 C6-C7 D4- 5 C7-C8",true),"cp 1240 c6c7 ?");
-    // not analysis
-    CHECK_EQ(analysis("",true),"");
-    CHECK_EQ(analysis("                    ",true),"");
-    CHECK_EQ(analysis("PROMOTE TO Q,R,B,N ?",true),"");
-    CHECK_EQ(analysis("ILLEGAL MOVE",true),"");
-    CHECK_EQ(analysis(" 00.4",true),"");
-    CHECK_EQ(analysis(" 00.4 HELLO",true),"");
-    CHECK_EQ(analysis("1.5 E2-E4",true),"cp 150 e2e4");
-    CHECK_EQ(analysis("-.5 E2-E4",true),"");
+static void test_memory_analysis(){
+    // seen in searches: from square in the high byte, to square in the
+    // low one; bit 0 marks a double pawn move (from) and a capture (to)
+    CHECK_EQ(memory_analysis(0x7FF9,{0xC988,0x2968,0xECAA,0x0C4A,0xC786,
+				      0x4A89,0x8669,0x2766}),
+	     "cp -29 e2e4 e7e5 g1f3 g8f6 d2d4 f6e4 d4e5 d7d5");
+    // 24 units per pawn, rounded to centipawns
+    CHECK_EQ(memory_analysis(0x800B,{0xC841}),"cp 46 e2a6");
+    CHECK_EQ(memory_analysis(0x8000,{0xC841}),"cp 0 e2a6");
+    CHECK_EQ(memory_analysis(0x7FFF,{0xC841}),"cp -4 e2a6");
+    CHECK_EQ(memory_analysis(0x8000+24*255+23,{0xC841}),"cp 25596 e2a6");
+    // corner squares
+    CHECK_EQ(memory_analysis(0x8000,{0x00EE}),"cp 0 a8h1");
+    // a mate (256 pawns or more): the moves from the length of the line
+    CHECK_EQ(memory_analysis(0x8000+24*256,{0xC841}),"mate 1 e2a6");
+    CHECK_EQ(memory_analysis(0x8000+24*256,{0xC841,0x2766,0xECAA}),
+	     "mate 2 e2a6 d7d5 g1f3");
+    CHECK_EQ(memory_analysis(0x8000-24*256,{0xC841,0x2766}),
+	     "mate -1 e2a6 d7d5");
+    // no line
+    CHECK_EQ(memory_analysis(0x8000,{}),"");
 }
 
 // Checks a line from a diagram; the line as completed, "" if rejected.
@@ -1321,7 +1312,7 @@ int main(){
     test_setup_keys();
     test_board_after();
     test_plan_sync();
-    test_parse_analysis();
+    test_memory_analysis();
     test_check_pv();
     test_correct_promotion();
     test_sha256();

@@ -183,88 +183,38 @@ namespace psion {
         return m.size() == 4 || (m[4] != 0 && strchr("qrbn", m[4]) != NULL);
     }
 
-    // A move in Psion's notation ("E2-E4", "D5xE4", "O-O", ...) to UCI
-    // notation; "" if it is not one.
-    static std::string analysis_move(std::string m, bool white) {
-        size_t i;
-        for (i = 0; i < m.size(); i++) {
-            m[i] = tolower((unsigned char)m[i]);
-        }
-        while (!m.empty() &&
-               (m[m.size() - 1] == '+' || m[m.size() - 1] == '#')) {
-            m.erase(m.size() - 1);
-        }
-        if (m == "o-o" || m == "0-0") {
-            return white ? "e1g1" : "e8g8";
-        }
-        if (m == "o-o-o" || m == "0-0-0") {
-            return white ? "e1c1" : "e8c8";
-        }
-        if (m.size() < 5 || (m[2] != '-' && m[2] != 'x')) {
-            return "";
-        }
-        std::string uci = m.substr(0, 2) + m.substr(3, 2);
-        std::string rest = m.substr(5);
-        if (!rest.empty() && (rest[0] == '=' || rest[0] == '(')) {
-            rest.erase(0, 1);
-        }
-        if (!rest.empty() && rest[rest.size() - 1] == ')') {
-            rest.erase(rest.size() - 1);
-        }
-        if (rest.size() > 1) {
-            return "";
-        }
-        uci += rest;
-        return IsMoveString(uci) ? uci : "";
+    // A square of Psion's search board (0x88, two bytes per square, a8
+    // first); bit 0 holds a flag.
+    static std::string search_square(unsigned int b) {
+        std::string s;
+        s += (char)('a' + ((b & 0x0E) >> 1));
+        s += (char)('8' - ((b & 0xE0) >> 5));
+        return s;
     }
 
-    bool ParseAnalysis(const std::string &row, bool white, Analysis &a) {
-        std::vector<std::string> tokens = Tokenize(row.c_str());
+    bool MemoryAnalysis(unsigned short score, const unsigned short moves[8],
+                        Analysis &a) {
         a.mate = false;
         a.score = 0;
         a.pv.clear();
-        a.complete = false;
-        if (tokens.empty()) {
-            return false;
-        }
-        // The score: [-]NN.N
-        const std::string &s = tokens[0];
-        size_t i = s[0] == '-' ? 1 : 0;
-        size_t dot = s.find('.');
-        if (dot == std::string::npos || dot == i || dot + 2 != s.size() ||
-            !isdigit((unsigned char)s[dot + 1])) {
-            return false;
-        }
-        int value = 0;
-        for (; i < dot; i++) {
-            if (!isdigit((unsigned char)s[i])) {
-                return false;
-            }
-            value = 10 * value + s[i] - '0';
-        }
-        value = 10 * value + s[dot + 1] - '0'; // tenths of a pawn
-        bool negative = s[0] == '-';
-        bool side = white;
-        for (i = 1; i < tokens.size(); i++) {
-            std::string m = analysis_move(tokens[i], side);
-            if (m.empty()) {
-                break;
-            }
-            a.pv.push_back(m);
-            side = !side;
+        for (int i = 0; i < 8 && moves[i]; i++) {
+            a.pv.push_back(search_square(moves[i] >> 8) +
+                           search_square(moves[i] & 0xFF));
         }
         if (a.pv.empty()) {
             return false;
         }
-        a.complete = i == tokens.size();
-        if (value >= 999) {
-            // Moves to mate, from the length of the line (the side to move
-            // mates with its last move, or is mated by the opponent's).
+        int value = (int)score - 0x8000;
+        int units = abs(value);
+        if (units / 24 >= 256) {
+            // A mate (shown as 99.9). The moves to mate come from the
+            // length of the line: the side to move mates with its last
+            // move, or is mated by the opponent's.
             int n = a.pv.size();
             a.mate = true;
-            a.score = negative ? -std::max(1, n / 2) : (n + 1) / 2;
+            a.score = value < 0 ? -std::max(1, n / 2) : (n + 1) / 2;
         } else {
-            a.score = (negative ? -10 : 10) * value;
+            a.score = (value < 0 ? -1 : 1) * ((units * 100 + 12) / 24);
         }
         return true;
     }

@@ -108,18 +108,19 @@ namespace psion {
     // or a7. A king or rook that is not typed keeps its castling rights.
     std::string SetupKeys(const StartPosition &start, bool colour_white);
 
-    // Psion's analysis display (bottom row, in analysis mode): a score in
-    // pawns from the side to move's point of view, then the principal
-    // variation, e.g. "-00.4 E2-E4 D7-D5 B1-C3 D5xE4". A mate is shown as
-    // 99.9 (or -99.9 when the side to move is mated).
+    // A line of Psion's analysis: its score, from the side to move's point
+    // of view, and principal variation.
     struct Analysis {
         bool mate;
         int score; // centipawns, or moves to mate (< 0: being mated)
         std::vector<std::string> pv; // UCI notation
-        bool complete;               // all of the line was understood
     };
-    // white: the side to move. False if the row is not an analysis line.
-    bool ParseAnalysis(const std::string &row, bool white, Analysis &a);
+    // The line from Psion's memory (see Nodes_TakePv()): score with bias
+    // 8000 and 24 per pawn, moves as from and to squares on the search
+    // board, at most 8, ending at a 0. The score is not rounded to tenths
+    // of a pawn as on Psion's analysis display. False if there is no move.
+    bool MemoryAnalysis(unsigned short score, const unsigned short moves[8],
+                        Analysis &a);
 
     // Plays pv on board (white to move) to check it. False if a move is
     // not by a piece of the side to move, captures one of its own pieces,

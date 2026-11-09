@@ -18,8 +18,10 @@ ways:
 - **The game** (board, side to move, ply) is read from Psion's memory.
   Moves are derived from changes of the board, not from the screen: memory
   is exact and changes even when the screen is not redrawn.
-- **Everything else** is read from the screen: the level, the modes,
-  prompts and the analysis display.
+- **Psion's analysis** (score and principal variation) is read from its
+  memory too (below).
+- **Everything else** is read from the screen: the level, the modes and
+  prompts.
 
 The rule: what must be exactly right to keep the game in sync comes from
 memory; what is only checked, or shown to the user, may come from the
@@ -103,8 +105,8 @@ contents, because some rows blink. The adapter uses:
 |---|---|
 | 6 | `PLAYER PLAYER`: 2-player mode is on. |
 | 20 | `SET-UP POSITION`: set-up mode; `DRAW`, `CHECKMATE` or `STALEMATE` instead of `YOUR MOVE`: Psion considers the game over (only as long as the board is the one shown with the text, which stays a little after a takeback). |
-| 22 | The status line: level 11 (`LEVEL 11  4 Min`), easy mode (`LEVEL E`), `ANALYSIS ON`. |
-| 24 | The analysis display (see below), and the `PROMOTE TO` and `ILLEGAL` prompts. |
+| 22 | The status line: level 11 (`LEVEL 11  4 Min`), easy mode (`LEVEL E`). |
+| 24 | The `PROMOTE TO` and `ILLEGAL` prompts. |
 
 The board read from the screen is used only to identify promoted pieces
 whose codes are unknown (see above), and as the reference for `memscan`.
@@ -126,23 +128,28 @@ about 0.6%. Nearly all the time goes to emulating the CPU.
   happens almost at once in a locked pawn ending.
 - `e` switches easy mode on: Psion does not think on the opponent's
   time. (Pondering, too, can hang in such positions.)
-- `a` switches analysis mode on: while Psion thinks, the bottom row shows
-  its score (in pawns, for the side to move) and principal variation, e.g.
-  `-00.4 E2-E4 D7-D5 B1-C3 D5xE4`, with 99.9 for a mate. These become
-  `info` lines. A row is used once it has not changed for 50 ms (Psion
-  erases the characters that change before drawing new ones) and if its
-  moves are legal on the board (castling rights are not checked).
-  Promotions are shown without the piece: the first of queen, knight, rook
-  and bishop with which the rest of the line is legal is assumed. If Psion
-  then plays the promotion to another piece, a last `info` line repeats
-  the line and its score with the piece played, if all of the line is
-  still legal with it (later promotions are guessed again). Psion shows a
-  line at the start of each iteration (for the previous best move) and for
-  each better move. Stopped before it could show its line, it plays the
-  new best move: then a last `info` line gives that move alone, with the
-  last score shown as a lower bound, e.g. `info depth 7 time 2950 score cp
-  -10 lowerbound pv f3e5`. So does a promotion with which the line shown
-  does not work.
+- Analysis mode (`a`) stays off. Each time the best root move changes,
+  Psion copies the score and the first 8 moves of its principal variation
+  to `DS:7150` for its analysis display, whether that is on or not (see
+  [search-internals.md](search-internals.md), "The principal
+  variation"). The node counter's write handler sees the copy completed
+  and queues it, and each copy becomes an `info` line if its moves are
+  legal on the board (castling rights are not checked). The score has 24
+  units per pawn and is converted to centipawns (not rounded to tenths
+  as on the display); 256 pawns or more is a mate, whose number of moves
+  is taken from the length of the line. Moves are stored as from and to
+  squares of the search board, without the piece promoted to: the first
+  of queen, knight, rook and bishop with which the rest of the line is
+  legal is assumed. If Psion then plays the promotion to another piece,
+  a last `info` line repeats the line and its score with the piece
+  played, if all of the line is still legal with it (later promotions
+  are guessed again). The lines come at the start of each iteration (for
+  the previous best move) and for each better move; the copy at the end
+  of the search, a repeat, is not reported. Should Psion play a move
+  other than that of the last line, a last `info` line gives that move
+  alone, with the last score as a lower bound, e.g. `info depth 7 time
+  2950 score cp -10 lowerbound pv f3e5`. So does a promotion with which
+  the line does not work.
 - `2` sets 2-player mode, in which moves for both sides can be entered.
 - `c` (Compute) starts a search, `m` (Move now) ends it when the time
   allocated to the move is used up.
