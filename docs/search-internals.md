@@ -697,8 +697,26 @@ deepest ply is exactly h. In the middlegame it is h + 4: the extension
 reaches `1796`. The pawn ending ran through all iterations up to `1B` and
 stopped after 2.1 s, which is why Psion moves fast in locked endings.
 Within 15 s Psion finished a nominal 9 plies in the opening and 7 in the
-middlegame. Our info lines show 8 for all of these, as the PV is capped
-at 8 moves.
+middlegame. Our info lines showed 8 for all of these, as the depth was
+then the length of the PV, which is capped at 8 moves. Since v2.7 they
+show h as `depth` and the deepest ply made so far as `seldepth`.
+
+**Selective depth in play.** The info lines of the Lichess bot's first
+games with v2.7 (2026-11-09, lichess-bot's log on the VPS): of 530 lines,
+249 had `seldepth` equal to `depth` and 281 (53%) a larger one:
+
+| `seldepth` − `depth` | Lines |
+|---|---|
+| 0 | 249 |
+| +1 | 76 |
+| +2 | 67 |
+| +3 | 39 |
+| +4 | 99 |
+
+Never more than 4: past ply h the table holds only `186D 175A 186D
+1796`, and `1796` at h + 4 always stops. In the searches of 15 s above,
+the middlegame showed +4 in every line (3/7, 5/9, 7/11), the opening and
+the pawn ending 0.
 
 ## The principal variation
 
