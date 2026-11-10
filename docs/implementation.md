@@ -245,7 +245,10 @@ for `go nodes 20000` and 200,179 for `go nodes 200000` on an i5-1135G7.
 `go depth 2` after 1.a4 h5 stops after 10 ms with depth 3 (with the
 50 ms minimum it went on into depth 5, and played the move that depth
 preferred). `go mate n` is reached by a
-line of this search that mates in at most n moves. Psion itself ends its
+line of this search that mates in at most n moves (with n < 0: that is
+mated in at most -n moves; `go mate 0` counts as `go mate 1`). A depth or
+node count of 0 or less counts as 1, so it is still a limit, not the
+5 s fallback. Psion itself ends its
 search when it has found a mate, also a longer one: `go mate 2` in a
 position with a mate in 3 plays that mate (after 30 ms). Without a mate
 the search goes on, like Stockfish's, until another limit, or until
@@ -327,6 +330,16 @@ entered).
 
 How the engine handles what the UCI protocol leaves open or forbids:
 
+- Values out of range in `go` are clamped rather than rejected. A
+  negative clock (`wtime`, `btime`) or `movetime` counts as 0: the time
+  used up, so Psion moves after its minimum of 50 ms. Negative
+  increments count as 0, and a `movestogo` of 0 or less as not given.
+  A `depth` or `nodes` of 0 or less counts as 1, so it is still a limit
+  (`go depth -3` searches to Psion's smallest depth, 3). `go mate n`
+  keeps its sign: a negative n means being mated in at most -n moves,
+  and `go mate 0` counts as `go mate 1`. Values beyond ±2147483647 count
+  as ±2147483647, and a missing or non-numeric value as 0 (for `depth`,
+  `nodes` and `mate`, then, as the smallest limit).
 - `go` without a new `position` searches the same position again, also
   after a search: the move Psion has just played is taken back first.
   Before any `position`, and after `ucinewgame`, that is the start

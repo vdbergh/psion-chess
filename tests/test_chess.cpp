@@ -503,6 +503,21 @@ static void test_parse_go(){
     go=ParseGo(split("go wtime 1000"));
     CHECK_EQ(go.depth,0);
     CHECK_EQ(go.nodes,0);
+    CHECK_EQ(go.mate,0);
+    // given but 0, negative or missing: the smallest limit, not "not
+    // given" (which would mean the fallback of 5 s)
+    go=ParseGo(split("go depth -3 nodes 0 mate 0"));
+    CHECK_EQ(go.depth,1);
+    CHECK_EQ(go.nodes,1);
+    CHECK_EQ(go.mate,1);
+    CHECK_EQ(ThinkTime(go,true,10),0u);
+    // mate keeps its sign: negative is being mated
+    go=ParseGo(split("go mate -2"));
+    CHECK_EQ(go.mate,-2);
+    CHECK_EQ(ThinkTime(go,true,10),0u);
+    CHECK_EQ(ParseGo(split("go mate -99999999999")).mate,-2147483647);
+    CHECK_EQ(ParseGo(split("go depth")).depth,1);
+    CHECK_EQ(ParseGo(split("go nodes x")).nodes,1);
 }
 
 static void test_game_over(){

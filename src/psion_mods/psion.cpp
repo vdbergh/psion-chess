@@ -1813,8 +1813,9 @@ namespace psion {
 
     // Whether "go depth", "go nodes" or "go mate" is reached (not before
     // "ponderhit", nor in an infinite search). The node count is checked
-    // every tick, so the search goes on a little longer. "go mate": a line
-    // of this search mates in at most that many moves. Unlike the time,
+    // every tick, so the search goes on a little longer. "go mate n": a
+    // line of this search mates in at most n moves, or with n < 0, is
+    // mated in at most -n moves. Unlike the time,
     // these limits do not wait for MIN_THINK_MS: the GUI asked for them,
     // and Psion is searching once they are reached.
     static bool search_limit_reached() {
@@ -1824,8 +1825,11 @@ namespace psion {
         return (uci.depth_limit > 0 &&
                 DepthReached(uci.depth_limit, Nodes_Iteration())) ||
                (uci.nodes_limit > 0 && search_nodes() >= uci.nodes_limit) ||
-               (uci.mate_limit > 0 && !uci.info_pv.empty() && uci.info_mate &&
-                uci.info_score > 0 && uci.info_score <= uci.mate_limit);
+               (uci.mate_limit != 0 && !uci.info_pv.empty() && uci.info_mate &&
+                (uci.mate_limit > 0
+                     ? uci.info_score > 0 && uci.info_score <= uci.mate_limit
+                     : uci.info_score < 0 &&
+                           uci.info_score >= uci.mate_limit));
     }
 
     // Drives Psion towards the state the GUI asked for. Called every tick.

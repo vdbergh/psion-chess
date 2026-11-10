@@ -187,9 +187,11 @@ limit comes first; without a time they are the only limits. The depth is
 rounded up to Psion's next depth (3, 5, ..., 15), and Psion plays the
 best move of the iteration that reached it. The node count is checked
 about every 10 ms, so a search goes on for a few thousand nodes more.
-`go mate n` ends the search once a mate in at most n moves is found; if
-there is none, the search goes on until another limit (or Psion's own
-maximum depth of 15).
+`go mate n` ends the search once a mate in at most n moves is found
+(with a negative n, being mated in at most -n moves); if there is none,
+the search goes on until another limit (or Psion's own maximum depth of
+15). A `depth`, `nodes` or `mate` of 0 or less counts as the smallest
+limit (depth 1, 1 node, mate in 1) rather than as no limit.
 
 ### Implementation
 

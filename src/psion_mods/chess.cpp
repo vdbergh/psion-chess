@@ -502,11 +502,16 @@ namespace psion {
             } else if (t == "ponder") {
                 go.ponder = true;
             } else if (t == "depth") {
-                go.depth = v;
+                go.depth = std::max(v, 1); // given: at least the smallest
             } else if (t == "nodes") {
-                go.nodes = v;
+                go.nodes = std::max(v, 1);
             } else if (t == "mate") {
-                go.mate = v;
+                // Negative: being mated (in at most -mate moves).
+                long m = i + 1 < tokens.size()
+                             ? strtol(tokens[i + 1].c_str(), NULL, 10)
+                             : 0;
+                m = std::min(std::max(m, (long)-INT_MAX), (long)INT_MAX);
+                go.mate = m == 0 ? 1 : (int)m;
             }
         }
         return go;
@@ -530,7 +535,7 @@ namespace psion {
             long long n = go.movestogo > 0 ? go.movestogo : inc > 0 ? 30 : 60;
             t = time / n + 3 * inc / 4;
             t = std::min(t, 3 * time / 4);
-        } else if (go.depth > 0 || go.nodes > 0 || go.mate > 0) {
+        } else if (go.depth > 0 || go.nodes > 0 || go.mate != 0) {
             return 0; // until the depth, the nodes or a mate is reached
         } else {
             t = 5000; // a go without any limit

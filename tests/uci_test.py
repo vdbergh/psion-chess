@@ -750,6 +750,14 @@ class UciTest(unittest.TestCase):
         e.send('go mate 3')
         line, before = e.expect('bestmove', 30)
         self.assertIn('score mate 3', ' '.join(before))
+        # Negative: being mated (here in 1 move).
+        e.send('position fen 8/8/8/1Q6/4R3/8/k1K5/8 b - - 0 1')
+        e.ready()
+        start = time.time()
+        e.send('go mate -1')
+        line, before = e.expect('bestmove', 30)
+        self.assertIn('score mate -1', ' '.join(before))
+        self.assertLess(time.time() - start, 2.0)
         # No mate: the other limits end the search.
         moves = ['g2g4', 'a7a6', 'h2h4', 'h7h6']
         e.send('position startpos moves ' + ' '.join(moves))

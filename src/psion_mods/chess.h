@@ -37,7 +37,9 @@ namespace psion {
 
     struct GoParams {
         // All values are clamped to 0 .. INT_MAX: a negative clock (the
-        // time used up) counts as 0.
+        // time used up) counts as 0. depth and nodes, if given, are at
+        // least 1 (0 means not given); mate is not 0 if given, and
+        // negative for being mated.
         bool wtime_given, btime_given;
         int wtime, btime;
         int winc, binc;
@@ -48,7 +50,7 @@ namespace psion {
         bool ponder;   // until "ponderhit" or "stop"
         int depth;     // 0 if not given
         int nodes;     // 0 if not given
-        int mate;      // moves, 0 if not given
+        int mate;      // moves, < 0: being mated; 0 if not given
     };
     GoParams ParseGo(const std::vector<std::string> &tokens);
 
