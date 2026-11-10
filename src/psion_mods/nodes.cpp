@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include "dosbox.h"
 #include "mem.h"
 #include "paging.h"
@@ -16,8 +18,9 @@
  *
  * The same handler watches the copy of the principal variation that
  * Psion makes for its analysis display (score at DS:7150, moves at
- * 7152..7161), the ply counter of the search (DS:7076), and the copies of
- * its board to the game board (DS:28AC).
+ * 7152..7161), the ply counter of the search (DS:7076), the root alpha
+ * (DS:713A, set to 0 by a fail low), and the copies of its board to the
+ * game board (DS:28AC).
  */
 
 namespace psion {
@@ -29,14 +32,28 @@ namespace psion {
     static const unsigned int PV_LAST = PV_OFFSET + 2 + 7 * 2; // last move
     static const unsigned int ITERATION_OFFSET = 0x5A67;
     static const unsigned int PLY_OFFSET = 0x7076; // ply * 2
+    static const unsigned int ALPHA_OFFSET = 0x713A; // root alpha
     static const unsigned int GAME_OFFSET = 0x28AC;
     static const unsigned int GAME_SIZE = 64;
 
     static unsigned int board_lo = 0, board_hi = 0; // linear, [lo, hi)
     static unsigned int pv_base = 0, pv_last = 0;    // linear
     static unsigned int iteration_addr = 0, ply_addr = 0; // linear
+    static unsigned int alpha_addr = 0;                   // linear
     static unsigned int max_ply = 0;
     static unsigned char iteration = 0;
+    // For time management: the score of the last line (units, from the
+    // bias), the iteration it came in, the drop of the current
+    // iteration's first line from the line before it, and whether a fail
+    // low has not been followed by a line yet.
+    static bool have_line = false, drop_known = false;
+    static int line_value = 0, drop = 0;
+    static unsigned char line_iteration = 0;
+    static bool fail_low_open = false;
+
+    static bool is_mate(int value) {
+        return abs(value) / 24 >= 256; // as in MemoryAnalysis()
+    }
     static unsigned int game_lo = 0, game_hi = 0;    // linear, [lo, hi)
     static bool game_copying = false;
     static unsigned long long zero_writes = 0;
@@ -53,6 +70,17 @@ namespace psion {
         }
         pv.iteration = host_readb(MemBase + iteration_addr);
         pv.max_ply = (unsigned char)max_ply;
+        int value = (int)pv.score - 0x8000;
+        if (pv.iteration != line_iteration) {
+            // The first line of an iteration: the previous iteration's
+            // best move, searched again.
+            drop_known = have_line && !is_mate(line_value) && !is_mate(value);
+            drop = line_value - value;
+            line_iteration = pv.iteration;
+        }
+        have_line = true;
+        line_value = value;
+        fail_low_open = false;
         if (pv_size < PV_QUEUE) {
             pv_size++;
         } else {
@@ -69,7 +97,16 @@ namespace psion {
             queue_pv();
         }
         if (addr <= iteration_addr && addr + size > iteration_addr) {
-            iteration = host_readb(MemBase + iteration_addr);
+            unsigned char it = host_readb(MemBase + iteration_addr);
+            if (it != iteration) {
+                drop_known = false;
+                fail_low_open = false;
+            }
+            iteration = it;
+        }
+        if (addr <= alpha_addr + 1 && addr + size > alpha_addr &&
+            host_readw(MemBase + alpha_addr) == 0) {
+            fail_low_open = true;
         }
         if (addr <= ply_addr && addr + size > ply_addr) {
             unsigned int ply = host_readb(MemBase + ply_addr) / 2;
@@ -118,6 +155,8 @@ namespace psion {
         pv_last = data_segment * 16 + PV_LAST;
         iteration_addr = data_segment * 16 + ITERATION_OFFSET;
         ply_addr = data_segment * 16 + PLY_OFFSET;
+        alpha_addr = data_segment * 16 + ALPHA_OFFSET;
+        MEM_SetPageHandler(alpha_addr / MEM_PAGESIZE, 1, &board_handler);
         MEM_SetPageHandler(ply_addr / MEM_PAGESIZE, 1, &board_handler);
         MEM_SetPageHandler(iteration_addr / MEM_PAGESIZE, 1, &board_handler);
         MEM_SetPageHandler(pv_base / MEM_PAGESIZE,
@@ -145,6 +184,19 @@ namespace psion {
         pv_size = 0;
         max_ply = 0;
         iteration = 0;
+        have_line = false;
+        drop_known = false;
+        line_iteration = 0;
+        fail_low_open = false;
+    }
+
+    bool Nodes_FirstLineDrop(int &d) {
+        d = drop;
+        return drop_known;
+    }
+
+    bool Nodes_FailLowOpen() {
+        return fail_low_open;
     }
 
     unsigned char Nodes_Iteration() {

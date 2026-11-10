@@ -517,34 +517,79 @@ namespace psion {
         return go;
     }
 
-    unsigned int ThinkTime(const GoParams &go, bool white,
-                           unsigned int overhead) {
+    long long ClockTime(const GoParams &go, bool white) {
         // long long: 3 * INT_MAX must not overflow.
         long long time = white ? go.wtime : go.btime;
         long long inc = white ? go.winc : go.binc;
         bool clock = white ? go.wtime_given : go.btime_given;
-        long long t;
-        if (go.infinite) {
-            return 0;
+        if (go.infinite || go.movetime_given || !clock) {
+            return -1;
         }
-        if (go.movetime_given) {
-            t = go.movetime; // 0: as little as possible
-        } else if (clock) {
-            // In sudden death a smaller share: the overhead of a move is
-            // a fixed cost, so the remaining time must last for many moves.
-            long long n = go.movestogo > 0 ? go.movestogo : inc > 0 ? 30 : 60;
-            t = time / n + 3 * inc / 4;
-            t = std::min(t, 3 * time / 4);
-        } else if (go.depth > 0 || go.nodes > 0 || go.mate != 0) {
-            return 0; // until the depth, the nodes or a mate is reached
-        } else {
-            t = 5000; // a go without any limit
-        }
+        // In sudden death a smaller share: the overhead of a move is a
+        // fixed cost, so the remaining time must last for many moves.
+        long long n = go.movestogo > 0 ? go.movestogo : inc > 0 ? 30 : 60;
+        return std::min(time / n + 3 * inc / 4, 3 * time / 4);
+    }
+
+    static unsigned int less_overhead(long long t, unsigned int overhead) {
         // Over the n moves this keeps overhead per move in reserve:
         // time/n - overhead = (time - n * overhead) / n.
         // At most INT_MAX, so it fits.
         return (unsigned int)std::max(t - (long long)overhead,
                                       (long long)MIN_THINK_MS);
+    }
+
+    unsigned int ThinkTime(const GoParams &go, bool white,
+                           unsigned int overhead) {
+        long long t = ClockTime(go, white);
+        if (go.infinite) {
+            return 0;
+        }
+        if (go.movetime_given) {
+            t = go.movetime; // 0: as little as possible
+        } else if (t >= 0) {
+            // a clock
+        } else if (go.depth > 0 || go.nodes > 0 || go.mate != 0) {
+            return 0; // until the depth, the nodes or a mate is reached
+        } else {
+            t = 5000; // a go without any limit
+        }
+        return less_overhead(t, overhead);
+    }
+
+    TimeParams DefaultTimeParams() {
+        TimeParams tp;
+        tp.target = 100;
+        tp.soft_stop = 100;
+        tp.drop = 6;
+        tp.drop_extension = 100;
+        tp.fail_low_extension = 100;
+        tp.max = 100;
+        tp.max_share = 100;
+        return tp;
+    }
+
+    unsigned int ScaledThinkTime(long long allocated, long long remaining,
+                                 unsigned int overhead, const TimeParams &tp,
+                                 int percent) {
+        // allocated and remaining are at most INT_MAX, the percentages at
+        // most a few thousand: no overflow.
+        long long t = allocated * tp.target / 100 * percent / 100;
+        long long cap = std::min(allocated * tp.max / 100,
+                                 remaining * tp.max_share / 100);
+        return less_overhead(std::min(t, cap), overhead);
+    }
+
+    int ExtensionPercent(const TimeParams &tp, bool drop_known, int drop,
+                         bool fail_low_open) {
+        int e = 100;
+        if (drop_known && drop >= tp.drop) {
+            e = std::max(e, tp.drop_extension);
+        }
+        if (fail_low_open) {
+            e = std::max(e, tp.fail_low_extension);
+        }
+        return e;
     }
 
     unsigned int MoveNowTime(unsigned int think_ms, unsigned int setup_ms) {

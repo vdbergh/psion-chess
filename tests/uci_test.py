@@ -236,6 +236,52 @@ class UciTest(unittest.TestCase):
             e.send('setoption name Move Overhead value 10')
             e.ready()
 
+    def test_time_management_options(self):
+        """The temporary TM options (docs/time-management.md) apply with a
+        clock, not with movetime."""
+        e = self.engine
+        e.send('uci')
+        _, before = e.expect('uciok', 10)
+        for line in ('option name TM Target type spin default 100 min 10 max 1000',
+                     'option name TM Soft Stop type spin default 100 min 1 max 100',
+                     'option name TM Drop type spin default 6 min 1 max 240',
+                     'option name TM Drop Extension type spin default 100 min 100 max 1000',
+                     'option name TM Fail Low Extension type spin default 100 min 100 max 1000',
+                     'option name TM Max type spin default 100 min 100 max 1000',
+                     'option name TM Max Share type spin default 100 min 1 max 100'):
+            self.assertIn(line, before)
+        moves = ['a2a4', 'h7h5']
+
+        def search(go):
+            e.send('position startpos moves ' + ' '.join(moves))
+            e.ready()
+            start = time.time()
+            e.send(go)
+            move = bestmove(e, 10)
+            self.assertTrue(Board(moves).plausible(move), move)
+            return time.time() - start
+
+        try:
+            # 2000 ms for the move: no new iteration after 5% of it, so
+            # Psion moves when the next one starts (about 0.4 s)
+            e.send('setoption name TM Soft Stop value 5')
+            self.assertLess(search('go wtime 120000 btime 120000'), 1.7)
+            e.send('setoption name TM Soft Stop value 100')
+            # half the target: about 1 s
+            e.send('setoption name TM Target value 50')
+            used = search('go wtime 120000 btime 120000')
+            self.assertGreater(used, 0.8)
+            self.assertLess(used, 1.5)
+            # movetime is kept to
+            self.assertGreater(search('go movetime 1000'), 0.9)
+            e.send('setoption name TM Max Share value 0')
+            line, _ = e.expect('info string', 5)
+            self.assertIn('TM Max Share must be 1 to 100', line)
+        finally:
+            e.send('setoption name TM Soft Stop value 100')
+            e.send('setoption name TM Target value 100')
+            e.ready()
+
     def test_cycles(self):
         """The Cycles option slows the emulated PC down, and highest (or max,
         as before) restores its full speed: in the same time the search gets

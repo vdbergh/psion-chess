@@ -570,6 +570,66 @@ static void test_move_now_time(){
     CHECK_EQ(MoveNowTime(UINT_MAX,UINT_MAX),UINT_MAX);
 }
 
+static void test_clock_time(){
+    // remaining/n + 3/4 increment, at most 3/4 of the remaining time
+    CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 btime 1000 winc 1000")),true),2750);
+    CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 btime 1000")),true),1000);
+    CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 btime 60000 movestogo 2")),false),30000);
+    CHECK_EQ(ClockTime(ParseGo(split("go wtime 100 winc 1000")),true),75);
+    // no clock
+    CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 movetime 500")),true),-1);
+    CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 infinite")),true),-1);
+    CHECK_EQ(ClockTime(ParseGo(split("go depth 5")),true),-1);
+    CHECK_EQ(ClockTime(ParseGo(split("go btime 60000")),true),-1);
+    // the same as ThinkTime() before the overhead
+    GoParams go=ParseGo(split("go wtime 60000 btime 60000 winc 1000 binc 1000"));
+    CHECK_EQ(ThinkTime(go,true,10),(unsigned int)ClockTime(go,true)-10);
+}
+
+static void test_scaled_think_time(){
+    TimeParams tp=DefaultTimeParams();
+    // the defaults: the plain allocation, whatever the extension
+    CHECK_EQ(ScaledThinkTime(1000,60000,10,tp,100),990u);
+    CHECK_EQ(ScaledThinkTime(1000,60000,10,tp,250),990u);
+    CHECK_EQ(ScaledThinkTime(1000,60000,10,tp,40),390u);
+    // target and extension, capped at the maximum
+    tp.target=120;
+    tp.max=300;
+    CHECK_EQ(ScaledThinkTime(1000,60000,10,tp,100),1190u);
+    CHECK_EQ(ScaledThinkTime(1000,60000,10,tp,160),1910u);
+    CHECK_EQ(ScaledThinkTime(1000,60000,10,tp,250),2990u);
+    CHECK_EQ(ScaledThinkTime(1000,60000,10,tp,40),470u);
+    // ... and at the share of the remaining time
+    tp.max_share=25;
+    CHECK_EQ(ScaledThinkTime(1000,8000,10,tp,250),1990u);
+    // at least MIN_THINK_MS
+    CHECK_EQ(ScaledThinkTime(20,60000,10,tp,100),MIN_THINK_MS);
+    CHECK_EQ(ScaledThinkTime(0,0,10,tp,100),MIN_THINK_MS);
+    // no overflow
+    tp.target=1000;
+    tp.max=1000;
+    tp.max_share=100;
+    CHECK_EQ(ScaledThinkTime(INT_MAX,INT_MAX,0,tp,1000),(unsigned int)INT_MAX);
+}
+
+static void test_extension_percent(){
+    TimeParams tp=DefaultTimeParams();
+    CHECK_EQ(ExtensionPercent(tp,true,30,true),100);
+    tp.drop_extension=160;
+    tp.fail_low_extension=250;
+    CHECK_EQ(ExtensionPercent(tp,false,0,false),100);
+    CHECK_EQ(ExtensionPercent(tp,true,5,false),100);
+    CHECK_EQ(ExtensionPercent(tp,true,6,false),160);
+    CHECK_EQ(ExtensionPercent(tp,true,-30,false),100);
+    // the drop is not known (no line yet, or a mate)
+    CHECK_EQ(ExtensionPercent(tp,false,30,false),100);
+    CHECK_EQ(ExtensionPercent(tp,false,0,true),250);
+    // both: the larger
+    CHECK_EQ(ExtensionPercent(tp,true,30,true),250);
+    tp.drop_extension=300;
+    CHECK_EQ(ExtensionPercent(tp,true,30,true),300);
+}
+
 static void test_think_time(){
     GoParams go=ParseGo(split("go movetime 2000"));
     CHECK_EQ(ThinkTime(go,true,400),1600u);
@@ -1405,6 +1465,9 @@ int main(){
     test_tokenize();
     test_parse_go();
     test_think_time();
+    test_clock_time();
+    test_scaled_think_time();
+    test_extension_percent();
     test_move_now_time();
     test_depth_reached();
     test_game_over();

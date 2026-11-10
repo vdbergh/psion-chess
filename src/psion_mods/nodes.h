@@ -31,6 +31,17 @@ namespace psion {
     // Nodes_ClearPv(); 0 before that.
     unsigned char Nodes_Iteration();
 
+    // For time management (docs/time-management.md). Once the current
+    // iteration has shown its first line (the previous best move searched
+    // again): true, with drop the score of the previous iteration's last
+    // line minus that of this one (units, 24 per pawn), unless one of
+    // them is a mate.
+    bool Nodes_FirstLineDrop(int &drop);
+    // Whether the root search failed low (DS:713A, alpha, set to 0) and
+    // has not shown a line since: Psion would still play the move that
+    // failed low.
+    bool Nodes_FailLowOpen();
+
     // Whether Psion is copying its board to the game board (DS:28AC, 64
     // bytes, copied whole when a move is played): a word of it has been
     // written, but not yet the last one.

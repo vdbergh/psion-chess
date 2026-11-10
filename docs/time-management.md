@@ -2,8 +2,9 @@
 
 A proposal for better use of the clock by the adapter, based on the
 measurements in [search-internals.md](search-internals.md#time-use-of-the-iterations).
-None of this is implemented. All the numbers below are starting points,
-to be measured and tuned. As always, Psion's search is not changed: the
+The rules are implemented behind temporary UCI options (see "The
+options" below), whose defaults leave the time management as it was.
+All the numbers below are starting points, to be measured and tuned. As always, Psion's search is not changed: the
 adapter only reads Psion's memory and decides when to press MOVE-NOW.
 
 ## What we have now
@@ -73,17 +74,29 @@ in quiet searches pays for the extensions and for a larger target. c
 must be tuned so that the clock lasts the game; the share n of the
 remaining time can be kept as it is.
 
-Starting values:
+### The options
 
-| Parameter | Start | Meaning |
-|---|---|---|
-| x | 0.4 | soft stop: no new iteration after x · S |
-| c | 1.2 | target S = c · T |
-| d | 6 units (¼ pawn) | drop that counts as instability |
-| e_drop | 1.6 | extension after a drop |
-| e_low | 2.5 | extension after a fail low |
-| m | 3 | maximum H, as a multiple of T |
-| r | 0.25 | maximum H, as a share of the remaining time |
+One temporary UCI option per parameter, all spins, shares in percent.
+The defaults give the time management as it was (S = H = T, no soft
+stop, no extensions); the starting values are those proposed here:
+
+| Parameter | Option | Default | Range | Start | Meaning |
+|---|---|---|---|---|---|
+| x | `TM Soft Stop` | 100 | 1–100 | 40 | soft stop: no new iteration after x · S |
+| c | `TM Target` | 100 | 10–1000 | 120 | target S = c · T |
+| d | `TM Drop` | 6 | 1–240 | 6 | drop (units, 24 per pawn) that counts as instability |
+| e_drop | `TM Drop Extension` | 100 | 100–1000 | 160 | extension after a drop |
+| e_low | `TM Fail Low Extension` | 100 | 100–1000 | 250 | extension after a fail low |
+| m | `TM Max` | 100 | 100–1000 | 300 | maximum H, as a share of T |
+| r | `TM Max Share` | 100 | 1–100 | 25 | maximum H, as a share of the remaining time |
+
+As H caps everything, `TM Target` and the extensions only take effect
+with `TM Max` raised as well. With `--verbose` the adapter logs why it
+pressed MOVE-NOW: "Time up after N ms: target E%" (with ", drop" or ",
+fail low" when extended), or "iteration NN started after N ms" for the
+soft stop. In 8 games against Fairy-Max at 10+0.1 with the starting
+values, 226 searches ended by the soft stop, 208 at the target, 24
+extended after a drop and 1 after a fail low, with no loss on time.
 
 ### When the rules apply
 
@@ -99,24 +112,23 @@ Starting values:
 - The 50 ms minimum, the setup time and `Move Overhead` are treated as
   now: S, S · e and H replace T in the formula of implementation.md.
 
-### What the adapter needs
+### What the adapter uses
 
-All signals come from the write handlers in `nodes.cpp`, on pages it
-already watches:
+All signals come from the write handlers in `nodes.cpp`:
 
-- the start of an iteration: `5A67` (already used for `depth`);
+- the start of an iteration: a change of `5A67` (also used for
+  `depth`), seen at the next tick (10 ms);
 - the first move's score in an iteration: the first PV copy at `7150`
-  after the iteration started, compared with the last one of the
-  previous iteration (both already in the PV queue, with the iteration
-  counter);
-- a fail low: a write of 0 to `713A`; a fail high: a write of 0 to
-  `704C` (new, but on the same page as `7150`).
+  in that iteration, compared with the last one before it
+  (`Nodes_FirstLineDrop()`; not when either is a mate score);
+- a fail low: a write of 0 to `713A`, open until the next PV copy
+  (`Nodes_FailLowOpen()`). In the probe matches `713A` was set to 0
+  only by fail lows, from iteration `05` on.
 
 ## Measuring and tuning
 
-1. **Implement behind temporary UCI options**, one per parameter, with
-   defaults that give the current behaviour (x = 1, c = 1, e = 1,
-   H = T). Remove the options once the values are settled.
+1. **Temporary UCI options** (done, see "The options"). Remove them
+   once the values are settled.
 2. **Check the time use.** Log the time per move and the clock at the
    end of each game; the new rules must not lose on time, nor end games
    with much more time left than now.

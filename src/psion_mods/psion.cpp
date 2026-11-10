@@ -1094,6 +1094,25 @@ namespace psion {
     const unsigned int DEFAULT_MOVE_OVERHEAD_MS = 10;
     const unsigned int MAX_MOVE_OVERHEAD_MS = 5000;
     static unsigned int move_overhead_ms = DEFAULT_MOVE_OVERHEAD_MS;
+    // Time management with a clock, set by the temporary "TM ..." options
+    // (docs/time-management.md).
+    static TimeParams time_params = DefaultTimeParams();
+    struct TimeOption {
+        const char *name;
+        int TimeParams::*field;
+        int min, max;
+    };
+    static const TimeOption TIME_OPTIONS[] = {
+        {"TM Target", &TimeParams::target, 10, 1000},
+        {"TM Soft Stop", &TimeParams::soft_stop, 1, 100},
+        {"TM Drop", &TimeParams::drop, 1, 240},
+        {"TM Drop Extension", &TimeParams::drop_extension, 100, 1000},
+        {"TM Fail Low Extension", &TimeParams::fail_low_extension, 100, 1000},
+        {"TM Max", &TimeParams::max, 100, 1000},
+        {"TM Max Share", &TimeParams::max_share, 1, 100},
+    };
+    static const int TIME_OPTION_COUNT =
+        sizeof(TIME_OPTIONS) / sizeof(TIME_OPTIONS[0]);
     // The "Cycles" option: "highest" (as fast as the host allows) or a fixed
     // number of emulated instructions per millisecond, as with --cycles.
     // (DOSBox's "cycles=max limit N" does not work here: its auto-adjust
@@ -1211,6 +1230,13 @@ namespace psion {
         unsigned long nodes_limit;   // "go nodes", 0 if none
         int mate_limit;              // "go mate", 0 if none
         unsigned int ponderhit_ms;   // think_ms from "ponderhit" on
+        bool clock_search;           // time_params apply: a clock, no
+                                     // movetime or infinite
+        long long allocated_ms;      // ClockTime()
+        long long remaining_ms;      // the clock of the side to move
+        unsigned char iteration;     // Nodes_Iteration() as last seen
+        bool iteration_started;      // a new iteration since "go" or
+        unsigned int iteration_ticks; // "ponderhit", and when
         unsigned int search_start;   // when "go" was received
         unsigned int thinking_start; // when Psion started to think
         bool movenow_sent;
@@ -1404,6 +1430,15 @@ namespace psion {
         report_move(move);
     }
 
+    static const TimeOption *time_option(const std::string &name) {
+        for (int i = 0; i < TIME_OPTION_COUNT; i++) {
+            if (SameOptionName(name, TIME_OPTIONS[i].name)) {
+                return &TIME_OPTIONS[i];
+            }
+        }
+        return 0;
+    }
+
     static void UciGo(const std::vector<std::string> &tokens) {
         GoParams go = ParseGo(tokens);
         if (!uci.has_target) {
@@ -1439,6 +1474,9 @@ namespace psion {
         uci.ponder = go.ponder;
         uci.ponderhit_ms = ThinkTime(go, white, move_overhead_ms);
         uci.think_ms = go.ponder ? 0 : uci.ponderhit_ms;
+        uci.allocated_ms = ClockTime(go, white);
+        uci.clock_search = uci.allocated_ms >= 0;
+        uci.remaining_ms = white ? go.wtime : go.btime;
         uci.depth_limit = go.depth;
         uci.nodes_limit = (unsigned long)go.nodes;
         uci.mate_limit = go.mate;
@@ -1522,6 +1560,12 @@ namespace psion {
             uci_send("option name UCI_LimitStrength type check default false\n");
             uci_send("option name UCI_Elo type spin default %d min %d max %d\n",
                      DEFAULT_ELO, MIN_ELO, MAX_ELO);
+            TimeParams defaults = DefaultTimeParams();
+            for (int i = 0; i < TIME_OPTION_COUNT; i++) {
+                const TimeOption &o = TIME_OPTIONS[i];
+                uci_send("option name %s type spin default %d min %d max %d\n",
+                         o.name, defaults.*o.field, o.min, o.max);
+            }
             uci_send("uciok\n");
         } else if (cmd == "isready") {
             if (uci.search != SEARCH_NONE) {
@@ -1559,6 +1603,7 @@ namespace psion {
             uci.infinite = false;
             uci.think_ms = uci.ponderhit_ms;
             uci.search_start = GetTicks();
+            uci.iteration_started = false;
             if (uci.search == SEARCH_HOLDING) {
                 finish_search(uci.held_move);
             }
@@ -1575,6 +1620,7 @@ namespace psion {
                 } else {
                     uci.infinite = false;
                     uci.think_ms = 1;
+                    uci.clock_search = false;
                 }
                 return;
             }
@@ -1626,6 +1672,15 @@ namespace psion {
                 } else {
                     uci_send("info string UCI_LimitStrength must be true or "
                              "false\n");
+                }
+            } else if (const TimeOption *o = time_option(name)) {
+                char *end;
+                long v = strtol(value.c_str(), &end, 10);
+                if (value.empty() || *end || v < o->min || v > o->max) {
+                    uci_send("info string %s must be %d to %d\n", o->name,
+                             o->min, o->max);
+                } else {
+                    time_params.*o->field = (int)v;
                 }
             } else if (SameOptionName(name, "UCI_Elo")) {
                 char *end;
@@ -1818,6 +1873,47 @@ namespace psion {
     // mated in at most -n moves. Unlike the time,
     // these limits do not wait for MIN_THINK_MS: the GUI asked for them,
     // and Psion is searching once they are reached.
+    // Whether the time for the move is up. With a clock: the target S,
+    // extended after a drop or during a fail low, up to the maximum; or
+    // an iteration has started after soft_stop of S (it would most likely
+    // not change the move). See docs/time-management.md.
+    static bool time_up(unsigned int now) {
+        if (!uci.think_ms) {
+            return false; // pondering, or no limit in time
+        }
+        unsigned int setup = setup_time();
+        unsigned int elapsed = now - uci.search_start;
+        if (!uci.clock_search) {
+            return elapsed >= MoveNowTime(uci.think_ms, setup);
+        }
+        int drop;
+        bool drop_known = Nodes_FirstLineDrop(drop);
+        int e = ExtensionPercent(time_params, drop_known, drop,
+                                 Nodes_FailLowOpen());
+        if (elapsed >= MoveNowTime(ScaledThinkTime(uci.allocated_ms,
+                                                   uci.remaining_ms,
+                                                   move_overhead_ms,
+                                                   time_params, e),
+                                   setup)) {
+            say("Time up after %u ms: target %d%%%s%s\n", elapsed, e,
+                drop_known && drop >= time_params.drop ? ", drop" : "",
+                Nodes_FailLowOpen() ? ", fail low" : "");
+            return true;
+        }
+        if (uci.iteration_started &&
+            uci.iteration_ticks - uci.search_start >=
+                MoveNowTime(ScaledThinkTime(uci.allocated_ms,
+                                            uci.remaining_ms,
+                                            move_overhead_ms, time_params,
+                                            time_params.soft_stop),
+                            setup)) {
+            say("Time up after %u ms: iteration %02X started after %u ms\n",
+                elapsed, uci.iteration, uci.iteration_ticks - uci.search_start);
+            return true;
+        }
+        return false;
+    }
+
     static bool search_limit_reached() {
         if (uci.infinite) {
             return false;
@@ -1855,6 +1951,16 @@ namespace psion {
                     (uci.action_done || now - uci.last_action >= ACTION_GAP_MS);
         uci_done = false;
         if (uci.search == SEARCH_RUNNING) {
+            unsigned char it = Nodes_Iteration();
+            if (it != uci.iteration) {
+                // A new iteration after a finished one (not the first,
+                // which follows the pass over the root moves at 00).
+                if (uci.iteration != 0) {
+                    uci.iteration_started = true;
+                    uci.iteration_ticks = now;
+                }
+                uci.iteration = it;
+            }
             if (!two_player_mode()) {
                 uci.saw_program = true;
             }
@@ -1866,10 +1972,7 @@ namespace psion {
                          game_over_result().c_str());
                 report_move("0000");
             } else if (!uci.movenow_sent &&
-                       ((uci.think_ms &&
-                         now - uci.search_start >=
-                             MoveNowTime(uci.think_ms, setup_time())) ||
-                        search_limit_reached())) {
+                       (time_up(now) || search_limit_reached())) {
                 search_speed(false);
                 press(KBD_m);
                 uci.movenow_sent = true;
@@ -2053,6 +2156,8 @@ namespace psion {
             uci.info_depth = 0;
             uci.info_seldepth = 0;
             uci.movenow_sent = false;
+            uci.iteration = 0;
+            uci.iteration_started = false;
             uci.saw_program = false;
             memcpy(uci.search_board, known.board, sizeof(uci.search_board));
             uci.search_white = white_to_move();
