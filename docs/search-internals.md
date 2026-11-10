@@ -889,6 +889,42 @@ units the move changed in 55% of the finished iterations (284), against
 times: 11 were stopped before the re-search had finished its first
 move; of the other 7, three changed the move.
 
+**What an extension after a drop buys.** To see what extra time after a
+drop is used for, the probe also logged every root move: the root node
+is ply 1, so a root move is made when the ply counter `7076` goes from
+2 to 4 (ply 1 → 2), and `5A6E` then holds the move. A fail low searches
+the first move again, so each root move was counted once per iteration,
+when it was first made. Two matches against Fairy-Max at 10+0.1 from the
+8moves_v3 openings ran side by side on one machine, 60 games each with
+the same openings, both with the soft stop (`TM Soft Stop 40`): one with
+`TM Drop Extension 160` (`TM Drop 6`, `TM Max 300`, `TM Max Share 25`),
+the other without. Counted are the searches in which, when the
+unextended target S was reached, the first line of the running iteration
+had dropped by 6 units or more; up to S the two matches play by the same
+rules, so these are like searches in both:
+
+| | With extension | Without |
+|---|---|---|
+| Drop searches (of all searches) | 228 (of 3,410) | 228 (of 3,311) |
+| Root moves in the position (median) | 26 | 31 |
+| Root moves of the iteration reached by S (mean) | 13.0 | 13.3 |
+| Time after S (median) | 93 ms | 9 ms |
+| Root moves started after S (mean, median) | 9.4, 7 | 0.1, 0 |
+| Iteration finished | 65% | 0% |
+| Another move played than the one that dropped | 54% | 33% |
+
+Without the extension Psion stops at S, with about half of the root
+moves searched. With it, it searches another third of them and finishes
+the iteration in two searches out of three; the move played differs from
+the one that dropped in 54% of these searches instead of 33%, so in
+about one in five the extension found another move. The median extra
+time is well below the 60% allowed: once the iteration has finished, the
+next one starts after S and the soft stop ends the search. The cost over
+all searches is small (215 ms against 213 ms per search), as drops at S
+came in only 7% of them. A third run with the extension, on another
+machine (346 drop searches, median 37 root moves), gave 16 root moves
+started after S, 67% finished and 58% another move.
+
 A changed move is a different decision, not necessarily a better one;
 whether spending time this way wins games only a match can show.
 
