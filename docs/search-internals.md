@@ -756,6 +756,82 @@ Never more than 4: past ply h the table holds only `186D 175A 186D
 the middlegame showed +4 in every line (3/7, 5/9, 7/11), the opening and
 the pawn ending 0.
 
+## Time use of the iterations
+
+Measured to see where time management could help; nothing here is used
+by the adapter. A probe build logged, with the time since `go`, every
+change of `5A67`, every new root line (score and first move from the
+copy at `7150`), every root fail low (0 written to `713A`) and fail high
+(0 written to `704C`), and when the adapter pressed MOVE-NOW (experiment
+not kept). The games were against Fairy-Max 5.0b at 10+0.1 from the UHO
+openings, as in "How often" above: 40 games, 2,106 searches. Below,
+"budget" is the time from `go` to MOVE-NOW, and only the 2,012 searches
+that MOVE-NOW ended after at least two iterations are counted (not book
+moves, nor searches Psion ended itself).
+
+**Cost of an iteration.** From the start of one iteration to the start
+of the next, each finished iteration took a median 15.5 times as long as
+the one before (quartiles 11 to 23) at `09` → `0D` (h 5 → 7; 572
+searches), and 6.5 times at `0D` → `11` (58 searches, those that
+finished h = 7 within the budget, so biased towards the cheap ones).
+
+**The last iteration** got its first move searched in only 36% of the
+searches, and its move differed from the previous iteration's in 11%.
+How much it does depends on when it started:
+
+| Started at (budget) | Searches | First move done | Move changed |
+|---|---|---|---|
+| 0–10% | 23 | 96% | 70% |
+| 10–20% | 265 | 91% | 37% |
+| 20–30% | 286 | 81% | 22% |
+| 30–40% | 296 | 44% | 7% |
+| 40–50% | 277 | 18% | 2% |
+| 50–60% | 239 | 8% | 1% |
+| 60–80% | 351 | 7% | 3% |
+| 80–100% | 274 | 1% | 0% |
+
+An iteration started after 40% of the budget almost never changes the
+move. Sending MOVE-NOW as soon as an iteration starts after a fraction x
+of the budget (a soft limit) would have:
+
+| x | Searches stopped early | Time saved | Move changes lost (of 216) |
+|---|---|---|---|
+| 0.3 | 71% | 27% | 40 |
+| 0.4 | 57% | 19% | 18 |
+| 0.5 | 43% | 12% | 13 |
+| 0.6 | 31% | 7% | 10 |
+
+**Score drops.** The score of the first move of an iteration, minus the
+previous iteration's final score (units, 24 per pawn; iterations that
+failed high and mate scores left out). After a fail low (below −20) the
+first score is that of the re-search with alpha = −∞. "Move 1 done" is
+when the first move's line came, as a share of the iteration's time (to
+MOVE-NOW for the last iteration).
+
+| Change | Finished iterations | Move changed | Move 1 done | Last iterations | Move changed | Budget left after move 1 |
+|---|---|---|---|---|---|---|
+| below −20 | 61 | 33% | 75% | 29 | 17% | 20% |
+| −20 to −11 | 116 | 61% | 44% | 84 | 51% | 42% |
+| −10 to −6 | 204 | 41% | 37% | 142 | 50% | 46% |
+| −5 to −1 | 564 | 26% | 39% | 246 | 26% | 38% |
+| 0 | 139 | 15% | 41% | 60 | 15% | 39% |
+| +1 to +4 | 203 | 12% | 43% | 80 | 16% | 25% |
+| +5 to +9 | 71 | 13% | 45% | 32 | 19% | 37% |
+| +10 to +19 | 29 | 10% | 41% | 13 | 15% | 29% |
+
+A drop of 6 to 20 units (¼ to ¾ pawn) inside the window is a good sign
+that another move will take over: about half the time, against about
+15% when the score holds or rises, and it comes with a median of 40% of
+the budget still left. Fail lows are different: the re-search of the
+same move with alpha = −∞ comes first, so the first line comes at 75% of
+the iteration and the move changes less often. Of the 67 fail lows in
+the last iteration, 33 were stopped before the re-search had finished
+its first move; of the other 34, five changed the move. The last
+iteration also failed high 65 times.
+
+A changed move is a different decision, not necessarily a better one;
+whether spending time this way wins games only a match can show.
+
 ## Mate scores
 
 A mate score counts the plies to the mate, 2 units per ply (the ply
