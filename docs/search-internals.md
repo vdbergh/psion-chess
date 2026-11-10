@@ -925,6 +925,39 @@ came in only 7% of them. A third run with the extension, on another
 machine (346 drop searches, median 37 root moves), gave 16 root moves
 started after S, 67% finished and 58% another move.
 
+Up to S the two matches are alike, so the extension's effect is in the
+changes that came after S. In the match with it, 60 drop searches (26%)
+had another move by S, 63 (28%) still had the dropped move at S and
+played another, and 105 (46%) played the dropped move; without it, 75
+(33%) changed by S and none after (the two runs diverge after the first
+extension, so they hold different positions). The root moves searched by
+S were a median 7 (quartiles 3 and 23; the mean of 13 above comes from a
+few long iterations), and the move that took over after S was mostly the
+one being searched at S or one of the next two.
+
+How much these changes were worth, by Psion's own scores: the score of
+the move played minus that of the dropped move (the first line of the
+iteration), in the same iteration, both runs with the extension (mates
+left out):
+
+| Better by | Changes after S | Changes by S |
+|---|---|---|
+| < ¼ pawn | 68 | 95 |
+| ¼–½ pawn | 38 | 67 |
+| ½–1 pawn | 18 | 18 |
+| 1–2 pawns | 1 | 8 |
+| 2 pawns or more | 6 | 4 |
+| Median | 0.21 pawn | 0.25 pawn |
+
+Most changes improve on the dropped move by a quarter of a pawn or less,
+but one in five by half a pawn or more: there the extension kept Psion
+from playing a move its own deeper search had just found worse. With a
+drop at S in about 5% of the moves, about 28% of them changing the move
+only after S, and about 65 moves per side, that is about one such save
+every five or six games. The changes after S are of the same size as
+those Psion finds by S anyway: the extension adds more of them where the
+search would otherwise have been cut off.
+
 A changed move is a different decision, not necessarily a better one;
 whether spending time this way wins games only a match can show.
 
