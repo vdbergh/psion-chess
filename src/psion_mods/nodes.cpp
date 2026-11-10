@@ -20,7 +20,8 @@
  * Psion makes for its analysis display (score at DS:7150, moves at
  * 7152..7161), the ply counter of the search (DS:7076), the root alpha
  * (DS:713A, set to 0 by a fail low), and the copies of its board to the
- * game board (DS:28AC).
+ * game board (DS:28AC). The root node is ply 1: when the ply counter goes
+ * to ply 2, a root move has been made, and DS:5A6E holds it.
  */
 
 namespace psion {
@@ -33,14 +34,15 @@ namespace psion {
     static const unsigned int ITERATION_OFFSET = 0x5A67;
     static const unsigned int PLY_OFFSET = 0x7076; // ply * 2
     static const unsigned int ALPHA_OFFSET = 0x713A; // root alpha
+    static const unsigned int MOVE_OFFSET = 0x5A6E;  // move made last
     static const unsigned int GAME_OFFSET = 0x28AC;
     static const unsigned int GAME_SIZE = 64;
 
     static unsigned int board_lo = 0, board_hi = 0; // linear, [lo, hi)
     static unsigned int pv_base = 0, pv_last = 0;    // linear
     static unsigned int iteration_addr = 0, ply_addr = 0; // linear
-    static unsigned int alpha_addr = 0;                   // linear
-    static unsigned int max_ply = 0;
+    static unsigned int alpha_addr = 0, move_addr = 0;    // linear
+    static unsigned int max_ply = 0, ply = 0;
     static unsigned char iteration = 0;
     // For time management: the score of the last line (units, from the
     // bias), the iteration it came in, the drop of the current
@@ -50,6 +52,11 @@ namespace psion {
     static int line_value = 0, drop = 0;
     static unsigned char line_iteration = 0;
     static bool fail_low_open = false;
+    // The root moves made in the current iteration, each once (a fail low
+    // searches the first move again).
+    static const int MAX_ROOT_MOVES = 256;
+    static unsigned short root_moves[MAX_ROOT_MOVES];
+    static int root_move_count = 0;
 
     static bool is_mate(int value) {
         return abs(value) / 24 >= 256; // as in MemoryAnalysis()
@@ -88,6 +95,17 @@ namespace psion {
         }
     }
 
+    static void note_root_move(unsigned short move) {
+        for (int i = 0; i < root_move_count; i++) {
+            if (root_moves[i] == move) {
+                return;
+            }
+        }
+        if (root_move_count < MAX_ROOT_MOVES) {
+            root_moves[root_move_count++] = move;
+        }
+    }
+
     // Called after a write of size bytes at addr.
     static inline void count(PhysPt addr, Bitu val, unsigned int size) {
         if (val == 0 && addr >= board_lo && addr < board_hi) {
@@ -101,6 +119,7 @@ namespace psion {
             if (it != iteration) {
                 drop_known = false;
                 fail_low_open = false;
+                root_move_count = 0;
             }
             iteration = it;
         }
@@ -109,7 +128,11 @@ namespace psion {
             fail_low_open = true;
         }
         if (addr <= ply_addr && addr + size > ply_addr) {
-            unsigned int ply = host_readb(MemBase + ply_addr) / 2;
+            unsigned int new_ply = host_readb(MemBase + ply_addr) / 2;
+            if (new_ply == 2 && ply == 1) {
+                note_root_move(host_readw(MemBase + move_addr));
+            }
+            ply = new_ply;
             if (ply > max_ply) {
                 max_ply = ply;
             }
@@ -156,6 +179,7 @@ namespace psion {
         iteration_addr = data_segment * 16 + ITERATION_OFFSET;
         ply_addr = data_segment * 16 + PLY_OFFSET;
         alpha_addr = data_segment * 16 + ALPHA_OFFSET;
+        move_addr = data_segment * 16 + MOVE_OFFSET;
         MEM_SetPageHandler(alpha_addr / MEM_PAGESIZE, 1, &board_handler);
         MEM_SetPageHandler(ply_addr / MEM_PAGESIZE, 1, &board_handler);
         MEM_SetPageHandler(iteration_addr / MEM_PAGESIZE, 1, &board_handler);
@@ -188,6 +212,7 @@ namespace psion {
         drop_known = false;
         line_iteration = 0;
         fail_low_open = false;
+        root_move_count = 0;
     }
 
     bool Nodes_FirstLineDrop(int &d) {
@@ -197,6 +222,11 @@ namespace psion {
 
     bool Nodes_FailLowOpen() {
         return fail_low_open;
+    }
+
+    int Nodes_RootMovesDone() {
+        // all but the one being searched
+        return root_move_count > 0 ? root_move_count - 1 : 0;
     }
 
     unsigned char Nodes_Iteration() {

@@ -612,6 +612,18 @@ static void test_scaled_think_time(){
     CHECK_EQ(ScaledThinkTime(INT_MAX,INT_MAX,0,tp,1000),(unsigned int)INT_MAX);
 }
 
+static void test_max_think_time(){
+    TimeParams tp=DefaultTimeParams();
+    CHECK_EQ(tp.min_moves,0);
+    // the defaults: the plain allocation
+    CHECK_EQ(MaxThinkTime(1000,60000,10,tp),990u);
+    tp.max=200;
+    CHECK_EQ(MaxThinkTime(1000,60000,10,tp),1990u);
+    tp.max_share=75;
+    CHECK_EQ(MaxThinkTime(1000,2000,10,tp),1490u);
+    CHECK_EQ(MaxThinkTime(0,0,10,tp),MIN_THINK_MS);
+}
+
 static void test_extension_percent(){
     TimeParams tp=DefaultTimeParams();
     CHECK_EQ(ExtensionPercent(tp,true,30,true),100);
@@ -1467,6 +1479,7 @@ int main(){
     test_think_time();
     test_clock_time();
     test_scaled_think_time();
+    test_max_think_time();
     test_extension_percent();
     test_move_now_time();
     test_depth_reached();

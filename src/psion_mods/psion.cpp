@@ -1110,6 +1110,7 @@ namespace psion {
         {"TM Fail Low Extension", &TimeParams::fail_low_extension, 100, 1000},
         {"TM Max", &TimeParams::max, 100, 1000},
         {"TM Max Share", &TimeParams::max_share, 1, 100},
+        {"TM Min Moves", &TimeParams::min_moves, 0, 100},
     };
     static const int TIME_OPTION_COUNT =
         sizeof(TIME_OPTIONS) / sizeof(TIME_OPTIONS[0]);
@@ -1237,6 +1238,9 @@ namespace psion {
         unsigned char iteration;     // Nodes_Iteration() as last seen
         bool iteration_started;      // a new iteration since "go" or
         unsigned int iteration_ticks; // "ponderhit", and when
+        bool target_reached;         // the target, from "go" or "ponderhit"
+        bool min_moves_wait;         // then going on for "TM Min Moves"
+        unsigned char wait_iteration; // in this iteration
         unsigned int search_start;   // when "go" was received
         unsigned int thinking_start; // when Psion started to think
         bool movenow_sent;
@@ -1604,6 +1608,8 @@ namespace psion {
             uci.think_ms = uci.ponderhit_ms;
             uci.search_start = GetTicks();
             uci.iteration_started = false;
+            uci.target_reached = false;
+            uci.min_moves_wait = false;
             if (uci.search == SEARCH_HOLDING) {
                 finish_search(uci.held_move);
             }
@@ -1895,9 +1901,36 @@ namespace psion {
                                                    move_overhead_ms,
                                                    time_params, e),
                                    setup)) {
-            say("Time up after %u ms: target %d%%%s%s\n", elapsed, e,
+            int done = Nodes_RootMovesDone();
+            if (!uci.target_reached) {
+                // An iteration that has searched its first move (the
+                // previous best) but too few others gets the time for
+                // them, up to the maximum.
+                uci.target_reached = true;
+                uci.min_moves_wait = done >= 1 &&
+                                     done < time_params.min_moves;
+                uci.wait_iteration = Nodes_Iteration();
+                if (uci.min_moves_wait) {
+                    say("Target after %u ms with %d root moves searched\n",
+                        elapsed, done);
+                }
+            }
+            if (uci.min_moves_wait && done < time_params.min_moves &&
+                Nodes_Iteration() == uci.wait_iteration &&
+                elapsed < MoveNowTime(MaxThinkTime(uci.allocated_ms,
+                                                   uci.remaining_ms,
+                                                   move_overhead_ms,
+                                                   time_params),
+                                      setup)) {
+                return false;
+            }
+            say("Time up after %u ms: target %d%%%s%s%s\n", elapsed, e,
                 drop_known && drop >= time_params.drop ? ", drop" : "",
-                Nodes_FailLowOpen() ? ", fail low" : "");
+                Nodes_FailLowOpen() ? ", fail low" : "",
+                uci.min_moves_wait
+                    ? (done >= time_params.min_moves ? ", min moves done"
+                                                     : ", min moves cut")
+                    : "");
             return true;
         }
         if (uci.iteration_started &&
@@ -2158,6 +2191,8 @@ namespace psion {
             uci.movenow_sent = false;
             uci.iteration = 0;
             uci.iteration_started = false;
+            uci.target_reached = false;
+            uci.min_moves_wait = false;
             uci.saw_program = false;
             memcpy(uci.search_board, known.board, sizeof(uci.search_board));
             uci.search_white = white_to_move();

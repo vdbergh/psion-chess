@@ -566,6 +566,7 @@ namespace psion {
         tp.fail_low_extension = 100;
         tp.max = 100;
         tp.max_share = 100;
+        tp.min_moves = 0;
         return tp;
     }
 
@@ -575,9 +576,15 @@ namespace psion {
         // allocated and remaining are at most INT_MAX, the percentages at
         // most a few thousand: no overflow.
         long long t = allocated * tp.target / 100 * percent / 100;
-        long long cap = std::min(allocated * tp.max / 100,
-                                 remaining * tp.max_share / 100);
-        return less_overhead(std::min(t, cap), overhead);
+        return std::min(less_overhead(t, overhead),
+                        MaxThinkTime(allocated, remaining, overhead, tp));
+    }
+
+    unsigned int MaxThinkTime(long long allocated, long long remaining,
+                              unsigned int overhead, const TimeParams &tp) {
+        return less_overhead(std::min(allocated * tp.max / 100,
+                                      remaining * tp.max_share / 100),
+                             overhead);
     }
 
     int ExtensionPercent(const TimeParams &tp, bool drop_known, int drop,

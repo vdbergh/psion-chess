@@ -41,6 +41,9 @@ namespace psion {
     // has not shown a line since: Psion would still play the move that
     // failed low.
     bool Nodes_FailLowOpen();
+    // The root moves the current iteration has searched (not counting the
+    // one it is searching), each once.
+    int Nodes_RootMovesDone();
 
     // Whether Psion is copying its board to the game board (DS:28AC, 64
     // bytes, copied whole when a move is played): a word of it has been

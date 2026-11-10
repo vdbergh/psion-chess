@@ -65,6 +65,18 @@ The adapter then presses MOVE-NOW at the first of these moments:
      just refuted).
 4. **Maximum reached.** The elapsed time reaches H.
 
+**Minimum root moves** (added after the first measurements, see "What an
+extension after a drop buys" in the search notes). The point of a new
+iteration is to see whether another move takes over, and in finished
+iterations the new best move came mostly among the first four or five
+root moves, which cost little after the first. So when the target (S, or
+S · e) is reached while the iteration has searched its first move but
+fewer than N root moves in all, the search goes on until it has
+searched N, or H is reached, or a new iteration starts. If the first
+move (the previous best, searched again) is not done at the target, the
+search stops as before: finishing it would mostly confirm the move Psion
+already plays, and is the expensive case.
+
 A fail high gets no extension: the move Psion would play is the one that
 failed high, which scored at least beta.
 
@@ -89,13 +101,16 @@ stop, no extensions); the starting values are those proposed here:
 | e_low | `TM Fail Low Extension` | 100 | 100–1000 | 250 | extension after a fail low |
 | m | `TM Max` | 100 | 100–1000 | 300 | maximum H, as a share of T |
 | r | `TM Max Share` | 100 | 1–100 | 25 | maximum H, as a share of the remaining time |
+| N | `TM Min Moves` | 0 | 0–100 | 4 | at the target, go on until N root moves are searched (0: off) |
 
 As H caps everything, `TM Target` and the extensions only take effect
 with `TM Max` raised as well. With `--verbose` the adapter logs why it
 pressed MOVE-NOW: "Time up after N ms: target E%" (with ", drop" or ",
 fail low" when extended), or "iteration NN started after N ms" for the
-soft stop. In 8 games against Fairy-Max at 10+0.1 with the starting
-values, 226 searches ended by the soft stop, 208 at the target, 24
+soft stop; with `TM Min Moves` it logs "Target after N ms with K root
+moves searched" when it goes on, and ", min moves done" (or ", min
+moves cut" if H came first) at the end. In 8 games against Fairy-Max
+at 10+0.1 with the starting values, 226 searches ended by the soft stop, 208 at the target, 24
 extended after a drop and 1 after a fail low, with no loss on time.
 
 ### When the rules apply
@@ -123,7 +138,12 @@ All signals come from the write handlers in `nodes.cpp`:
   (`Nodes_FirstLineDrop()`; not when either is a mate score);
 - a fail low: a write of 0 to `713A`, open until the next PV copy
   (`Nodes_FailLowOpen()`). In the probe matches `713A` was set to 0
-  only by fail lows, from iteration `05` on.
+  only by fail lows, from iteration `05` on;
+- the root moves searched in the current iteration: the ply counter
+  `7076` going from ply 1 (the root) to ply 2 makes a root move, which
+  `5A6E` then holds; each is counted once per iteration, as a fail low
+  searches the first move again (`Nodes_RootMovesDone()`, not counting
+  the move being searched).
 
 ## Measuring and tuning
 

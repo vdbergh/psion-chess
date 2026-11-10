@@ -79,6 +79,9 @@ namespace psion {
                                 // extends S by this
         int max;                // m: at most m * ClockTime() ...
         int max_share;          // r: ... and r * the remaining time
+        int min_moves;          // N: at the target, an iteration that has
+                                // searched its first root move goes on
+                                // until it has searched N (0: off)
     };
     TimeParams DefaultTimeParams();
 
@@ -88,6 +91,10 @@ namespace psion {
     unsigned int ScaledThinkTime(long long allocated, long long remaining,
                                  unsigned int overhead, const TimeParams &tp,
                                  int percent);
+
+    // The maximum H (as from ThinkTime()): the cap of ScaledThinkTime().
+    unsigned int MaxThinkTime(long long allocated, long long remaining,
+                              unsigned int overhead, const TimeParams &tp);
 
     // The extension of S in percent (100: none): e_drop if the first
     // line of the current iteration came back at least d units below
