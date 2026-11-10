@@ -829,6 +829,28 @@ the last iteration, 33 were stopped before the re-search had finished
 its first move; of the other 34, five changed the move. The last
 iteration also failed high 65 times.
 
+**At 60+0.6** (12 games, 748 searches, 710 counted) the picture is the
+same, shifted to deeper iterations: each took 18 times the one before at
+`09` → `0D`, 10.7 at `0D` → `11` (414 searches) and 8.9 at `11` → `15`
+(22). The last iteration finished its first move in 40% of the searches
+and changed the move in 7%:
+
+| Started at (budget) | Searches | First move done | Move changed |
+|---|---|---|---|
+| 0–10% | 50 | 94% | 30% |
+| 10–20% | 172 | 85% | 16% |
+| 20–30% | 118 | 53% | 5% |
+| 30–40% | 74 | 26% | 4% |
+| 40–50% | 49 | 10% | 0% |
+| 50–100% | 247 | 1% | 0% |
+
+A soft limit at x = 0.3 would have saved 18% of the time and lost 3 of
+the 51 move changes, at x = 0.4 12% and none. After a drop of 6 to 20
+units the move changed in 55% of the finished iterations (284), against
+11% when the score held or rose (234). The last iteration failed low 18
+times: 11 were stopped before the re-search had finished its first
+move; of the other 7, three changed the move.
+
 A changed move is a different decision, not necessarily a better one;
 whether spending time this way wins games only a match can show.
 
