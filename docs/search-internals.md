@@ -775,6 +775,44 @@ the one before (quartiles 11 to 23) at `09` → `0D` (h 5 → 7; 572
 searches), and 6.5 times at `0D` → `11` (58 searches, those that
 finished h = 7 within the budget, so biased towards the cheap ones).
 
+**Depth reached in play.** The depth of the last line of each search
+(the deepest iteration that finished at least one root move), from the
+first 80 games of a self-play match at 10+0.1 from the 8moves_v3
+openings (book moves left out; time is the mean per move). One side
+used the time management as it is (base), the other the soft stop at
+x = 0.4 described below (`TM Soft Stop 40`):
+
+| Depth | base | | | soft stop | | |
+|---|---|---|---|---|---|---|
+| 3 | 254 | 5.2% | 0.12 s | 242 | 5.0% | 0.11 s |
+| 5 | 3,803 | 78.3% | 0.24 s | 3,679 | 75.7% | 0.22 s |
+| 7 | 733 | 15.1% | 0.17 s | 868 | 17.9% | 0.19 s |
+| 9 | 64 | 1.3% | 0.15 s | 69 | 1.4% | 0.16 s |
+| 11 | 2 | 0.0% | 0.14 s | 2 | 0.0% | 0.17 s |
+
+At this time control Psion mostly gets to depth 5; depth 7 and more
+come mostly in simpler positions (endgames), where the iterations are
+cheap, which is why they took less time. The soft stop moved about 3%
+of the moves from depth 5 to 7 (mean depth 5.25 → 5.32).
+
+By the phase of the game (218 games of the same match; mean time and
+depth per move, book moves left out):
+
+| Moves | base: time | depth | soft stop: time | depth |
+|---|---|---|---|---|
+| 1–20 | 0.362 s | 5.01 | 0.300 s | 5.01 |
+| 21–40 | 0.253 s | 5.11 | 0.239 s | 5.18 |
+| 41–60 | 0.175 s | 5.61 | 0.176 s | 5.79 |
+| 61–80 | 0.132 s | 5.69 | 0.136 s | 5.78 |
+| 81+ | 0.110 s | 5.42 | 0.113 s | 5.38 |
+
+Up to move 20 the soft stop saved 17% of the time at the same depth:
+that time went into iterations that would not have finished a move.
+From move 21 to 80 it reached more depth with about the same time per
+move: the time left on the clock went to the searches whose next
+iteration could still finish its first move. From move 81 both sides
+live mostly on the increment, and the difference is gone.
+
 **The last iteration** got its first move searched in only 36% of the
 searches, and its move differed from the previous iteration's in 11%.
 How much it does depends on when it started:
