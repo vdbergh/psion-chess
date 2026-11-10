@@ -52,8 +52,8 @@ namespace psion {
     static int line_value = 0, drop = 0;
     static unsigned char line_iteration = 0;
     static bool fail_low_open = false;
-    // The root moves made in the current iteration, each once (a fail low
-    // searches the first move again).
+    // The root moves made in the current iteration, each once (after a
+    // fail low all of them are searched again).
     static const int MAX_ROOT_MOVES = 256;
     static unsigned short root_moves[MAX_ROOT_MOVES];
     static int root_move_count = 0;

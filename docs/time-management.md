@@ -34,8 +34,9 @@ none of the 51 move changes):
    iteration's score, another move took over about half of the time,
    against 15% when the score held or rose. The drop is known with a
    median of 40% of T still left.
-4. **A fail low is expensive to resolve.** After a drop of more than 20
-   units Psion first searches the same move again with alpha = −∞. Of 67
+4. **A fail low is expensive to resolve.** When all root moves come back
+   below the window (more than 20 units under the previous score), Psion
+   searches them all again with alpha = −∞, from the old best. Of 67
    fail lows in the last iteration, 33 were cut off before that
    re-search finished even the first move.
 
@@ -141,9 +142,12 @@ All signals come from the write handlers in `nodes.cpp`:
   only by fail lows, from iteration `05` on;
 - the root moves searched in the current iteration: the ply counter
   `7076` going from ply 1 (the root) to ply 2 makes a root move, which
-  `5A6E` then holds; each is counted once per iteration, as a fail low
-  searches the first move again (`Nodes_RootMovesDone()`, not counting
-  the move being searched).
+  `5A6E` then holds; each is counted once per iteration
+  (`Nodes_RootMovesDone()`, not counting the move being searched). After
+  a fail low all root moves are searched again with alpha = −∞, and as
+  they have all been made in the first pass, the count is then complete:
+  `TM Min Moves` does not extend a search during that re-search
+  (`TM Fail Low Extension` is for that case).
 
 ## Measuring and tuning
 

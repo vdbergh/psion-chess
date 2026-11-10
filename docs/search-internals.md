@@ -462,10 +462,14 @@ the pass over the root moves before it (counter `00`), which is the only
 one with `5A67 & 3` = 0: there `704E` is set to `F000` and `704C` to 0
 (beta = +∞).
 
-- Fail low (the root best is still alpha, `10AA`): `1125` sets alpha to
-  −∞ (0) and searches again (`jmp 1089`). Until the first move of that
-  search is done, the move Psion would play is still the previous best,
-  the one that failed low (see "The move played").
+- Fail low (the root best is still alpha, `10AA`, once all root moves
+  have been searched against the window): `1125` sets alpha to −∞ (0)
+  and searches all of them again (`jmp 1089`), from the first. A first
+  move below the window does not stop the pass: the other moves are
+  searched against the same alpha, and only if none of them reaches it
+  is it a fail low. Until the first move of the new search is done, the
+  move Psion would play is still the previous best, the one that failed
+  low (see "The move played").
 - Fail high (a cutoff at the root brings the ply back to 0, `14D2` →
   `1466` → `1147`): `114C` sets beta to +∞ and searches again from the
   old alpha.
@@ -775,6 +779,31 @@ the one before (quartiles 11 to 23) at `09` → `0D` (h 5 → 7; 572
 searches), and 6.5 times at `0D` → `11` (58 searches, those that
 finished h = 7 within the budget, so biased towards the cheap ones).
 
+**Cost of the root moves.** Within an iteration the first root move (the
+previous best) is the expensive one: the others only have to be refuted
+against the best score so far (alpha, raised by the first move when it
+comes back inside the window), which takes one good reply at the next
+ply. From the root moves logged in the matches of "What an extension
+after a drop buys" below (finished iterations from `09` on; each of
+moves 2–5 is the time from the start of move 2 to that of move 6, over
+4):
+
+| First line of the iteration | Iterations | Move 1, share of the iteration | Each of moves 2–5, × move 1 (median, quartiles) | New best among moves 2–5 |
+|---|---|---|---|---|
+| no drop (< 6 units) | 4,654 | 35% | 0.12 (0.06–0.28) | 17% |
+| a drop of 6–20 units | 1,876 | 26% | 0.28 (0.11–0.50) | 47% |
+| a fail low | 264 | 5% | 0.38 (0.12–0.75) | – |
+
+A move that becomes the new best is searched exactly and costs about
+three times as much as one that is refuted (0.36 against 0.10 × move 1
+without a drop). After a drop alpha is raised less, more of the other
+moves come close to it, and they cost twice as much. After a fail low
+the first move did not raise alpha at all: it was only refuted itself,
+and so cheap (5% of the iteration), and the moves after it are searched
+against the same bound, at a cost much closer to its own. The expensive
+part of such an iteration is the search of all the moves again with
+alpha = −∞.
+
 **Depth reached in play.** The depth of the last line of each search
 (the deepest iteration that finished at least one root move), from the
 first 80 games of a self-play match at 10+0.1 from the 8moves_v3
@@ -860,9 +889,10 @@ MOVE-NOW for the last iteration).
 A drop of 6 to 20 units (¼ to ¾ pawn) inside the window is a good sign
 that another move will take over: about half the time, against about
 15% when the score holds or rises, and it comes with a median of 40% of
-the budget still left. Fail lows are different: the re-search of the
-same move with alpha = −∞ comes first, so the first line comes at 75% of
-the iteration and the move changes less often. Of the 67 fail lows in
+the budget still left. Fail lows are different: all root moves are
+first searched against the window, and only then all again with alpha =
+−∞, from the old best, so the first line comes at 75% of the iteration
+and the move changes less often. Of the 67 fail lows in
 the last iteration, 33 were stopped before the re-search had finished
 its first move; of the other 34, five changed the move. The last
 iteration also failed high 65 times.
@@ -892,9 +922,9 @@ move; of the other 7, three changed the move.
 **What an extension after a drop buys.** To see what extra time after a
 drop is used for, the probe also logged every root move: the root node
 is ply 1, so a root move is made when the ply counter `7076` goes from
-2 to 4 (ply 1 → 2), and `5A6E` then holds the move. A fail low searches
-the first move again, so each root move was counted once per iteration,
-when it was first made. Two matches against Fairy-Max at 10+0.1 from the
+2 to 4 (ply 1 → 2), and `5A6E` then holds the move. After a fail low all
+root moves are searched again, so each root move was counted once per
+iteration, when it was first made. Two matches against Fairy-Max at 10+0.1 from the
 8moves_v3 openings ran side by side on one machine, 60 games each with
 the same openings, both with the soft stop (`TM Soft Stop 40`): one with
 `TM Drop Extension 160` (`TM Drop 6`, `TM Max 300`, `TM Max Share 25`),
