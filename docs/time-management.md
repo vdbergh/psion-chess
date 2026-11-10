@@ -78,6 +78,35 @@ move (the previous best, searched again) is not done at the target, the
 search stops as before: finishing it would mostly confirm the move Psion
 already plays, and is the expensive case.
 
+**After a fail low** (proposed, not implemented yet). A fail low comes
+only when all root moves have come back below the window, more than 20
+units under the previous score: the position has just turned out worse
+than Psion thought, the moment with the most risk of a blunder. Psion
+then knows only upper bounds for its moves, and searches them all again
+with alpha = −∞, first the old best (exactly, and so expensively), then
+the others against its score (cheaply, unless one is better). Until that
+first line comes, the move Psion would play is one just refuted, of
+unknown score. Two stages:
+
+1. While the fail low is open (no line from the re-search yet), go on up
+   to the maximum H: `TM Fail Low Extension` set high (such as 300, with
+   H = min(3 · T, 25% of the remaining time)). Without that line the
+   choice is blind.
+2. Once the line has come, treat the re-search as a new iteration for
+   the minimum root moves: alternatives are more likely than usual, and
+   the moves after the first are cheap. As all root moves were made in
+   the first pass, the count of root moves must then start again at the
+   fail low; as implemented now, `TM Min Moves` never extends a
+   re-search.
+
+Fail lows are rare (about 3% of the searches against Fairy-Max at
+10+0.1, about 1 in 80 in self-play), so even long extensions cost little
+time overall. For the same reason self-play shows the effect poorly; a
+match against other engines is needed. First steps: a probe match with
+`TM Fail Low Extension` high, to measure how long the re-search takes to
+show its first line and how often the move then changes (the matches so
+far stopped at S with the fail low open), then the reset of the count.
+
 A fail high gets no extension: the move Psion would play is the one that
 failed high, which scored at least beta.
 
