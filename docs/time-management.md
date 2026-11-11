@@ -80,17 +80,18 @@ already plays, and is the expensive case. With N = 4 this gained about
 50 Elo over the soft stop alone (see "Results").
 
 **Minimum root moves: the window** (implemented, `TM Min Moves Window`,
-not tested yet). In about 1% of the searches the last iteration's first
-move has come back below the window when the search stops (see "How
-often" in the search notes): the old best has dropped by more than 20
-units, but no line shows it, so neither the drop extension nor the
-fail-low extension applies, and Psion would play that move. With the
-window rule the search also goes on, up to H, until a root move has come
-back inside the window: another move with a new line, or, once all have
-failed and Psion has declared the fail low, the first line of the search
-again (after which the N root moves are counted from the fail low). A
-fail low open at the target counts as a first move done, so the rule
-also covers what `TM Fail Low Extension` was for.
++9 ± 10 Elo in a first match, see "Results"). In about 1% of the
+searches the last iteration's first move has come back below the
+window when the search stops (see "How often" in the search notes): the
+old best has dropped by more than 20 units, but no line shows it, so
+neither the drop extension nor the fail-low extension applies, and
+Psion would play that move. With the window rule the search also goes
+on, up to H, until a root move has come back inside the window: another
+move with a new line, or, once all have failed and Psion has declared
+the fail low, the first line of the search again (after which the N
+root moves are counted from the fail low). A fail low open at the
+target counts as a first move done, so the rule also covers what `TM
+Fail Low Extension` was for.
 
 **After a fail low** (stage 2 implemented, see below). A fail low comes
 only when all root moves have come back below the window, more than 20
@@ -306,3 +307,35 @@ cut off before Psion declares the fail low. As changes are only kept
 when a match shows a gain, `TM Fail Low Extension` is not to be kept;
 the minimum root moves with the window (above) are tested instead, as
 they let more of the slow first passes finish.
+
+### The window
+
+The same kind of match again: the test has the window rule (`TM Min
+Moves Window` 1) on top of both changes above (stage 2, and the count
+of root moves done that also takes the first line of the search into
+account); the reference is again the version of the first match
+(`TM Min Moves` 4 without the reset). Both have `TM Soft Stop` 40, `TM
+Min Moves` 4, `TM Max` 200 and `TM Max Share` 75, and neither uses `TM
+Fail Low Extension`:
+
+| Machine | Pairs | Pentanomial (0 to 2 points) | Score | Elo | Time per move (test / reference) |
+|---|---|---|---|---|---|
+| 1 | 373 | 37, 48, 188, 61, 39 | 51.1% | +8 ± 19 | 0.206 / 0.205 s |
+| 2 | 627 | 29, 61, 421, 80, 36 | 51.3% | +9 ± 11 | 0.204 / 0.203 s |
+| **Both** | **1000** | **66, 109, 609, 141, 75** | **51.25%** | **+9 ± 10** | **0.205 / 0.204 s** |
+
+All 2,000 games ended normally. The result is borderline (LOS 96%), and
+it comes from the whole package, not from the window rule alone, though
+the match for stage 2 above (+4 ± 10) suggests most of it is the window.
+The rule costs about 0.5% more time per move. In the logs of the second
+machine, the test went on at the target for the window in 1,545 of its
+about 84,000 searches (1.8%), 632 of them with the fail low already
+open; 259 of those 632 were cut off at H, the other 373 came to an end
+before it. The reference stopped with a fail low open in 568 searches,
+most of them at the target, playing the old best without knowing how
+far it had dropped.
+
+As adding games to a match after seeing a borderline result would bias
+it, a second match of 2,000 pairs with new openings is run as an
+independent check (twice as long, for more power), and the decision
+rests on that one.
