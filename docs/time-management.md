@@ -116,7 +116,8 @@ open at S. Stage 1 waited for the line in 335 of them, a median of 51 ms
 stopped as soon as it came. When the line had come before S and the
 search went on (297 cases, a median of 56 ms more), the move changed in
 86 (29%), about twice as often as in an iteration without a fail low.
-So stage 1 only pays with stage 2.
+So stage 1 only pays with stage 2. Both together showed no effect in
+self-play, where fail lows are too rare (see "Results").
 
 A fail high gets no extension: the move Psion would play is the one that
 failed high, which scored at least beta.
@@ -239,3 +240,25 @@ spent on root moves 2 to 4 of an iteration whose first move is done is
 where new best moves mostly come from (see "What an extension after a
 drop buys" in the search notes), and it pays off far beyond its share of
 the clock.
+
+### After a fail low
+
+The same kind of match, with both stages on top of the minimum root
+moves: the test has `TM Min Moves` 4 with the count started again at a
+fail low (stage 2) and `TM Fail Low Extension` 300 (stage 1), the
+reference is the version of the match above (`TM Min Moves` 4 without
+the reset). Both have `TM Soft Stop` 40, `TM Max` 200 and `TM Max
+Share` 75, so with H = 2 · T the extension means "up to H":
+
+| Machine | Pairs | Pentanomial (0 to 2 points) | Score | Elo | Time per move (test / reference) |
+|---|---|---|---|---|---|
+| 1 | 373 | 38, 73, 159, 65, 38 | 49.5% | −4 ± 19 | 0.204 / 0.203 s |
+| 2 | 627 | 36, 49, 433, 64, 45 | 51.3% | +9 ± 11 | 0.204 / 0.204 s |
+| **Both** | **1000** | **74, 122, 592, 129, 83** | **50.6%** | **+4 ± 10** | **0.204 / 0.204 s** |
+
+All 2,000 games ended normally. No effect shows, and little could be
+expected: self-play has a fail low in about 1 search in 80, against 1 in
+9 in the probe match against Fairy-Max. In the logs of the second
+machine, only 148 of the test's 83,279 searches (0.18%) were still
+waiting for the line of a fail low when H came. The rules cost nothing
+in self-play; whether they gain must be measured against other engines.
