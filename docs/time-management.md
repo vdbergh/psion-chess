@@ -283,7 +283,26 @@ expected: the rules act only in the searches with a fail low still open
 at S, about 0.9% of them in self-play (see "How often" in the search
 notes). In the logs of the second machine, 148 of the test's 83,279
 searches (0.18%) were still waiting for the line of a fail low when H
-came. The rules cost nothing. A stronger opponent would make those
-searches only about 1.7 times as common, so a test with clearly more
-power is out of reach; the rules are kept because they cost nothing and
-the measurements say they should help.
+came. The rules cost nothing.
+
+As fail lows come mostly to the weaker side, the same two versions
+then played a gauntlet against a stronger opponent: each at 10+0.1
+against the reference's version at 20+0.2 (about 100 Elo stronger),
+from the same openings, each with both colours, on two machines. The
+difference of the two is taken opening by opening (both versions played
+each opening against the opponent, so the pairs of pairs match):
+
+| Version | Pairs | Score against the opponent | Elo against the opponent | Time per move |
+|---|---|---|---|---|
+| Test (both stages) | 1000 | 35.6% | −103 ± 13 | 0.208 s |
+| Reference | 1000 | 35.9% | −101 ± 13 | 0.206 s |
+| **Test − reference** | **1000 openings** | **−0.4% ± 2.1%** | **−3 ± 16** | |
+
+All 4,000 games ended normally. Against a stronger opponent no effect
+shows either. The search notes say why ("How often", "In what
+positions"): most of the fail lows that are seen come in positions
+already lost, and those in level positions are the slow ones, mostly
+cut off before Psion declares the fail low. As changes are only kept
+when a match shows a gain, `TM Fail Low Extension` is not to be kept;
+the minimum root moves with the window (above) are tested instead, as
+they let more of the slow first passes finish.
