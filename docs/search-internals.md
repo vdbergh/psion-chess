@@ -517,6 +517,36 @@ openings change nothing. Most fail lows come early in the search
 within a few tens of ms; when that line came before S and the search
 went on, the move changed in about a quarter of the cases.
 
+**Cost of the search again.** In the same probe matches, for the fail
+lows whose first pass (from the start of the iteration to the fail low)
+took at least 20 ms and whose search again showed a line, the time to
+that line against the first pass:
+
+| Games | Fail lows | Median | 75th percentile | 90th percentile |
+|---|---|---|---|---|
+| Against Fairy-Max | 1,019 | 0.72 | 1.47 | 3.13 |
+| Self-play, 8moves_v3 | 242 | 0.51 | 0.98 | 1.84 |
+| Self-play, side at 10+0.1 against 40+0.4 | 221 | 0.63 | 1.16 | 1.81 |
+
+The line usually comes sooner than the first pass took, although
+nothing is kept from the first pass but killers (if `15FF` is the killer
+update) and the window is wide. That is because the line needs only the
+old best, searched exactly, while the first pass searched all root
+moves. Per move:
+
+| Games | Fail lows | Root moves in the first pass (median) | Old best's share of the first pass (median) | Old best searched again / its search in the first pass |
+|---|---|---|---|---|
+| Against Fairy-Max | 709 | 18 | 27% | median 2.9 (quartiles 1.6 to 6.3) |
+| Self-play, 8moves_v3 | 161 | 12 | 26% | median 2.6 (quartiles 1.4 to 3.7) |
+
+(Old best's search at least 5 ms, first pass at least 20 ms.) Searched
+exactly, the old best costs about 2.6 to 2.9 times its search in the
+first pass, where it only had to be shown below alpha (one good reply at
+each node of the opponent). As it took about a quarter of the first
+pass, the line comes after about 0.7 times the first pass. These counts
+include only the fail lows whose search again showed a line; those cut
+off before it would raise the ratios somewhat.
+
 ## Move ordering
 
 Read from the code; not checked by running it. At each node the moves
