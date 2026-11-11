@@ -516,6 +516,8 @@ class UciTest(unittest.TestCase):
                              bound)
             self.assertEqual(bound[8:10], ['lowerbound', 'pv'], bound)
             self.assertEqual(len(bound), 11, bound)
+        elif 'upperbound' in infos[-1]:
+            self.check_upperbound(infos)
         self.assertTrue(infos, before)
         depth = 0
         for info in infos:
@@ -534,6 +536,36 @@ class UciTest(unittest.TestCase):
             self.assertGreaterEqual(int(info[2]), depth, info)
             depth = int(info[2])
         self.assertTrue(Board(moves).plausible(line.split()[1]), line)
+
+    def check_upperbound(self, infos):
+        """The last info line, stopped below the window: the move alone,
+        from the next iteration, at most the window's lower end (20 units
+        below the last score); seldepth and nodes removed."""
+        bound = infos.pop()
+        self.assertTrue(infos)
+        last = infos[-1]
+        self.assertEqual(int(bound[2]), int(last[2]) + 2, bound)
+        self.assertEqual(bound[6], 'cp', bound)
+        self.assertIn(int(last[7]) - int(bound[7]), (83, 84), (last, bound))
+        self.assertEqual(bound[8:10], ['upperbound', 'pv'], bound)
+        self.assertEqual(len(bound), 11, bound)
+        self.assertEqual(bound[10], last[9], (last, bound))
+
+    def test_info_upperbound(self):
+        """Stopped while the move played is below the window: here the
+        root fails low at depth 7 and the search again takes many
+        thousands of nodes."""
+        e = self.engine
+        e.send('position fen 8/1k2Q3/6BP/6p1/2P5/6K1/4p2P/8 b - - 1 69')
+        e.ready()
+        e.send('go nodes 15000')
+        line, before = e.expect('bestmove', 30)
+        infos = [l.split() for l in before if l.startswith('info depth')]
+        for i, info in enumerate(infos):
+            infos[i] = info[:3] + info[5:7] + info[11:]  # no seldepth, nodes
+        self.assertIn('upperbound', infos[-1], before)
+        self.check_upperbound(infos)
+        self.assertEqual(line.split()[1], infos[-1][9], line)
 
     def test_info_book_move(self):
         """A book move gets an info line too: depth 1, 1 node, the move."""
