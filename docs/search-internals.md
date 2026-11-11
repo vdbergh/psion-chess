@@ -547,6 +547,28 @@ pass, the line comes after about 0.7 times the first pass. These counts
 include only the fail lows whose search again showed a line; those cut
 off before it would raise the ratios somewhat.
 
+**In what positions.** Psion's score (pawns, from its side) before the
+fail low and at the first line of the search again, in the same probe
+matches, for the fail lows whose search again showed a line:
+
+| Games | Fail lows | Before (median) | At the line (median) | Before ≤ −3 | At the line ≤ −3 | Level before (within ±1), ≤ −2 at the line | At the line ≥ −1 |
+|---|---|---|---|---|---|---|---|
+| Against Fairy-Max, all | 2,615 | −4.3 | −7.8 | 57% | 74% | 6% | 14% |
+| ... in the last iteration | 823 | −7.3 | −12.9 | 69% | 83% | 5% | 8% |
+| ... open at S | 335 | −7.0 | −9.8 | 71% | 82% | 3% | 9% |
+| Self-play, 8moves_v3, all | 772 | −4.6 | −8.6 | 59% | 76% | 8% | 11% |
+| ... in the last iteration | 154 | −8.7 | a mate | 69% | 83% | 14% | 6% |
+| Self-play, side at 10+0.1 against 40+0.4, all | 726 | −5.6 | −9.5 | 67% | 82% | 4% | 6% |
+| ... in the last iteration | 168 | −10.2 | a mate | 80% | 89% | 2% | 2% |
+
+Most fail lows come when Psion already sees itself lost: in the last
+iteration, 70 to 80% of them come at 3 pawns down or worse, and the
+search again only shows the loss to be larger, often a mate. A level
+position that turns bad, where a better choice could still matter, makes
+only about 3 to 14% of the fail lows, which are themselves in under 1%
+of the searches at S. This is why the extensions after a fail low
+showed no gain in the matches (see "Results" in time-management.md).
+
 ## Move ordering
 
 Read from the code; not checked by running it. At each node the moves
