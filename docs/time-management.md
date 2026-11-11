@@ -76,7 +76,8 @@ fewer than N root moves in all, the search goes on until it has
 searched N, or H is reached, or a new iteration starts. If the first
 move (the previous best, searched again) is not done at the target, the
 search stops as before: finishing it would mostly confirm the move Psion
-already plays, and is the expensive case.
+already plays, and is the expensive case. With N = 4 this gained about
+50 Elo over the soft stop alone (see "Results").
 
 **After a fail low** (proposed, not implemented yet). A fail low comes
 only when all root moves have come back below the window, more than 20
@@ -204,3 +205,28 @@ All signals come from the write handlers in `nodes.cpp`:
    comes from the per-opening differences of the pairs.
 
 Changes to time management are only kept if a match shows they gain.
+
+## Results
+
+### Minimum root moves
+
+Self-play at 10+0.1 from `8moves_v3.pgn`, 1,000 pairs of games (each
+opening with both colours), on two machines. The reference is the soft
+stop alone (`TM Soft Stop` 40, everything else at the default); the test
+adds `TM Min Moves` 4, with `TM Max` 200 and `TM Max Share` 75 for H. The
+error is from the per-opening differences of the pairs (95%):
+
+| Machine | Pairs | Pentanomial (0 to 2 points) | Score | Elo | Time per move (test / reference) |
+|---|---|---|---|---|---|
+| 1 | 373 | 31, 40, 167, 60, 75 | 57.2% | +51 ± 21 | 0.206 / 0.202 s |
+| 2 | 627 | 25, 61, 333, 123, 85 | 57.3% | +51 ± 13 | 0.205 / 0.202 s |
+| **Both** | **1000** | **56, 101, 500, 183, 160** | **57.3%** | **+51 ± 11** | **0.205 / 0.202 s** |
+
+All 2,000 games ended normally, with no loss on time. The rule costs
+about 1.5% more time per move. In the logs of the second machine, it
+went on at the target in 12% of the searches (9,966 of about 81,500); 85%
+of those reached 4 root moves, and 15% were cut off at H first. The time
+spent on root moves 2 to 4 of an iteration whose first move is done is
+where new best moves mostly come from (see "What an extension after a
+drop buys" in the search notes), and it pays off far beyond its share of
+the clock.
