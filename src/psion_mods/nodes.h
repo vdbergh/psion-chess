@@ -42,7 +42,9 @@ namespace psion {
     // failed low.
     bool Nodes_FailLowOpen();
     // The root moves the current iteration has searched (not counting the
-    // one it is searching), each once.
+    // one it is searching), each once; the first counts as searched once
+    // its line has come. After a fail low the count starts again, for the
+    // search of all root moves again with alpha = -infinity.
     int Nodes_RootMovesDone();
 
     // Whether Psion is copying its board to the game board (DS:28AC, 64

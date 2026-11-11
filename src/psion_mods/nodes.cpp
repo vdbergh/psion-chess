@@ -52,11 +52,13 @@ namespace psion {
     static int line_value = 0, drop = 0;
     static unsigned char line_iteration = 0;
     static bool fail_low_open = false;
-    // The root moves made in the current iteration, each once (after a
-    // fail low all of them are searched again).
+    // The root moves made in the current iteration, each once, and
+    // whether its first line has come. A fail low starts them again: all
+    // root moves are then searched again, the old best first.
     static const int MAX_ROOT_MOVES = 256;
     static unsigned short root_moves[MAX_ROOT_MOVES];
     static int root_move_count = 0;
+    static bool first_move_done = false;
 
     static bool is_mate(int value) {
         return abs(value) / 24 >= 256; // as in MemoryAnalysis()
@@ -88,6 +90,7 @@ namespace psion {
         have_line = true;
         line_value = value;
         fail_low_open = false;
+        first_move_done = true;
         if (pv_size < PV_QUEUE) {
             pv_size++;
         } else {
@@ -120,11 +123,16 @@ namespace psion {
                 drop_known = false;
                 fail_low_open = false;
                 root_move_count = 0;
+                first_move_done = false;
             }
             iteration = it;
         }
         if (addr <= alpha_addr + 1 && addr + size > alpha_addr &&
             host_readw(MemBase + alpha_addr) == 0) {
+            if (!fail_low_open) {
+                root_move_count = 0;
+                first_move_done = false;
+            }
             fail_low_open = true;
         }
         if (addr <= ply_addr && addr + size > ply_addr) {
@@ -213,6 +221,7 @@ namespace psion {
         line_iteration = 0;
         fail_low_open = false;
         root_move_count = 0;
+        first_move_done = false;
     }
 
     bool Nodes_FirstLineDrop(int &d) {
@@ -225,8 +234,10 @@ namespace psion {
     }
 
     int Nodes_RootMovesDone() {
-        // all but the one being searched
-        return root_move_count > 0 ? root_move_count - 1 : 0;
+        // all but the one being searched; the first is done once its line
+        // has come, even if the next one has not been made yet
+        int done = root_move_count > 0 ? root_move_count - 1 : 0;
+        return first_move_done && done < 1 ? 1 : done;
     }
 
     unsigned char Nodes_Iteration() {

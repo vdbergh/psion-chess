@@ -1905,7 +1905,8 @@ namespace psion {
             if (!uci.target_reached) {
                 // An iteration that has searched its first move (the
                 // previous best) but too few others gets the time for
-                // them, up to the maximum.
+                // them, up to the maximum. After a fail low the count
+                // is that of the search again with alpha = -infinity.
                 uci.target_reached = true;
                 uci.min_moves_wait = done >= 1 &&
                                      done < time_params.min_moves;

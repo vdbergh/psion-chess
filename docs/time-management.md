@@ -79,7 +79,7 @@ search stops as before: finishing it would mostly confirm the move Psion
 already plays, and is the expensive case. With N = 4 this gained about
 50 Elo over the soft stop alone (see "Results").
 
-**After a fail low** (proposed, not implemented yet). A fail low comes
+**After a fail low** (stage 2 implemented, see below). A fail low comes
 only when all root moves have come back below the window, more than 20
 units under the previous score: the position has just turned out worse
 than Psion thought, the moment with the most risk of a blunder. Psion
@@ -96,17 +96,27 @@ unknown score. Two stages:
 2. Once the line has come, treat the re-search as a new iteration for
    the minimum root moves: alternatives are more likely than usual, and
    the moves after the first are cheap. As all root moves were made in
-   the first pass, the count of root moves must then start again at the
-   fail low; as implemented now, `TM Min Moves` never extends a
-   re-search.
+   the first pass, the count of root moves starts again at the fail low,
+   so `TM Min Moves` gives the re-search its N root moves too.
 
 Fail lows are rare (about 3% of the searches against Fairy-Max at
 10+0.1, about 1 in 80 in self-play), so even long extensions cost little
 time overall. For the same reason self-play shows the effect poorly; a
-match against other engines is needed. First steps: a probe match with
-`TM Fail Low Extension` high, to measure how long the re-search takes to
-show its first line and how often the move then changes (the matches so
-far stopped at S with the fail low open), then the reset of the count.
+match against other engines is needed.
+
+A probe match against Fairy-Max at 10+0.1 (400 games, `TM Soft Stop`
+40, `TM Fail Low Extension` 300, `TM Max` 300, `TM Max Share` 25, no
+`TM Min Moves`) measured both stages. Psion lost most of the games, so
+fail lows were common: 2,621 in 24,430 searches, but most of them came
+early (median 49 ms after `go`) and showed the re-search's first line
+after a median of 15 ms. Only 340 searches (1.4%) still had the fail low
+open at S. Stage 1 waited for the line in 335 of them, a median of 51 ms
+(27% of S) beyond S, and 5 were cut at H. But it never changed the move
+(0 of 335): the first line is that of the old best move, and the search
+stopped as soon as it came. When the line had come before S and the
+search went on (297 cases, a median of 56 ms more), the move changed in
+86 (29%), about twice as often as in an iteration without a fail low.
+So stage 1 only pays with stage 2.
 
 A fail high gets no extension: the move Psion would play is the one that
 failed high, which scored at least beta.
@@ -173,11 +183,10 @@ All signals come from the write handlers in `nodes.cpp`:
 - the root moves searched in the current iteration: the ply counter
   `7076` going from ply 1 (the root) to ply 2 makes a root move, which
   `5A6E` then holds; each is counted once per iteration
-  (`Nodes_RootMovesDone()`, not counting the move being searched). After
-  a fail low all root moves are searched again with alpha = −∞, and as
-  they have all been made in the first pass, the count is then complete:
-  `TM Min Moves` does not extend a search during that re-search
-  (`TM Fail Low Extension` is for that case).
+  (`Nodes_RootMovesDone()`, not counting the move being searched; the
+  first counts as searched once its line has come, even before the
+  next move is made). After a fail low all root moves are searched again
+  with alpha = −∞, so the count starts again at the fail low.
 
 ## Measuring and tuning
 
