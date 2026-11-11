@@ -1246,6 +1246,9 @@ namespace psion {
         unsigned int thinking_start; // when Psion started to think
         bool movenow_sent;
         unsigned int movenow_ticks;
+        bool below_window;           // when MOVE-NOW was pressed (see
+        unsigned short below_alpha;  // Nodes_BelowWindow()), and the
+        int below_depth;             // depth of that iteration
         std::string held_move; // found before "stop" in infinite mode
         unsigned int last_action;
         bool action_done;        // its effect seen: no need to wait
@@ -1344,7 +1347,20 @@ namespace psion {
     // set-up, and a few dozen moves made in some book positions).
     const unsigned long BOOK_MOVE_NODES = 100;
 
+    // Ends the search: Psion plays the best move found so far. Whether
+    // that move was below the window is kept from now, as Psion copies its
+    // line again when it moves.
+    static void press_move_now(unsigned int now) {
+        search_speed(false);
+        uci.below_window = Nodes_BelowWindow(uci.below_alpha);
+        uci.below_depth = IterationDepth(Nodes_Iteration());
+        press(KBD_m);
+        uci.movenow_sent = true;
+        uci.movenow_ticks = now;
+    }
+
     static void finish_search(const std::string &move) {
+        int alpha_cp;
         search_speed(false);
         uci.search = SEARCH_NONE;
         game_state.thinking = false;
@@ -1373,6 +1389,19 @@ namespace psion {
                 // bound.
                 info += " lowerbound pv " + move;
             }
+            uci_send("%s\n", info.c_str());
+        } else if (!uci.info_move.empty() && move == uci.info_move &&
+                   search_nodes() > 0 && uci.below_window &&
+                   ScoreCentipawns(uci.below_alpha, alpha_cp)) {
+            // Stopped while the move played was below the window: its
+            // first search in the iteration came back without a line, or
+            // the root failed low and the search again has shown nothing
+            // yet. Its score is at most the window's lower end, from the
+            // iteration after that of the last line.
+            uci.info_depth = uci.below_depth;
+            uci.info_seldepth = std::max(uci.info_seldepth, uci.below_depth);
+            std::string info = info_head(false, alpha_cp) +
+                               " upperbound pv " + move;
             uci_send("%s\n", info.c_str());
         } else if (!uci.info_move.empty() && move == uci.info_move &&
                    search_nodes() > 0) {
@@ -1635,10 +1664,7 @@ namespace psion {
             if (uci.search == SEARCH_HOLDING) {
                 finish_search(uci.held_move);
             } else if (uci.search == SEARCH_RUNNING && !uci.movenow_sent) {
-                search_speed(false);
-                press(KBD_m);
-                uci.movenow_sent = true;
-                uci.movenow_ticks = GetTicks();
+                press_move_now(GetTicks());
             }
         } else if (cmd == "setoption") {
             std::string name, value;
@@ -2013,10 +2039,7 @@ namespace psion {
                 report_move("0000");
             } else if (!uci.movenow_sent &&
                        (time_up(now) || search_limit_reached())) {
-                search_speed(false);
-                press(KBD_m);
-                uci.movenow_sent = true;
-                uci.movenow_ticks = now;
+                press_move_now(now);
             } else if (uci.movenow_sent &&
                        now - uci.movenow_ticks > MOVE_TIMEOUT_MS) {
                 say("Psion did not move\n");
@@ -2196,6 +2219,7 @@ namespace psion {
             uci.info_depth = 0;
             uci.info_seldepth = 0;
             uci.movenow_sent = false;
+            uci.below_window = false;
             uci.iteration = 0;
             uci.iteration_started = false;
             uci.target_reached = false;

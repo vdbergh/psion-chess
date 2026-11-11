@@ -49,6 +49,12 @@ namespace psion {
     // Whether the current iteration, or its search again after a fail
     // low, has shown a line: a root move came back inside the window.
     bool Nodes_HaveLine();
+    // Whether the move Psion would play has come back below the current
+    // iteration's window: its first move (the previous best) was searched
+    // without a line, or the root failed low and the search again has
+    // not shown one yet. Then alpha is the window's lower end (DS:713A,
+    // with the bias 8000), an upper bound of that move's score.
+    bool Nodes_BelowWindow(unsigned short &alpha);
 
     // Whether Psion is copying its board to the game board (DS:28AC, 64
     // bytes, copied whole when a move is played): a word of it has been

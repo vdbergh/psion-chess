@@ -59,6 +59,10 @@ namespace psion {
     static unsigned short root_moves[MAX_ROOT_MOVES];
     static int root_move_count = 0;
     static bool line_seen = false;
+    // The root alpha of the window (DS:713A, v - 20 units, with the bias)
+    // and the iteration that set it; 0 for -infinity is not kept.
+    static unsigned short window_alpha = 0;
+    static unsigned char window_iteration = 0;
 
     static bool is_mate(int value) {
         return abs(value) / 24 >= 256; // as in MemoryAnalysis()
@@ -127,13 +131,18 @@ namespace psion {
             }
             iteration = it;
         }
-        if (addr <= alpha_addr + 1 && addr + size > alpha_addr &&
-            host_readw(MemBase + alpha_addr) == 0) {
-            if (!fail_low_open) {
-                root_move_count = 0;
-                line_seen = false;
+        if (addr <= alpha_addr + 1 && addr + size > alpha_addr) {
+            unsigned short alpha = host_readw(MemBase + alpha_addr);
+            if (alpha == 0) {
+                if (!fail_low_open) {
+                    root_move_count = 0;
+                    line_seen = false;
+                }
+                fail_low_open = true;
+            } else {
+                window_alpha = alpha;
+                window_iteration = host_readb(MemBase + iteration_addr);
             }
-            fail_low_open = true;
         }
         if (addr <= ply_addr && addr + size > ply_addr) {
             unsigned int new_ply = host_readb(MemBase + ply_addr) / 2;
@@ -222,6 +231,8 @@ namespace psion {
         fail_low_open = false;
         root_move_count = 0;
         line_seen = false;
+        window_alpha = 0;
+        window_iteration = 0;
     }
 
     bool Nodes_FirstLineDrop(int &d) {
@@ -238,6 +249,12 @@ namespace psion {
         // has come, even if the next one has not been made yet
         int done = root_move_count > 0 ? root_move_count - 1 : 0;
         return line_seen && done < 1 ? 1 : done;
+    }
+
+    bool Nodes_BelowWindow(unsigned short &alpha) {
+        alpha = window_alpha;
+        return window_alpha != 0 && window_iteration == iteration &&
+               (fail_low_open || (root_move_count >= 2 && !line_seen));
     }
 
     bool Nodes_HaveLine() {

@@ -237,8 +237,18 @@ namespace psion {
                 a.score = -std::max(1, plies / 2);
             }
         } else {
-            a.score = (value < 0 ? -1 : 1) * ((units * 100 + 12) / 24);
+            ScoreCentipawns(score, a.score);
         }
+        return true;
+    }
+
+    bool ScoreCentipawns(unsigned short score, int &cp) {
+        int value = (int)score - 0x8000;
+        int units = abs(value);
+        if (units / 24 >= 256) {
+            return false;
+        }
+        cp = (value < 0 ? -1 : 1) * ((units * 100 + 12) / 24);
         return true;
     }
 

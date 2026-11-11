@@ -185,6 +185,9 @@ namespace psion {
     // moves to the mate. False if there is no move.
     bool MemoryAnalysis(unsigned short score, const unsigned short moves[8],
                         Analysis &a);
+    // A score from Psion's memory (bias 8000, 24 per pawn) in centipawns,
+    // or false if it is a mate score.
+    bool ScoreCentipawns(unsigned short score, int &cp);
 
     // The nominal depth of an iteration from Psion's iteration counter
     // (5A67): the ply at which it stops unless it extends (always odd, 15

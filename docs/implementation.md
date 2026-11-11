@@ -173,7 +173,14 @@ about 0.6%. Nearly all the time goes to emulating the CPU.
   other than that of the last line, a last `info` line gives that move
   alone, with the last score as a lower bound, e.g. `info depth 7
   seldepth 11 time 2950 score cp -10 lowerbound pv f3e5`. So does a promotion with which
-  the line does not work.
+  the line does not work. Should the search be stopped while the move played is
+  below the window of the iteration under way (its search in that
+  iteration came back with no line, or the root failed low and the
+  search again has shown nothing yet), its score is at most the
+  window's lower end, 20 units (83 cp) below the last score: a last
+  `info` line gives that move alone with that upper bound and the depth
+  of that iteration, e.g. `info depth 7 seldepth 9 time 180 score cp
+  -704 upperbound pv g8g7`.
 - `2` sets 2-player mode, in which moves for both sides can be entered.
 - `c` (Compute) starts a search, `m` (Move now) ends it when the time
   allocated to the move is used up.
