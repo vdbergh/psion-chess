@@ -569,6 +569,29 @@ only about 3 to 14% of the fail lows, which are themselves in under 1%
 of the searches at S. This is why the extensions after a fail low
 showed no gain in the matches (see "Results" in time-management.md).
 
+The fail lows that are seen are biased towards lost positions, because
+they are the quick ones: when the opponent has a threat that refutes
+every root move, the first pass (from the start of the iteration to the
+fail low) is over in a few ms. By the length of the first pass, with
+Psion's score before the fail low (pawns, from its side; "level" is
+within ±1):
+
+| First pass | Against Fairy-Max: fail lows | median | level | ≤ −3 | Self-play, 8moves_v3: fail lows | median | level | ≤ −3 |
+|---|---|---|---|---|---|---|---|---|
+| under 10 ms | 1,133 | −6.3 | 8% | 70% | 413 | −7.5 | 8% | 71% |
+| 10 to 30 ms | 713 | −4.1 | 15% | 57% | 202 | −5.0 | 15% | 58% |
+| 30 to 60 ms | 376 | −2.4 | 20% | 46% | 132 | −3.4 | 21% | 53% |
+| 60 to 120 ms | 299 | −1.4 | 27% | 36% | 107 | −2.0 | 21% | 47% |
+| over 120 ms | 100 | +0.2 | 43% | 18% | 41 | −0.3 | 46% | 31% |
+
+(The side at 10+0.1 against 40+0.4 shows the same, less sharply: level
+from 10% to 32%.) The slow first passes, in more level positions, are
+the ones MOVE-NOW most often cuts off before all root moves are
+searched: they end as a first move below the window with no fail low
+yet, or are not seen at all. Searching on until a root move is inside
+the window (`TM Min Moves Window`, see time-management.md) lets more of
+them finish.
+
 ## Move ordering
 
 Read from the code; not checked by running it. At each node the moves
