@@ -82,6 +82,8 @@ namespace psion {
         int min_moves;          // N: at the target, an iteration that has
                                 // searched its first root move goes on
                                 // until it has searched N (0: off)
+        int min_moves_window;   // 1: ... and until a move has come back
+                                // inside the window (0: off)
     };
     TimeParams DefaultTimeParams();
 

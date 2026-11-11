@@ -79,6 +79,19 @@ search stops as before: finishing it would mostly confirm the move Psion
 already plays, and is the expensive case. With N = 4 this gained about
 50 Elo over the soft stop alone (see "Results").
 
+**Minimum root moves: the window** (implemented, `TM Min Moves Window`,
+not tested yet). In about 1% of the searches the last iteration's first
+move has come back below the window when the search stops (see "How
+often" in the search notes): the old best has dropped by more than 20
+units, but no line shows it, so neither the drop extension nor the
+fail-low extension applies, and Psion would play that move. With the
+window rule the search also goes on, up to H, until a root move has come
+back inside the window: another move with a new line, or, once all have
+failed and Psion has declared the fail low, the first line of the search
+again (after which the N root moves are counted from the fail low). A
+fail low open at the target counts as a first move done, so the rule
+also covers what `TM Fail Low Extension` was for.
+
 **After a fail low** (stage 2 implemented, see below). A fail low comes
 only when all root moves have come back below the window, more than 20
 units under the previous score: the position has just turned out worse
@@ -146,14 +159,16 @@ stop, no extensions); the starting values are those proposed here:
 | m | `TM Max` | 100 | 100–1000 | 300 | maximum H, as a share of T |
 | r | `TM Max Share` | 100 | 1–100 | 25 | maximum H, as a share of the remaining time |
 | N | `TM Min Moves` | 0 | 0–100 | 4 | at the target, go on until N root moves are searched (0: off) |
+| | `TM Min Moves Window` | 0 | 0–1 | 1 | 1: also go on until a root move has come back inside the window |
 
 As H caps everything, `TM Target` and the extensions only take effect
 with `TM Max` raised as well. With `--verbose` the adapter logs why it
 pressed MOVE-NOW: "Time up after N ms: target E%" (with ", drop" or ",
 fail low" when extended), or "iteration NN started after N ms" for the
 soft stop; with `TM Min Moves` it logs "Target after N ms with K root
-moves searched" when it goes on, and ", min moves done" (or ", min
-moves cut" if H came first) at the end. In 8 games against Fairy-Max
+moves searched" when it goes on (with ", no line" when no move is
+inside the window yet, and ", fail low" when the fail low is open), and
+", min moves done" (or ", min moves cut" if H came first) at the end. In 8 games against Fairy-Max
 at 10+0.1 with the starting values, 226 searches ended by the soft stop, 208 at the target, 24
 extended after a drop and 1 after a fail low, with no loss on time.
 
@@ -189,7 +204,9 @@ All signals come from the write handlers in `nodes.cpp`:
   (`Nodes_RootMovesDone()`, not counting the move being searched; the
   first counts as searched once its line has come, even before the
   next move is made). After a fail low all root moves are searched again
-  with alpha = −∞, so the count starts again at the fail low.
+  with alpha = −∞, so the count starts again at the fail low;
+- whether a root move has come back inside the window: a line in the
+  current iteration, or since the last fail low (`Nodes_HaveLine()`).
 
 ## Measuring and tuning
 

@@ -58,7 +58,7 @@ namespace psion {
     static const int MAX_ROOT_MOVES = 256;
     static unsigned short root_moves[MAX_ROOT_MOVES];
     static int root_move_count = 0;
-    static bool first_move_done = false;
+    static bool line_seen = false;
 
     static bool is_mate(int value) {
         return abs(value) / 24 >= 256; // as in MemoryAnalysis()
@@ -90,7 +90,7 @@ namespace psion {
         have_line = true;
         line_value = value;
         fail_low_open = false;
-        first_move_done = true;
+        line_seen = true;
         if (pv_size < PV_QUEUE) {
             pv_size++;
         } else {
@@ -123,7 +123,7 @@ namespace psion {
                 drop_known = false;
                 fail_low_open = false;
                 root_move_count = 0;
-                first_move_done = false;
+                line_seen = false;
             }
             iteration = it;
         }
@@ -131,7 +131,7 @@ namespace psion {
             host_readw(MemBase + alpha_addr) == 0) {
             if (!fail_low_open) {
                 root_move_count = 0;
-                first_move_done = false;
+                line_seen = false;
             }
             fail_low_open = true;
         }
@@ -221,7 +221,7 @@ namespace psion {
         line_iteration = 0;
         fail_low_open = false;
         root_move_count = 0;
-        first_move_done = false;
+        line_seen = false;
     }
 
     bool Nodes_FirstLineDrop(int &d) {
@@ -237,7 +237,11 @@ namespace psion {
         // all but the one being searched; the first is done once its line
         // has come, even if the next one has not been made yet
         int done = root_move_count > 0 ? root_move_count - 1 : 0;
-        return first_move_done && done < 1 ? 1 : done;
+        return line_seen && done < 1 ? 1 : done;
+    }
+
+    bool Nodes_HaveLine() {
+        return line_seen;
     }
 
     unsigned char Nodes_Iteration() {

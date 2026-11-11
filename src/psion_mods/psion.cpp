@@ -1111,6 +1111,7 @@ namespace psion {
         {"TM Max", &TimeParams::max, 100, 1000},
         {"TM Max Share", &TimeParams::max_share, 1, 100},
         {"TM Min Moves", &TimeParams::min_moves, 0, 100},
+        {"TM Min Moves Window", &TimeParams::min_moves_window, 0, 1},
     };
     static const int TIME_OPTION_COUNT =
         sizeof(TIME_OPTIONS) / sizeof(TIME_OPTIONS[0]);
@@ -1902,21 +1903,27 @@ namespace psion {
                                                    time_params, e),
                                    setup)) {
             int done = Nodes_RootMovesDone();
+            bool no_line = time_params.min_moves_window && !Nodes_HaveLine();
+            bool more = done < time_params.min_moves || no_line;
             if (!uci.target_reached) {
                 // An iteration that has searched its first move (the
-                // previous best) but too few others gets the time for
-                // them, up to the maximum. After a fail low the count
-                // is that of the search again with alpha = -infinity.
+                // previous best) but too few others, or with "TM Min
+                // Moves Window" no move inside the window yet, gets the
+                // time for them, up to the maximum. After a fail low
+                // (all root moves searched) the count is that of the
+                // search again with alpha = -infinity.
                 uci.target_reached = true;
-                uci.min_moves_wait = done >= 1 &&
-                                     done < time_params.min_moves;
+                uci.min_moves_wait =
+                    (done >= 1 || (no_line && Nodes_FailLowOpen())) && more;
                 uci.wait_iteration = Nodes_Iteration();
                 if (uci.min_moves_wait) {
-                    say("Target after %u ms with %d root moves searched\n",
-                        elapsed, done);
+                    say("Target after %u ms with %d root moves "
+                        "searched%s%s\n",
+                        elapsed, done, no_line ? ", no line" : "",
+                        Nodes_FailLowOpen() ? ", fail low" : "");
                 }
             }
-            if (uci.min_moves_wait && done < time_params.min_moves &&
+            if (uci.min_moves_wait && more &&
                 Nodes_Iteration() == uci.wait_iteration &&
                 elapsed < MoveNowTime(MaxThinkTime(uci.allocated_ms,
                                                    uci.remaining_ms,
@@ -1929,8 +1936,7 @@ namespace psion {
                 drop_known && drop >= time_params.drop ? ", drop" : "",
                 Nodes_FailLowOpen() ? ", fail low" : "",
                 uci.min_moves_wait
-                    ? (done >= time_params.min_moves ? ", min moves done"
-                                                     : ", min moves cut")
+                    ? (more ? ", min moves cut" : ", min moves done")
                     : "");
             return true;
         }

@@ -615,6 +615,7 @@ static void test_scaled_think_time(){
 static void test_max_think_time(){
     TimeParams tp=DefaultTimeParams();
     CHECK_EQ(tp.min_moves,0);
+    CHECK_EQ(tp.min_moves_window,0);
     // the defaults: the plain allocation
     CHECK_EQ(MaxThinkTime(1000,60000,10,tp),990u);
     tp.max=200;

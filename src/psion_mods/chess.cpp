@@ -567,6 +567,7 @@ namespace psion {
         tp.max = 100;
         tp.max_share = 100;
         tp.min_moves = 0;
+        tp.min_moves_window = 0;
         return tp;
     }
 

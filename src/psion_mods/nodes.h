@@ -46,6 +46,9 @@ namespace psion {
     // its line has come. After a fail low the count starts again, for the
     // search of all root moves again with alpha = -infinity.
     int Nodes_RootMovesDone();
+    // Whether the current iteration, or its search again after a fail
+    // low, has shown a line: a root move came back inside the window.
+    bool Nodes_HaveLine();
 
     // Whether Psion is copying its board to the game board (DS:28AC, 64
     // bytes, copied whole when a move is played): a word of it has been
