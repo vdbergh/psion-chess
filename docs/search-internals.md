@@ -476,9 +476,9 @@ one with `5A67 & 3` = 0: there `704E` is set to `F000` and `704C` to 0
 
 **How often.** Writes of 0 to `713A` (fail low) and to `704C` (fail high)
 counted per search, with the iteration counter (experiment not kept).
-In self-play from the start position (80 plies at each movetime) they
-are rare, but against another engine from unbalanced openings they are
-not: Psion against Fairy-Max 5.0b (H.G. Muller's micro-Max derivative,
+A first count, in one self-play game from the start position (80 plies
+at each movetime), found almost none, but that was too small a sample
+(see the probe matches below). Psion against Fairy-Max 5.0b (H.G. Muller's micro-Max derivative,
 through a small UCI front end), 40 games at 10+0.1 from the UHO openings
 (19.5 to 20.5):
 
@@ -496,6 +496,26 @@ inside the window. A fail low in the last iteration, where MOVE-NOW can
 stop the second search, came in about one search in 29 against
 Fairy-Max; how often MOVE-NOW actually cut that search short, and whether
 finishing it would change the move, these counts do not show.
+
+Probe matches at 10+0.1 (`TM Soft Stop` 40, no fail-low extension; a
+fail low is counted when it follows a line of an earlier iteration;
+"open at S" means no line had come at the target):
+
+| Games | Searches | Fail lows | ... in the last iteration | ... open at S |
+|---|---|---|---|---|
+| Self-play, 100 games, 8moves_v3 | 13,876 | 895 (6.5%) | 277 (2.0%) | 124 (0.9%) |
+| Self-play, 100 games, UHO_XXL_+1.00_+1.29 | 12,648 | 847 (6.7%) | 277 (2.2%) | 101 (0.8%) |
+| Self-play, 100 games, 8moves_v3, 10+0.1 against 40+0.4: side at 10+0.1 | 6,451 | 820 (12.7%) | 262 (4.1%) | 95 (1.5%) |
+| ... side at 40+0.4 (scored 76.5%) | 6,477 | 311 (4.8%) | 72 (1.1%) | 23 (0.4%) |
+| Against Fairy-Max, 400 games, 8moves_v3 (Psion scored 32%) | 24,430 | 2,621 (10.7%) | 829 (3.4%) | 340 (1.4%) |
+
+Fail lows come mostly to the weaker side, which finds out late what the
+stronger one has seen: twice as often as in self-play, against Fairy-Max
+or against Psion with four times the time alike. The unbalanced UHO
+openings change nothing. Most fail lows come early in the search
+(median 22 to 49 ms after `go`) and show the re-search's first line
+within a few tens of ms; when that line came before S and the search
+went on, the move changed in about a quarter of the cases.
 
 ## Move ordering
 

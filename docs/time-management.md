@@ -99,10 +99,12 @@ unknown score. Two stages:
    the first pass, the count of root moves starts again at the fail low,
    so `TM Min Moves` gives the re-search its N root moves too.
 
-Fail lows are rare (about 3% of the searches against Fairy-Max at
-10+0.1, about 1 in 80 in self-play), so even long extensions cost little
-time overall. For the same reason self-play shows the effect poorly; a
-match against other engines is needed.
+A fail low still open at S is rare: about 0.9% of the searches in
+self-play at 10+0.1, 1.4% for Psion against Fairy-Max, and 1.5% for the
+weaker side in self-play with one side at four times the time (see "How
+often" in the search notes). So even long extensions cost little time
+overall, but they also act in few searches, and any gain is hard to
+measure.
 
 A probe match against Fairy-Max at 10+0.1 (400 games, `TM Soft Stop`
 40, `TM Fail Low Extension` 300, `TM Max` 300, `TM Max Share` 25, no
@@ -117,7 +119,7 @@ stopped as soon as it came. When the line had come before S and the
 search went on (297 cases, a median of 56 ms more), the move changed in
 86 (29%), about twice as often as in an iteration without a fail low.
 So stage 1 only pays with stage 2. Both together showed no effect in
-self-play, where fail lows are too rare (see "Results").
+self-play, where they act in too few searches (see "Results").
 
 A fail high gets no extension: the move Psion would play is the one that
 failed high, which scored at least beta.
@@ -203,10 +205,13 @@ All signals come from the write handlers in `nodes.cpp`:
      waste);
    - the extension after a drop;
    - the extension after a fail low.
-4. **Opponents.** Self-play shows almost no fail lows (one in 80
-   searches, see "How often" in the search notes), so it would test the
-   extensions poorly. Use other engines instead, such as Fairy-Max, TSCP
-   and Sargon, from the UHO openings, played in pairs.
+4. **Opponents.** Fail lows come mostly to the weaker side: against a
+   stronger opponent (another engine, or Psion with more time) Psion
+   fails low in about twice as many searches as in self-play, but a
+   fail low open at S stays rare (1.5% against 0.9%, see "How often" in
+   the search notes). UHO openings do not change that. Other engines,
+   such as Fairy-Max, TSCP and Sargon, played in pairs, remain a check
+   that a gain is not one of self-play only.
 5. **Time controls.** 10+0.1 for the number of games, and a longer one
    such as 60+0.6 to check that the gain is not lost when Psion searches
    deeper. The bot's own time controls matter most.
@@ -257,8 +262,11 @@ Share` 75, so with H = 2 · T the extension means "up to H":
 | **Both** | **1000** | **74, 122, 592, 129, 83** | **50.6%** | **+4 ± 10** | **0.204 / 0.204 s** |
 
 All 2,000 games ended normally. No effect shows, and little could be
-expected: self-play has a fail low in about 1 search in 80, against 1 in
-9 in the probe match against Fairy-Max. In the logs of the second
-machine, only 148 of the test's 83,279 searches (0.18%) were still
-waiting for the line of a fail low when H came. The rules cost nothing
-in self-play; whether they gain must be measured against other engines.
+expected: the rules act only in the searches with a fail low still open
+at S, about 0.9% of them in self-play (see "How often" in the search
+notes). In the logs of the second machine, 148 of the test's 83,279
+searches (0.18%) were still waiting for the line of a fail low when H
+came. The rules cost nothing. A stronger opponent would make those
+searches only about 1.7 times as common, so a test with clearly more
+power is out of reach; the rules are kept because they cost nothing and
+the measurements say they should help.
