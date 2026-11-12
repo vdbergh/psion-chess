@@ -122,7 +122,8 @@ the re-search has produced its line or not, the search goes on until H,
 or until a new iteration starts. `TM Fail Low Cap` m_low raises H for
 such an iteration to min(m_low · T, r · remaining time), if m_low is
 larger than m (some engines allow four times the usual time in an
-emergency); it has not been measured yet.
+emergency); at 400 it showed no gain (−1 ± 5 Elo, see "Results"), so
+it stays at 0.
 
 A fail low still open at S is rare: about 0.9% of the searches in
 self-play at 10+0.1, 1.4% for Psion against Fairy-Max, and 1.5% for the
@@ -401,3 +402,40 @@ to twice the time is better more often.
 This version (`TM Soft Stop` 40, `TM Min Moves` 4, `TM Min Moves Window`
 1, `TM Fail Low Max` 1, `TM Max` 200, `TM Max Share` 75) is the
 reference for the next matches.
+
+### Four times T after a fail low
+
+The reference above, plus `TM Fail Low Cap` 400: an iteration that has
+failed low goes on until H = min(4 · T, 75% of the remaining time)
+instead of 2 · T. As the effect was expected to be small, the match had
+4,000 pairs:
+
+| Machine | Pairs | Pentanomial (0 to 2 points) | Score | Elo | Time per move (test / reference) |
+|---|---|---|---|---|---|
+| 1 | 1492 | 165, 225, 707, 242, 153 | 49.9% | −1 ± 10 | 0.205 / 0.204 s |
+| 2 | 2508 | 142, 271, 1698, 261, 136 | 49.8% | −2 ± 6 | 0.206 / 0.205 s |
+| **Both** | **4000** | **307, 496, 2405, 503, 289** | **49.82%** | **−1 ± 5** | **0.205 / 0.204 s** |
+
+All 8,000 games ended normally. No gain shows, so `TM Fail Low Cap` is
+not kept. The rule did what it was meant to do. In the logs of the
+second machine (about 352,500 searches per side):
+
+| | Test (4 · T) | Reference (2 · T) |
+|---|---|---|
+| Waits with the fail low still open | 2,996 | 2,849 |
+| ... cut off at H before the line came | 71 (2%) | 1,103 (39%) |
+| Waits after the line had come | 2,240 | 2,146 |
+| ... that went on until H | 344 (15%) | 1,512 (70%) |
+| Moves played that had failed low: fail low open | 71 | 1,103 |
+| ... first move below the window, no fail low yet | 1,153 | 1,132 |
+| Games with such a move | 19.1% | 28.2% |
+
+So with 4 · T the search again after a fail low nearly always gets its
+first line, and the games with a move played that had failed low drop
+from 28% to 19%; but that gains nothing. Playing the old best with the
+fail low still open costs little: most of these fail lows come in
+positions already lost (see "In what positions" in the search notes).
+What gains is going on after a fail low at all, and 2 · T is enough for
+that. The other kind, a first move that came back below the window with
+no fail low declared yet, is not touched by this rule, as the iteration
+has not failed low yet.
