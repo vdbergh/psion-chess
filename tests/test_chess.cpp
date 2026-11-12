@@ -616,6 +616,7 @@ static void test_max_think_time(){
     TimeParams tp=DefaultTimeParams();
     CHECK_EQ(tp.min_moves,0);
     CHECK_EQ(tp.min_moves_window,0);
+    CHECK_EQ(tp.fail_low_max,0);
     // the defaults: the plain allocation
     CHECK_EQ(MaxThinkTime(1000,60000,10,tp),990u);
     tp.max=200;
@@ -623,6 +624,24 @@ static void test_max_think_time(){
     tp.max_share=75;
     CHECK_EQ(MaxThinkTime(1000,2000,10,tp),1490u);
     CHECK_EQ(MaxThinkTime(0,0,10,tp),MIN_THINK_MS);
+}
+
+static void test_fail_low_max_time(){
+    TimeParams tp=DefaultTimeParams();
+    CHECK_EQ(tp.fail_low_cap,0);
+    tp.max=200;
+    // the default: H
+    CHECK_EQ(FailLowMaxTime(1000,60000,10,tp),1990u);
+    tp.fail_low_cap=400;
+    CHECK_EQ(FailLowMaxTime(1000,60000,10,tp),3990u);
+    // never below H
+    tp.fail_low_cap=150;
+    CHECK_EQ(FailLowMaxTime(1000,60000,10,tp),1990u);
+    // the share of the remaining time still applies
+    tp.fail_low_cap=400;
+    tp.max_share=75;
+    CHECK_EQ(FailLowMaxTime(1000,4000,10,tp),2990u);
+    CHECK_EQ(MaxThinkTime(1000,4000,10,tp),1990u);
 }
 
 static void test_extension_percent(){
@@ -1481,6 +1500,7 @@ int main(){
     test_clock_time();
     test_scaled_think_time();
     test_max_think_time();
+    test_fail_low_max_time();
     test_extension_percent();
     test_move_now_time();
     test_depth_reached();

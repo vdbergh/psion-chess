@@ -80,8 +80,8 @@ already plays, and is the expensive case. With N = 4 this gained about
 50 Elo over the soft stop alone (see "Results").
 
 **Minimum root moves: the window** (implemented, `TM Min Moves Window`,
-+9 ± 10 Elo in a first match, see "Results"). In about 1% of the
-searches the last iteration's first move has come back below the
++9 ± 10 Elo in a first match, +2 ± 7 in a second, see "Results"). In
+about 1% of the searches the last iteration's first move has come back below the
 window when the search stops (see "How often" in the search notes): the
 old best has dropped by more than 20 units, but no line shows it, so
 neither the drop extension nor the fail-low extension applies, and
@@ -112,6 +112,17 @@ unknown score. Two stages:
    the moves after the first are cheap. As all root moves were made in
    the first pass, the count of root moves starts again at the fail low,
    so `TM Min Moves` gives the re-search its N root moves too.
+
+**After a fail low: on to H** (implemented, `TM Fail Low Max`, +12 ± 7
+Elo, see "Results"). After a fail low Psion's move ordering is probably
+broken: the old best, searched first, has just been refuted, and the
+moves that follow were ordered for a position Psion judged better. So
+when the target is reached in an iteration that has failed low, whether
+the re-search has produced its line or not, the search goes on until H,
+or until a new iteration starts. `TM Fail Low Cap` m_low raises H for
+such an iteration to min(m_low · T, r · remaining time), if m_low is
+larger than m (some engines allow four times the usual time in an
+emergency); it has not been measured yet.
 
 A fail low still open at S is rare: about 0.9% of the searches in
 self-play at 10+0.1, 1.4% for Psion against Fairy-Max, and 1.5% for the
@@ -161,6 +172,8 @@ stop, no extensions); the starting values are those proposed here:
 | r | `TM Max Share` | 100 | 1–100 | 25 | maximum H, as a share of the remaining time |
 | N | `TM Min Moves` | 0 | 0–100 | 4 | at the target, go on until N root moves are searched (0: off) |
 | | `TM Min Moves Window` | 0 | 0–1 | 1 | 1: also go on until a root move has come back inside the window |
+| | `TM Fail Low Max` | 0 | 0–1 | 1 | 1: at the target, an iteration that has failed low goes on until H |
+| m_low | `TM Fail Low Cap` | 0 | 0–1000 | 0 | H for an iteration that has failed low, as a share of T, if larger than m (0: m) |
 
 As H caps everything, `TM Target` and the extensions only take effect
 with `TM Max` raised as well. With `--verbose` the adapter logs why it
@@ -168,9 +181,10 @@ pressed MOVE-NOW: "Time up after N ms: target E%" (with ", drop" or ",
 fail low" when extended), or "iteration NN started after N ms" for the
 soft stop; with `TM Min Moves` it logs "Target after N ms with K root
 moves searched" when it goes on (with ", no line" when no move is
-inside the window yet, and ", fail low" when the fail low is open), and
-", min moves done" (or ", min moves cut" if H came first) at the end. In 8 games against Fairy-Max
-at 10+0.1 with the starting values, 226 searches ended by the soft stop, 208 at the target, 24
+inside the window yet, ", fail low" when the fail low is open, and ",
+failed low" when it has been resolved but `TM Fail Low Max` applies),
+and ", min moves done" (or ", min moves cut" if H came first) at the
+end. In 8 games against Fairy-Max at 10+0.1 with the starting values, 226 searches ended by the soft stop, 208 at the target, 24
 extended after a drop and 1 after a fail low, with no loss on time.
 
 ### When the rules apply
@@ -336,6 +350,54 @@ most of them at the target, playing the old best without knowing how
 far it had dropped.
 
 As adding games to a match after seeing a borderline result would bias
-it, a second match of 2,000 pairs with new openings is run as an
+it, a second match of 2,000 pairs with new openings was run as an
 independent check (twice as long, for more power), and the decision
-rests on that one.
+rests on that one:
+
+| Machine | Pairs | Pentanomial (0 to 2 points) | Score | Elo | Time per move (test / reference) |
+|---|---|---|---|---|---|
+| 1 | 746 | 75, 115, 379, 108, 69 | 49.4% | −4 ± 13 | 0.205 / 0.204 s |
+| 2 | 1254 | 67, 124, 845, 138, 80 | 50.8% | +6 ± 8 | 0.205 / 0.203 s |
+| **Both** | **2000** | **142, 239, 1224, 246, 149** | **50.26%** | **+2 ± 7** | **0.205 / 0.203 s** |
+
+All games but one ended normally: in one, Psion declared a draw by
+repetition that ignored the castling rights (see the README), and the
+adapter sent `0000`. The second match shows no gain (LOS 70%), so the
+window is not shown to gain on its own.
+
+### On to H after a fail low
+
+The window package of the matches above, plus `TM Fail Low Max` 1 (at
+the target, an iteration that has failed low goes on until H), against
+the same reference (`TM Min Moves` 4 without the reset). Both have `TM
+Soft Stop` 40, `TM Min Moves` 4, `TM Max` 200 and `TM Max Share` 75, so
+H = 2 · T:
+
+| Machine | Pairs | Pentanomial (0 to 2 points) | Score | Elo | Time per move (test / reference) |
+|---|---|---|---|---|---|
+| 1 | 746 | 73, 100, 358, 129, 86 | 51.8% | +13 ± 13 | 0.204 / 0.203 s |
+| 2 | 1254 | 58, 131, 820, 159, 86 | 51.7% | +12 ± 8 | 0.206 / 0.204 s |
+| **Both** | **2000** | **131, 231, 1178, 288, 172** | **51.74%** | **+12 ± 7** | **0.205 / 0.204 s** |
+
+All 4,000 games ended normally (LOS above 99.9%). The rule costs about
+0.5% more time per move. As the window alone showed +2 ± 7, most of the gain
+is that of going on to H. In the logs of the second machine, the test
+went on at the target after a fail low in 2,460 of its 172,475 searches
+(1.4%): 1,363 with the fail low still open, of which 551 (40%) were cut
+off at H, and 1,097 after the line had come, of which 694 (63%) reached
+H.
+
+The gain does not seem to come from playing fewer moves that had failed
+low. In the same logs, the test played such a move in 1,086 searches (0.63%):
+551 with the fail low still open, and 535 where the first move had come
+back below the window but the search stopped before Psion declared the
+fail low. The reference played one with the fail low open in 1,151
+searches (0.67%); its second kind does not show in its logs. In both,
+about 27% of the games had such a move (for the test, 6% had one in the
+first 30 moves). The gain more likely comes from the extra time itself:
+after a fail low the position is uncertain, and the move chosen with up
+to twice the time is better more often.
+
+This version (`TM Soft Stop` 40, `TM Min Moves` 4, `TM Min Moves Window`
+1, `TM Fail Low Max` 1, `TM Max` 200, `TM Max Share` 75) is the
+reference for the next matches.

@@ -578,6 +578,8 @@ namespace psion {
         tp.max_share = 100;
         tp.min_moves = 0;
         tp.min_moves_window = 0;
+        tp.fail_low_max = 0;
+        tp.fail_low_cap = 0;
         return tp;
     }
 
@@ -596,6 +598,13 @@ namespace psion {
         return less_overhead(std::min(allocated * tp.max / 100,
                                       remaining * tp.max_share / 100),
                              overhead);
+    }
+
+    unsigned int FailLowMaxTime(long long allocated, long long remaining,
+                                unsigned int overhead, const TimeParams &tp) {
+        TimeParams t = tp;
+        t.max = std::max(tp.max, tp.fail_low_cap);
+        return MaxThinkTime(allocated, remaining, overhead, t);
     }
 
     int ExtensionPercent(const TimeParams &tp, bool drop_known, int drop,

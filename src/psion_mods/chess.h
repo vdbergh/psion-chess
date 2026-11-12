@@ -84,6 +84,10 @@ namespace psion {
                                 // until it has searched N (0: off)
         int min_moves_window;   // 1: ... and until a move has come back
                                 // inside the window (0: off)
+        int fail_low_max;       // 1: an iteration that has failed low
+                                // goes on until the maximum (0: off)
+        int fail_low_cap;       // m_low: ... with m_low instead of m, if
+                                // larger (0: m)
     };
     TimeParams DefaultTimeParams();
 
@@ -97,6 +101,10 @@ namespace psion {
     // The maximum H (as from ThinkTime()): the cap of ScaledThinkTime().
     unsigned int MaxThinkTime(long long allocated, long long remaining,
                               unsigned int overhead, const TimeParams &tp);
+    // The maximum for an iteration that has failed low: H with m_low
+    // instead of m, if larger.
+    unsigned int FailLowMaxTime(long long allocated, long long remaining,
+                                unsigned int overhead, const TimeParams &tp);
 
     // The extension of S in percent (100: none): e_drop if the first
     // line of the current iteration came back at least d units below

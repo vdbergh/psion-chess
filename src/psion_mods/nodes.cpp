@@ -52,6 +52,8 @@ namespace psion {
     static int line_value = 0, drop = 0;
     static unsigned char line_iteration = 0;
     static bool fail_low_open = false;
+    // Whether the current iteration has failed low, resolved or not.
+    static bool fail_low_seen = false;
     // The root moves made in the current iteration, each once, and
     // whether its first line has come. A fail low starts them again: all
     // root moves are then searched again, the old best first.
@@ -126,6 +128,7 @@ namespace psion {
             if (it != iteration) {
                 drop_known = false;
                 fail_low_open = false;
+                fail_low_seen = false;
                 root_move_count = 0;
                 line_seen = false;
             }
@@ -139,6 +142,7 @@ namespace psion {
                     line_seen = false;
                 }
                 fail_low_open = true;
+                fail_low_seen = true;
             } else {
                 window_alpha = alpha;
                 window_iteration = host_readb(MemBase + iteration_addr);
@@ -229,6 +233,7 @@ namespace psion {
         drop_known = false;
         line_iteration = 0;
         fail_low_open = false;
+        fail_low_seen = false;
         root_move_count = 0;
         line_seen = false;
         window_alpha = 0;
@@ -242,6 +247,10 @@ namespace psion {
 
     bool Nodes_FailLowOpen() {
         return fail_low_open;
+    }
+
+    bool Nodes_FailLowSeen() {
+        return fail_low_seen;
     }
 
     int Nodes_RootMovesDone() {

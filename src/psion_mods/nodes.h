@@ -41,6 +41,9 @@ namespace psion {
     // has not shown a line since: Psion would still play the move that
     // failed low.
     bool Nodes_FailLowOpen();
+    // Whether the current iteration has failed low, whether or not the
+    // search again has shown a line since.
+    bool Nodes_FailLowSeen();
     // The root moves the current iteration has searched (not counting the
     // one it is searching), each once; the first counts as searched once
     // its line has come. After a fail low the count starts again, for the

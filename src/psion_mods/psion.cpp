@@ -1112,6 +1112,8 @@ namespace psion {
         {"TM Max Share", &TimeParams::max_share, 1, 100},
         {"TM Min Moves", &TimeParams::min_moves, 0, 100},
         {"TM Min Moves Window", &TimeParams::min_moves_window, 0, 1},
+        {"TM Fail Low Max", &TimeParams::fail_low_max, 0, 1},
+        {"TM Fail Low Cap", &TimeParams::fail_low_cap, 0, 1000},
     };
     static const int TIME_OPTION_COUNT =
         sizeof(TIME_OPTIONS) / sizeof(TIME_OPTIONS[0]);
@@ -1930,37 +1932,49 @@ namespace psion {
                                    setup)) {
             int done = Nodes_RootMovesDone();
             bool no_line = time_params.min_moves_window && !Nodes_HaveLine();
-            bool more = done < time_params.min_moves || no_line;
+            bool fail_low_max = time_params.fail_low_max && Nodes_FailLowSeen();
+            bool more = done < time_params.min_moves || no_line || fail_low_max;
             if (!uci.target_reached) {
                 // An iteration that has searched its first move (the
                 // previous best) but too few others, or with "TM Min
                 // Moves Window" no move inside the window yet, gets the
                 // time for them, up to the maximum. After a fail low
                 // (all root moves searched) the count is that of the
-                // search again with alpha = -infinity.
+                // search again with alpha = -infinity; with "TM Fail Low
+                // Max" the iteration goes on until the maximum.
                 uci.target_reached = true;
                 uci.min_moves_wait =
-                    (done >= 1 || (no_line && Nodes_FailLowOpen())) && more;
+                    (done >= 1 || (no_line && Nodes_FailLowOpen()) ||
+                     fail_low_max) && more;
                 uci.wait_iteration = Nodes_Iteration();
                 if (uci.min_moves_wait) {
                     say("Target after %u ms with %d root moves "
                         "searched%s%s\n",
                         elapsed, done, no_line ? ", no line" : "",
-                        Nodes_FailLowOpen() ? ", fail low" : "");
+                        Nodes_FailLowOpen() ? ", fail low"
+                        : fail_low_max      ? ", failed low"
+                                            : "");
                 }
             }
+            // After a fail low ("TM Fail Low Max") up to "TM Fail Low
+            // Cap", if larger than the maximum.
+            unsigned int max_ms =
+                fail_low_max ? FailLowMaxTime(uci.allocated_ms,
+                                              uci.remaining_ms,
+                                              move_overhead_ms, time_params)
+                             : MaxThinkTime(uci.allocated_ms,
+                                            uci.remaining_ms,
+                                            move_overhead_ms, time_params);
             if (uci.min_moves_wait && more &&
                 Nodes_Iteration() == uci.wait_iteration &&
-                elapsed < MoveNowTime(MaxThinkTime(uci.allocated_ms,
-                                                   uci.remaining_ms,
-                                                   move_overhead_ms,
-                                                   time_params),
-                                      setup)) {
+                elapsed < MoveNowTime(max_ms, setup)) {
                 return false;
             }
             say("Time up after %u ms: target %d%%%s%s%s\n", elapsed, e,
                 drop_known && drop >= time_params.drop ? ", drop" : "",
-                Nodes_FailLowOpen() ? ", fail low" : "",
+                Nodes_FailLowOpen() ? ", fail low"
+                : fail_low_max      ? ", failed low"
+                                    : "",
                 uci.min_moves_wait
                     ? (more ? ", min moves cut" : ", min moves done")
                     : "");
