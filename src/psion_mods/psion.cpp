@@ -36,11 +36,13 @@
 unsigned int GetTicks() {
     static bool firsttime = true;
 #ifndef _WIN32
+    // A monotonic clock: the wall clock can be stepped (by NTP, say),
+    // and a step back made the elapsed times negative.
     double static msec_first;
     double msec;
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    msec = tv.tv_sec * 1000 + (tv.tv_usec + 500) / 1000.0;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    msec = ts.tv_sec * 1000.0 + ts.tv_nsec / 1000000.0;
     if (firsttime) {
         msec_first = msec;
         firsttime = false;
