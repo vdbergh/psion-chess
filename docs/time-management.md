@@ -465,17 +465,30 @@ searched against it.
 
 The match above, plus `TM Fail Low Cap` 400, so that after a fail low
 the whole search again has H = 4 · T, not only its first move. 4,000
-pairs, still running; after 3,240 pairs:
+pairs:
 
 | Machine | Pairs | Pentanomial (0 to 2 points) | Score | Elo | Time per move (test / reference) |
 |---|---|---|---|---|---|
-| 1 | 1190 | 109, 160, 607, 181, 133 | 51.5% | +10 ± 10 | 0.205 / 0.203 s |
-| 2 | 2050 | 123, 233, 1339, 236, 119 | 49.9% | 0 ± 6 | 0.206 / 0.205 s |
-| **Both** | **3240** | **232, 393, 1946, 417, 252** | **50.49%** | **+3 ± 6** | **0.206 / 0.204 s** |
+| 1 | 1492 | 138, 211, 757, 228, 158 | 51.0% | +7 ± 9 | 0.205 / 0.204 s |
+| 2 | 2508 | 150, 282, 1636, 295, 145 | 50.0% | 0 ± 6 | 0.206 / 0.205 s |
+| **Both** | **4000** | **288, 493, 2393, 523, 303** | **50.38%** | **+3 ± 5** | **0.206 / 0.204 s** |
 
 Two games were lost on time on the first machine, one by each side, at
-clocks of about 130–140 ms while the machine was busy with other work.
-No clear gain shows, but no cost either, and with both caps the move
-played after a fail low nearly always comes from a finished search. So
-this version (the reference with `TM Window Cap` 400 and `TM Fail Low
-Cap` 400) is kept.
+clocks of about 130–140 ms while the machine was busy with other work;
+the rest ended normally. In the logs of the second machine (about
+354,500 searches per side):
+
+| | Test (both caps) | Reference (2 · T) |
+|---|---|---|
+| Moves played that had failed low: fail low open | 127 | 1,189 |
+| ... first move below the window, no fail low yet | 214 | 1,134 |
+| Games with such a move | 6.2% | 29.7% |
+| ... in the first 30 moves | 0.9% | 5.9% |
+| Stops at H after a resolved fail low | 587 (at 4 · T) | 1,569 (at 2 · T) |
+
+The moves played that had failed low are as rare as with `TM Window
+Cap` alone, and the search after a fail low is now cut short far less
+often. No clear gain shows (LOS 85%), but no cost either, and with both
+caps the move played after a fail low nearly always comes from a
+finished search. So this version (the reference with `TM Window Cap`
+400 and `TM Fail Low Cap` 400) is kept: it is the default since v3.1.
