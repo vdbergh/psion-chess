@@ -1116,6 +1116,7 @@ namespace psion {
         {"TM Min Moves Window", &TimeParams::min_moves_window, 0, 1},
         {"TM Fail Low Max", &TimeParams::fail_low_max, 0, 1},
         {"TM Fail Low Cap", &TimeParams::fail_low_cap, 0, 1000},
+        {"TM Window Cap", &TimeParams::window_cap, 0, 1000},
     };
     static const int TIME_OPTION_COUNT =
         sizeof(TIME_OPTIONS) / sizeof(TIME_OPTIONS[0]);
@@ -1959,7 +1960,8 @@ namespace psion {
                 }
             }
             // After a fail low ("TM Fail Low Max") up to "TM Fail Low
-            // Cap", if larger than the maximum.
+            // Cap", and while no move is inside the window up to "TM
+            // Window Cap", if larger than the maximum.
             unsigned int max_ms =
                 fail_low_max ? FailLowMaxTime(uci.allocated_ms,
                                               uci.remaining_ms,
@@ -1967,6 +1969,13 @@ namespace psion {
                              : MaxThinkTime(uci.allocated_ms,
                                             uci.remaining_ms,
                                             move_overhead_ms, time_params);
+            if (no_line) {
+                max_ms = std::max(max_ms,
+                                  WindowMaxTime(uci.allocated_ms,
+                                                uci.remaining_ms,
+                                                move_overhead_ms,
+                                                time_params));
+            }
             if (uci.min_moves_wait && more &&
                 Nodes_Iteration() == uci.wait_iteration &&
                 elapsed < MoveNowTime(max_ms, setup)) {

@@ -644,6 +644,27 @@ static void test_fail_low_max_time(){
     CHECK_EQ(MaxThinkTime(1000,4000,10,tp),1990u);
 }
 
+static void test_window_max_time(){
+    TimeParams tp=DefaultTimeParams();
+    CHECK_EQ(tp.window_cap,0);
+    tp.max=200;
+    // the default: H
+    CHECK_EQ(WindowMaxTime(1000,60000,10,tp),1990u);
+    tp.window_cap=400;
+    CHECK_EQ(WindowMaxTime(1000,60000,10,tp),3990u);
+    // never below H
+    tp.window_cap=150;
+    CHECK_EQ(WindowMaxTime(1000,60000,10,tp),1990u);
+    // the share of the remaining time still applies
+    tp.window_cap=400;
+    tp.max_share=75;
+    CHECK_EQ(WindowMaxTime(1000,4000,10,tp),2990u);
+    // independent of TM Fail Low Cap
+    tp.fail_low_cap=300;
+    CHECK_EQ(WindowMaxTime(1000,60000,10,tp),3990u);
+    CHECK_EQ(FailLowMaxTime(1000,60000,10,tp),2990u);
+}
+
 static void test_extension_percent(){
     TimeParams tp=DefaultTimeParams();
     CHECK_EQ(ExtensionPercent(tp,true,30,true),100);
@@ -1501,6 +1522,7 @@ int main(){
     test_scaled_think_time();
     test_max_think_time();
     test_fail_low_max_time();
+    test_window_max_time();
     test_extension_percent();
     test_move_now_time();
     test_depth_reached();

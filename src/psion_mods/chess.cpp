@@ -580,6 +580,7 @@ namespace psion {
         tp.min_moves_window = 0;
         tp.fail_low_max = 0;
         tp.fail_low_cap = 0;
+        tp.window_cap = 0;
         return tp;
     }
 
@@ -604,6 +605,13 @@ namespace psion {
                                 unsigned int overhead, const TimeParams &tp) {
         TimeParams t = tp;
         t.max = std::max(tp.max, tp.fail_low_cap);
+        return MaxThinkTime(allocated, remaining, overhead, t);
+    }
+
+    unsigned int WindowMaxTime(long long allocated, long long remaining,
+                               unsigned int overhead, const TimeParams &tp) {
+        TimeParams t = tp;
+        t.max = std::max(tp.max, tp.window_cap);
         return MaxThinkTime(allocated, remaining, overhead, t);
     }
 

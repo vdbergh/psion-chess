@@ -252,7 +252,8 @@ class UciTest(unittest.TestCase):
                      'option name TM Min Moves type spin default 0 min 0 max 100',
                      'option name TM Min Moves Window type spin default 0 min 0 max 1',
                      'option name TM Fail Low Max type spin default 0 min 0 max 1',
-                     'option name TM Fail Low Cap type spin default 0 min 0 max 1000'):
+                     'option name TM Fail Low Cap type spin default 0 min 0 max 1000',
+                     'option name TM Window Cap type spin default 0 min 0 max 1000'):
             self.assertIn(line, before)
         moves = ['a2a4', 'h7h5']
 

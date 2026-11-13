@@ -88,6 +88,8 @@ namespace psion {
                                 // goes on until the maximum (0: off)
         int fail_low_cap;       // m_low: ... with m_low instead of m, if
                                 // larger (0: m)
+        int window_cap;         // m_win: the maximum while no move is
+                                // inside the window, if larger than m (0: m)
     };
     TimeParams DefaultTimeParams();
 
@@ -105,6 +107,10 @@ namespace psion {
     // instead of m, if larger.
     unsigned int FailLowMaxTime(long long allocated, long long remaining,
                                 unsigned int overhead, const TimeParams &tp);
+    // The maximum while no move is inside the window: H with m_win instead
+    // of m, if larger.
+    unsigned int WindowMaxTime(long long allocated, long long remaining,
+                               unsigned int overhead, const TimeParams &tp);
 
     // The extension of S in percent (100: none): e_drop if the first
     // line of the current iteration came back at least d units below

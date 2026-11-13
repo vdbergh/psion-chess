@@ -93,6 +93,17 @@ root moves are counted from the fail low). A fail low open at the
 target counts as a first move done, so the rule also covers what `TM
 Fail Low Extension` was for.
 
+`TM Window Cap` m_win raises H while no root move is inside the window
+(the old best has come back below it, or the fail low is open) to
+min(m_win · T, r · remaining time), if m_win is larger than m. Once a
+line comes, the usual H applies again, and the search stops at once if
+it is already past it. Together with `TM Fail Low Cap` at the same
+value, which keeps the larger H for the whole search again after a fail
+low, both at 400 showed no clear gain but no cost either (see
+"Results"). They are kept: the move played after a fail low then nearly
+always comes from a search that has finished, not from one cut off by
+the clock.
+
 **After a fail low** (stage 2 implemented, see below). A fail low comes
 only when all root moves have come back below the window, more than 20
 units under the previous score: the position has just turned out worse
@@ -122,8 +133,9 @@ the re-search has produced its line or not, the search goes on until H,
 or until a new iteration starts. `TM Fail Low Cap` m_low raises H for
 such an iteration to min(m_low · T, r · remaining time), if m_low is
 larger than m (some engines allow four times the usual time in an
-emergency); at 400 it showed no gain (−1 ± 5 Elo, see "Results"), so
-it stays at 0.
+emergency); at 400 it showed no gain on its own (−1 ± 5 Elo, see
+"Results"), but it is kept at 400 together with `TM Window Cap` (see
+"Minimum root moves: the window").
 
 A fail low still open at S is rare: about 0.9% of the searches in
 self-play at 10+0.1, 1.4% for Psion against Fairy-Max, and 1.5% for the
@@ -174,7 +186,8 @@ stop, no extensions); the starting values are those proposed here:
 | N | `TM Min Moves` | 0 | 0–100 | 4 | at the target, go on until N root moves are searched (0: off) |
 | | `TM Min Moves Window` | 0 | 0–1 | 1 | 1: also go on until a root move has come back inside the window |
 | | `TM Fail Low Max` | 0 | 0–1 | 1 | 1: at the target, an iteration that has failed low goes on until H |
-| m_low | `TM Fail Low Cap` | 0 | 0–1000 | 0 | H for an iteration that has failed low, as a share of T, if larger than m (0: m) |
+| m_low | `TM Fail Low Cap` | 0 | 0–1000 | 400 | H for an iteration that has failed low, as a share of T, if larger than m (0: m) |
+| m_win | `TM Window Cap` | 0 | 0–1000 | 400 | H while no root move is inside the window, as a share of T, if larger than m (0: m) |
 
 As H caps everything, `TM Target` and the extensions only take effect
 with `TM Max` raised as well. With `--verbose` the adapter logs why it
@@ -439,3 +452,61 @@ What gains is going on after a fail low at all, and 2 · T is enough for
 that. The other kind, a first move that came back below the window with
 no fail low declared yet, is not touched by this rule, as the iteration
 has not failed low yet.
+
+### Four times T while no move is inside the window
+
+The reference, plus `TM Window Cap` 400: while no root move is inside
+the window, the search goes on until H = min(4 · T, 75% of the
+remaining time) instead of 2 · T. Once a line comes, H is 2 · T again.
+4,000 pairs:
+
+| Machine | Pairs | Pentanomial (0 to 2 points) | Score | Elo | Time per move (test / reference) |
+|---|---|---|---|---|---|
+| 1 | 1492 | 134, 242, 743, 216, 157 | 50.3% | +2 ± 9 | 0.205 / 0.204 s |
+| 2 | 2508 | 130, 282, 1653, 294, 149 | 50.5% | +3 ± 6 | 0.204 / 0.204 s |
+| **Both** | **4000** | **264, 524, 2396, 510, 306** | **50.44%** | **+3 ± 5** | **0.204 / 0.204 s** |
+
+Two games, both on the first machine, ended with an illegal move: one
+where Psion declared a draw by repetition that ignored the castling
+rights (see the README), and one where the reference sent `0000` for
+reasons not found (the position, replayed, gave a normal move). The
+rest ended normally. The gain, if any, is too small to show (LOS 89%).
+
+The rule nearly removes the moves played that had failed low. In the
+logs of the second machine:
+
+| | Test (4 · T) | Reference (2 · T) |
+|---|---|---|
+| Moves played that had failed low: fail low open | 118 | 1,128 |
+| ... first move below the window, no fail low yet | 222 | 1,174 |
+| Games with such a move | 6.1% | 28.8% |
+| ... in the first 30 moves | 0.8% | 5.7% |
+
+The second kind remains when a new iteration starts during the wait:
+the wait belongs to the iteration that was running at the target, so
+the search stops, and the new iteration's first move may already have
+come back below the window. But the search again after a fail low is
+cut short: once its first line comes, H falls back to 2 · T, which has
+often passed. Of the test's 2,972 stops after a resolved fail low,
+1,408 came right after the line, past 2 · T (reference: 31 of 1,578).
+So the old best gets its exact score, but the other moves are not
+searched against it.
+
+### Four times T for the whole search after a fail low
+
+The match above, plus `TM Fail Low Cap` 400, so that after a fail low
+the whole search again has H = 4 · T, not only its first move. 4,000
+pairs, still running; after 3,240 pairs:
+
+| Machine | Pairs | Pentanomial (0 to 2 points) | Score | Elo | Time per move (test / reference) |
+|---|---|---|---|---|---|
+| 1 | 1190 | 109, 160, 607, 181, 133 | 51.5% | +10 ± 10 | 0.205 / 0.203 s |
+| 2 | 2050 | 123, 233, 1339, 236, 119 | 49.9% | 0 ± 6 | 0.206 / 0.205 s |
+| **Both** | **3240** | **232, 393, 1946, 417, 252** | **50.49%** | **+3 ± 6** | **0.206 / 0.204 s** |
+
+Two games were lost on time on the first machine, one by each side, at
+clocks of about 130–140 ms while the machine was busy with other work.
+No clear gain shows, but no cost either, and with both caps the move
+played after a fail low nearly always comes from a finished search. So
+this version (the reference with `TM Window Cap` 400 and `TM Fail Low
+Cap` 400) is kept.
