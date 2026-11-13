@@ -31,7 +31,7 @@ namespace psion {
     // Nodes_ClearPv(); 0 before that.
     unsigned char Nodes_Iteration();
 
-    // For time management (docs/time-management.md). Once the current
+    // For time management (docs/implementation.md). Once the current
     // iteration has shown its first line (the previous best move searched
     // again): true, with drop the score of the previous iteration's last
     // line minus that of this one (units, 24 per pawn), unless one of

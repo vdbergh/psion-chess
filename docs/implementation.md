@@ -224,8 +224,8 @@ about 0.6%. Nearly all the time goes to emulating the CPU.
 
 ## Time management
 
-The basic time allocation per move is either given by the `movetime`
-parameter of the `go` command or else by
+The basic time allocation per move (T below) is either given by the
+`movetime` parameter of the `go` command or else by
 
     min(1/n * remaining_time + 3/4 * increment, 3/4 * remaining_time)
 
@@ -332,6 +332,101 @@ The case of `ponderhit` is similar, with the time counted from
 along: the setup time is zero and the 50 ms minimum plays no part
 (unless `ponderhit` comes before the move pondered on has even been
 entered).
+
+### With a clock
+
+With a clock (`wtime`/`btime`, after `go` or after `ponderhit`), the
+adapter does not simply move at T but follows Psion's search. Not with
+`go movetime` (the GUI asked for that time), nor with `go infinite` or
+only `depth`, `nodes` or `mate`; while pondering nothing changes. It
+uses two times, counted from `go` (or `ponderhit`), and both treated
+like `allocated_time` above (the setup time, `Move Overhead`, the
+50 ms minimum):
+
+- the **target** S = T;
+- the **maximum** H = min(2 · T, 75% of the remaining time), which is
+  never exceeded.
+
+The adapter presses MOVE-NOW at the first of these moments:
+
+1. **Soft stop.** A new iteration starts after 40% of S. An iteration
+   costs about 15 times the previous one, so one that starts this late
+   rarely finishes even its first move, and hardly ever changes the
+   move. After `ponderhit` this only applies to iterations that start
+   after it.
+2. **Target.** The elapsed time reaches S, unless the iteration is
+   unsettled. It then goes on until the condition no longer holds, H is
+   reached, or a new iteration starts:
+   - it has searched its first root move (the previous best, searched
+     again), but fewer than 4 root moves. The new best move comes
+     mostly among the first four or five, which cost little after the
+     first. If the first move is not done at the target, the search
+     stops: finishing it would mostly confirm the move Psion already
+     plays;
+   - no root move has come back inside Psion's window yet: the previous
+     best has come back below it with no other move above it so far,
+     or all moves have, and Psion is searching them again with
+     alpha = −∞ (a fail low) and has no line yet. The move Psion would
+     play is then one just refuted, of unknown score. A fail low open
+     at the target counts as a first move done;
+   - the iteration has failed low: after a fail low Psion's move
+     ordering is probably broken, and the position more uncertain than
+     Psion thought. It goes on until H.
+
+   After a fail low all root moves are searched again, so the count of
+   root moves starts again at the fail low.
+3. **Maximum.** The elapsed time reaches H. While no root move is
+   inside the window, and in an iteration that has failed low, H is
+   min(4 · T, 75% of the remaining time) instead: the search after a
+   fail low then nearly always finishes, and the move played comes from
+   it rather than from a search cut off by the clock.
+
+Each rule was kept because a match showed a gain, except the larger
+maximum, kept because it cost nothing: in self-play at 10+0.1, the soft
+stop gained about 28 Elo, the minimum root moves about 50 more, going
+on after a fail low about 12 more. The measurements, the matches and the
+rules that were tried and dropped are in
+[time-management.md](time-management.md). They were played with the
+`TM ...` UCI options, which `--tm-options` offers; their defaults are
+the values above.
+
+The time used per move stays about the same as with T alone: the soft
+stop saves about as much as the other rules spend. At 75% of the
+remaining time, the margin at H is a quarter of the remaining time plus
+`Move Overhead`. In long endgames at 10+0.1 the clock can be down to
+about 130 ms; with the default of 10 ms, 2 games of an 8,000-game match
+were lost on time there while the machine was busy with other work.
+Increase `Move Overhead` on a loaded machine or over a network.
+
+With `--verbose` the adapter logs why it pressed MOVE-NOW: "Time up
+after N ms: target E%" (with ", drop" when extended by the
+`TM Drop Extension` of `--tm-options`), or "iteration NN started after
+N ms" for the soft stop. When it goes on at the target, it logs "Target
+after N ms with K root moves searched" (with ", no line" when no move
+is inside the window yet, ", fail low" when the fail low is open, and
+", failed low" after a fail low), and at the end ", min moves done" (or
+", min moves cut" if H came first).
+
+What the adapter reads of Psion's search comes from the write handlers
+in `nodes.cpp`:
+
+- the start of an iteration: a change of `5A67` (also used for
+  `depth`), seen at the next tick (10 ms);
+- the first move's score in an iteration: the first PV copy at `7150`
+  in that iteration, compared with the last one before it
+  (`Nodes_FirstLineDrop()`; not when either is a mate score);
+- a fail low: a write of 0 to `713A`, open until the next PV copy
+  (`Nodes_FailLowOpen()`; `Nodes_FailLowSeen()` for the rest of the
+  iteration). In the probe matches `713A` was set to 0 only by fail
+  lows, from iteration `05` on;
+- the root moves searched in the current iteration: the ply counter
+  `7076` going from ply 1 (the root) to ply 2 makes a root move, which
+  `5A6E` then holds; each is counted once per iteration
+  (`Nodes_RootMovesDone()`, not counting the move being searched; the
+  first counts as searched once its line has come, even before the
+  next move is made), and again from a fail low;
+- whether a root move has come back inside the window: a line in the
+  current iteration, or since the last fail low (`Nodes_HaveLine()`).
 
 ## Quirks
 

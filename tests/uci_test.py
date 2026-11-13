@@ -209,7 +209,8 @@ class UciTest(unittest.TestCase):
         move = bestmove(self.engine, 10)
         used = time.time() - start
         self.assertTrue(Board(moves).plausible(move), move)
-        self.assertLess(used, 30000 / 30 / 1000 + 0.5)
+        # at most twice the allocated time (or four times after a fail low)
+        self.assertLess(used, 4 * 30000 / 30 / 1000 + 0.5)
 
     def test_move_overhead(self):
         e = self.engine
@@ -237,36 +238,51 @@ class UciTest(unittest.TestCase):
             e.ready()
 
     def test_time_management_options(self):
-        """The temporary TM options (docs/time-management.md) apply with a
-        clock, not with movetime."""
+        """The TM options of --tm-options (docs/time-management.md) apply
+        with a clock, not with movetime. Without --tm-options there are
+        none."""
         e = self.engine
         e.send('uci')
         _, before = e.expect('uciok', 10)
-        for line in ('option name TM Target type spin default 100 min 10 max 1000',
-                     'option name TM Soft Stop type spin default 100 min 1 max 100',
-                     'option name TM Drop type spin default 6 min 1 max 240',
-                     'option name TM Drop Extension type spin default 100 min 100 max 1000',
-                     'option name TM Fail Low Extension type spin default 100 min 100 max 1000',
-                     'option name TM Max type spin default 100 min 100 max 1000',
-                     'option name TM Max Share type spin default 100 min 1 max 100',
-                     'option name TM Min Moves type spin default 0 min 0 max 100',
-                     'option name TM Min Moves Window type spin default 0 min 0 max 1',
-                     'option name TM Fail Low Max type spin default 0 min 0 max 1',
-                     'option name TM Fail Low Cap type spin default 0 min 0 max 1000',
-                     'option name TM Window Cap type spin default 0 min 0 max 1000'):
-            self.assertIn(line, before)
-        moves = ['a2a4', 'h7h5']
-
-        def search(go):
-            e.send('position startpos moves ' + ' '.join(moves))
-            e.ready()
-            start = time.time()
-            e.send(go)
-            move = bestmove(e, 10)
-            self.assertTrue(Board(moves).plausible(move), move)
-            return time.time() - start
-
+        self.assertFalse(any('TM ' in l for l in before))
+        # ignored, as an unknown option
+        e.send('setoption name TM Max Share value 0')
+        self.assertFalse(any(l.startswith('info string')
+                             for l in e.silent(0.5)))
+        e = Engine(args=('--verbose', '--tm-options'))
         try:
+            e.send('uci')
+            _, before = e.expect('uciok', 10)
+            for line in ('option name TM Target type spin default 100 min 10 max 1000',
+                         'option name TM Soft Stop type spin default 40 min 1 max 100',
+                         'option name TM Drop type spin default 6 min 1 max 240',
+                         'option name TM Drop Extension type spin default 100 min 100 max 1000',
+                         'option name TM Max type spin default 200 min 100 max 1000',
+                         'option name TM Max Share type spin default 75 min 1 max 100',
+                         'option name TM Min Moves type spin default 4 min 0 max 100',
+                         'option name TM Min Moves Window type spin default 1 min 0 max 1',
+                         'option name TM Fail Low Max type spin default 1 min 0 max 1',
+                         'option name TM Fail Low Cap type spin default 400 min 0 max 1000',
+                         'option name TM Window Cap type spin default 400 min 0 max 1000'):
+                self.assertIn(line, before)
+            self.assertEqual(sum('TM ' in l for l in before), 11)
+            moves = ['a2a4', 'h7h5']
+
+            def search(go):
+                e.send('position startpos moves ' + ' '.join(moves))
+                e.ready()
+                start = time.time()
+                e.send(go)
+                move = bestmove(e, 15)
+                self.assertTrue(Board(moves).plausible(move), move)
+                return time.time() - start
+
+            # The time management before the tuning: S = H = T.
+            for name, value in (('Soft Stop', 100), ('Max', 100),
+                                ('Max Share', 100), ('Min Moves', 0),
+                                ('Min Moves Window', 0), ('Fail Low Max', 0),
+                                ('Fail Low Cap', 0), ('Window Cap', 0)):
+                e.send('setoption name TM %s value %d' % (name, value))
             # 2000 ms for the move: no new iteration after 5% of it, so
             # Psion moves when the next one starts (about 0.4 s)
             e.send('setoption name TM Soft Stop value 5')
@@ -283,9 +299,7 @@ class UciTest(unittest.TestCase):
             line, _ = e.expect('info string', 5)
             self.assertIn('TM Max Share must be 1 to 100', line)
         finally:
-            e.send('setoption name TM Soft Stop value 100')
-            e.send('setoption name TM Target value 100')
-            e.ready()
+            e.close()
 
     def test_cycles(self):
         """The Cycles option slows the emulated PC down, and highest (or max,
@@ -947,7 +961,8 @@ class QuitTest(unittest.TestCase):
         for option in ('--help', '-h'):
             out = self.run_options(option)
             self.assertEqual(out.returncode, 0)
-            for name in ('--verbose', '--cycles', '--version', '--help'):
+            for name in ('--verbose', '--cycles', '--tm-options', '--version',
+                         '--help'):
                 self.assertIn(name, out.stdout.decode())
 
     def test_invalid_option(self):

@@ -1,19 +1,18 @@
-# Time management: a proposal
+# Time management: experiments
 
-A proposal for better use of the clock by the adapter, based on the
-measurements in [search-internals.md](search-internals.md#time-use-of-the-iterations).
-The rules are implemented behind temporary UCI options (see "The
-options" below), whose defaults leave the time management as it was.
-All the numbers below are starting points, to be measured and tuned. As always, Psion's search is not changed: the
-adapter only reads Psion's memory and decides when to press MOVE-NOW.
+How the time management with a clock, described in
+[implementation.md](implementation.md#with-a-clock), was found: the
+measurements in [search-internals.md](search-internals.md#time-use-of-the-iterations)
+it started from, the rules proposed, and the matches that decided which
+to keep. Before, the adapter pressed MOVE-NOW when the allocated time T
+(less the move overhead) had passed, whatever the search was doing. As
+always, Psion's search is not changed: the adapter only reads Psion's
+memory and decides when to press MOVE-NOW.
 
-## What we have now
-
-The adapter computes one allocated time T per move (see
-[implementation.md](implementation.md#time-management)), roughly
-`remaining/n + 3/4 * increment` with n = 30 or 60, and presses MOVE-NOW
-when T (less the move overhead) has passed. Psion then plays the best
-move found so far. This ignores what the search is doing at that moment.
+The rules were tried with UCI options, which the adapter offers with
+`--tm-options` (see "The options" below). A rule was kept only if a
+match showed a gain; the larger maximum after a fail low (the last two
+matches) is the one exception.
 
 ## What the measurements say
 
@@ -40,7 +39,7 @@ none of the 51 move changes):
    fail lows in the last iteration, 33 were cut off before that
    re-search finished even the first move.
 
-## Proposal
+## The rules tried
 
 Every search gets two times, both from the start of the search (from
 `go`, or from `ponderhit`):
@@ -115,7 +114,7 @@ first line comes, the move Psion would play is one just refuted, of
 unknown score. Two stages:
 
 1. While the fail low is open (no line from the re-search yet), go on up
-   to the maximum H: `TM Fail Low Extension` set high (such as 300, with
+   to the maximum H: `TM Fail Low Extension` (since removed) set high (such as 300, with
    H = min(3 · T, 25% of the remaining time)). Without that line the
    choice is blind.
 2. Once the line has come, treat the re-search as a new iteration for
@@ -170,77 +169,47 @@ remaining time can be kept as it is.
 
 ### The options
 
-One temporary UCI option per parameter, all spins, shares in percent.
-The defaults give the time management as it was (S = H = T, no soft
-stop, no extensions); the starting values are those proposed here:
+One UCI option per parameter, all spins, shares in percent, offered
+only with `--tm-options`. The defaults are the values kept (see
+"Results"); the time management as it was before (S = H = T) is
+`TM Soft Stop` 100, `TM Max` 100, `TM Max Share` 100, and 0 for the
+other options from `TM Min Moves` on. The last column gives the values
+first proposed:
 
-| Parameter | Option | Default | Range | Start | Meaning |
+| Parameter | Option | Default | Range | Proposed | Meaning |
 |---|---|---|---|---|---|
-| x | `TM Soft Stop` | 100 | 1–100 | 40 | soft stop: no new iteration after x · S |
+| x | `TM Soft Stop` | 40 | 1–100 | 40 | soft stop: no new iteration after x · S |
 | c | `TM Target` | 100 | 10–1000 | 120 | target S = c · T |
 | d | `TM Drop` | 6 | 1–240 | 6 | drop (units, 24 per pawn) that counts as instability |
 | e_drop | `TM Drop Extension` | 100 | 100–1000 | 160 | extension after a drop |
-| e_low | `TM Fail Low Extension` | 100 | 100–1000 | 250 | extension after a fail low |
-| m | `TM Max` | 100 | 100–1000 | 300 | maximum H, as a share of T |
-| r | `TM Max Share` | 100 | 1–100 | 25 | maximum H, as a share of the remaining time |
-| N | `TM Min Moves` | 0 | 0–100 | 4 | at the target, go on until N root moves are searched (0: off) |
-| | `TM Min Moves Window` | 0 | 0–1 | 1 | 1: also go on until a root move has come back inside the window |
-| | `TM Fail Low Max` | 0 | 0–1 | 1 | 1: at the target, an iteration that has failed low goes on until H |
-| m_low | `TM Fail Low Cap` | 0 | 0–1000 | 400 | H for an iteration that has failed low, as a share of T, if larger than m (0: m) |
-| m_win | `TM Window Cap` | 0 | 0–1000 | 400 | H while no root move is inside the window, as a share of T, if larger than m (0: m) |
+| m | `TM Max` | 200 | 100–1000 | 300 | maximum H, as a share of T |
+| r | `TM Max Share` | 75 | 1–100 | 25 | maximum H, as a share of the remaining time |
+| N | `TM Min Moves` | 4 | 0–100 | 4 | at the target, go on until N root moves are searched (0: off) |
+| | `TM Min Moves Window` | 1 | 0–1 | 1 | 1: also go on until a root move has come back inside the window |
+| | `TM Fail Low Max` | 1 | 0–1 | 1 | 1: at the target, an iteration that has failed low goes on until H |
+| m_low | `TM Fail Low Cap` | 400 | 0–1000 | 400 | H for an iteration that has failed low, as a share of T, if larger than m (0: m) |
+| m_win | `TM Window Cap` | 400 | 0–1000 | 400 | H while no root move is inside the window, as a share of T, if larger than m (0: m) |
 
-As H caps everything, `TM Target` and the extensions only take effect
-with `TM Max` raised as well. With `--verbose` the adapter logs why it
-pressed MOVE-NOW: "Time up after N ms: target E%" (with ", drop" or ",
-fail low" when extended), or "iteration NN started after N ms" for the
-soft stop; with `TM Min Moves` it logs "Target after N ms with K root
-moves searched" when it goes on (with ", no line" when no move is
-inside the window yet, ", fail low" when the fail low is open, and ",
-failed low" when it has been resolved but `TM Fail Low Max` applies),
-and ", min moves done" (or ", min moves cut" if H came first) at the
-end. In 8 games against Fairy-Max at 10+0.1 with the starting values, 226 searches ended by the soft stop, 208 at the target, 24
-extended after a drop and 1 after a fail low, with no loss on time.
+`TM Fail Low Extension` (e_low, the extension of S while a fail low is
+open) was removed: the window rule covers what it was for (see "After a
+fail low" in "Results"). `TM Target` and `TM Drop Extension` remain for
+further tuning. As H caps everything, they only take effect with `TM
+Max` raised as well. What the adapter logs with `--verbose` is in
+[implementation.md](implementation.md#with-a-clock). In 8 games against
+Fairy-Max at 10+0.1 with the values first proposed, 226 searches ended
+by the soft stop, 208 at the target, 24 extended after a drop and 1
+after a fail low, with no loss on time.
 
 ### When the rules apply
 
-- With a clock (`wtime`/`btime`), after `go` or after `ponderhit`. While
-  pondering nothing changes: Psion searches until `ponderhit` or `stop`.
-  After `ponderhit`, the iteration that is running may have started
-  before it; the soft stop only applies to iterations that start after
-  `ponderhit`.
-- Not with `go movetime`: the GUI asked for that time, so the adapter
-  keeps to it (and Psion moves at the time asked, as now).
-- Not with `go infinite`, nor when only depth, nodes or mate is given.
-  Those limits still end the search together with the time, as now.
-- The 50 ms minimum, the setup time and `Move Overhead` are treated as
-  now: S, S · e and H replace T in the formula of implementation.md.
-
-### What the adapter uses
-
-All signals come from the write handlers in `nodes.cpp`:
-
-- the start of an iteration: a change of `5A67` (also used for
-  `depth`), seen at the next tick (10 ms);
-- the first move's score in an iteration: the first PV copy at `7150`
-  in that iteration, compared with the last one before it
-  (`Nodes_FirstLineDrop()`; not when either is a mate score);
-- a fail low: a write of 0 to `713A`, open until the next PV copy
-  (`Nodes_FailLowOpen()`). In the probe matches `713A` was set to 0
-  only by fail lows, from iteration `05` on;
-- the root moves searched in the current iteration: the ply counter
-  `7076` going from ply 1 (the root) to ply 2 makes a root move, which
-  `5A6E` then holds; each is counted once per iteration
-  (`Nodes_RootMovesDone()`, not counting the move being searched; the
-  first counts as searched once its line has come, even before the
-  next move is made). After a fail low all root moves are searched again
-  with alpha = −∞, so the count starts again at the fail low;
-- whether a root move has come back inside the window: a line in the
-  current iteration, or since the last fail low (`Nodes_HaveLine()`).
+With a clock only, after `go` or `ponderhit`; the details, and the
+signals the adapter reads of Psion's search, are in
+[implementation.md](implementation.md#with-a-clock).
 
 ## Measuring and tuning
 
-1. **Temporary UCI options** (done, see "The options"). Remove them
-   once the values are settled.
+1. **UCI options** (done, see "The options"; since the tuned values
+   became the defaults, only with `--tm-options`).
 2. **Check the time use.** Log the time per move and the clock at the
    end of each game; the new rules must not lose on time, nor end games
    with much more time left than now.

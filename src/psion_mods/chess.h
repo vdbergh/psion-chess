@@ -66,17 +66,16 @@ namespace psion {
     // remaining time. -1 without a clock, with movetime or infinite.
     long long ClockTime(const GoParams &go, bool white);
 
-    // Time management with a clock (docs/time-management.md), tuned with
-    // temporary UCI options. Shares in percent, the drop in Psion's units
-    // (24 per pawn). The defaults leave ThinkTime() as it is.
+    // Time management with a clock (docs/implementation.md), tuned in
+    // matches (docs/time-management.md) with the "TM ..." UCI options of
+    // --tm-options. Shares in percent, the drop in Psion's units (24 per
+    // pawn). The defaults are the tuned values.
     struct TimeParams {
         int target;             // c: target S = c * ClockTime()
         int soft_stop;          // x: no new iteration after x * S
         int drop;               // d: a drop of the first move's score of
                                 // at least d units ...
         int drop_extension;     // e_drop: ... extends S by this
-        int fail_low_extension; // e_low: a fail low not yet resolved
-                                // extends S by this
         int max;                // m: at most m * ClockTime() ...
         int max_share;          // r: ... and r * the remaining time
         int min_moves;          // N: at the target, an iteration that has
@@ -115,10 +114,8 @@ namespace psion {
     // The extension of S in percent (100: none): e_drop if the first
     // line of the current iteration came back at least d units below
     // the last of the previous one (drop_known: both lines are there
-    // and neither is a mate), e_low while a fail low has not yet given
-    // a line; the larger if both.
-    int ExtensionPercent(const TimeParams &tp, bool drop_known, int drop,
-                         bool fail_low_open);
+    // and neither is a mate).
+    int ExtensionPercent(const TimeParams &tp, bool drop_known, int drop);
 
     // Psion thinks at least this long, also when the time for the move
     // was used up before it could start (e.g. setting up the position).

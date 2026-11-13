@@ -570,17 +570,16 @@ namespace psion {
     TimeParams DefaultTimeParams() {
         TimeParams tp;
         tp.target = 100;
-        tp.soft_stop = 100;
+        tp.soft_stop = 40;
         tp.drop = 6;
         tp.drop_extension = 100;
-        tp.fail_low_extension = 100;
-        tp.max = 100;
-        tp.max_share = 100;
-        tp.min_moves = 0;
-        tp.min_moves_window = 0;
-        tp.fail_low_max = 0;
-        tp.fail_low_cap = 0;
-        tp.window_cap = 0;
+        tp.max = 200;
+        tp.max_share = 75;
+        tp.min_moves = 4;
+        tp.min_moves_window = 1;
+        tp.fail_low_max = 1;
+        tp.fail_low_cap = 400;
+        tp.window_cap = 400;
         return tp;
     }
 
@@ -615,14 +614,10 @@ namespace psion {
         return MaxThinkTime(allocated, remaining, overhead, t);
     }
 
-    int ExtensionPercent(const TimeParams &tp, bool drop_known, int drop,
-                         bool fail_low_open) {
+    int ExtensionPercent(const TimeParams &tp, bool drop_known, int drop) {
         int e = 100;
         if (drop_known && drop >= tp.drop) {
             e = std::max(e, tp.drop_extension);
-        }
-        if (fail_low_open) {
-            e = std::max(e, tp.fail_low_extension);
         }
         return e;
     }

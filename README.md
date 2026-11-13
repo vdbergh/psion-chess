@@ -39,6 +39,9 @@ once in the directory where you unpacked the package to get it to run. A self co
   instructions per millisecond instead of as fast as possible (see
   [Speed](#speed)), e.g. `--cycles 300` for roughly an original IBM PC,
   from start-up on; the `Cycles` option does the same from a GUI.
+- `--tm-options`: also offer the `TM ...` UCI options, with which the
+  time management was tuned (see
+  [docs/time-management.md](docs/time-management.md)). For matches.
 - `-d`, `--download`: download Psion Chess and install its files in the
   directory where the adapter looks for them (see
   [data/README.md](data/README.md)), after showing its copyright status
@@ -71,7 +74,8 @@ How the engine handles the gray areas of the protocol is described under
   in the [Time allocation](#time-allocation) section below. The default
   of 10 ms covers the engine's own part, measured on an unloaded
   i5-1135G7. Increase `Move Overhead` if the engine loses on time, for
-  example when playing fast games over a slow network.
+  example when playing fast games over a slow network or on a busy
+  machine.
 - `Cycles` (default `highest`): the number of instructions per
   millisecond (capped at 1,000,000) of the emulated PC, e.g. `300` for roughly an original IBM PC (see
   [Speed](#speed)). The special value "`highest`" means running as fast as the host allows.
@@ -170,28 +174,18 @@ from pondering. The matches and rating lists are in
 
 ### Time allocation
 
-A move gets the time given by `go movetime`, or else
-
-    min(1/n * remaining_time + 3/4 * increment, 3/4 * remaining_time)
-
-where `n` is `movestogo` if given, otherwise 30 with an increment and 60
-without. `Move Overhead` is subtracted from this, and so is the time still
-needed after `go` to set up the position, up to 200 ms. Psion always
-thinks for at least 50 ms, so a move takes at least about 60 ms (80 ms
-if the position still has to be set up after `go`). Increase
-`Move Overhead` if the engine loses on time. The details are in [Time
+A move gets the time given by `go movetime`. With a clock, the adapter
+allocates a share of the remaining time plus most of the increment, and
+then follows Psion's search: it stops early when a new iteration would
+not finish in time, and goes on when the search is unsettled (too few
+moves searched, the best move just refuted), up to twice the allocated
+time, four times after a fail low, and never more than three quarters
+of the remaining time. Psion always thinks for at least 50 ms.
+`Move Overhead` is taken off all these times: increase it if the engine
+loses on time. `go depth`, `go nodes` and `go mate` end the search as
+well, whichever limit comes first; the depth is rounded up to Psion's
+next depth (3, 5, ..., 15). The details are in [Time
 management](docs/implementation.md#time-management).
-
-`go depth`, `go nodes` and `go mate` end the search as well, whichever
-limit comes first; without a time they are the only limits. The depth is
-rounded up to Psion's next depth (3, 5, ..., 15), and Psion plays the
-best move of the iteration that reached it. The node count is checked
-about every 10 ms, so a search goes on for a few thousand nodes more.
-`go mate n` ends the search once a mate in at most n moves is found
-(with a negative n, being mated in at most -n moves); if there is none,
-the search goes on until another limit (or Psion's own maximum depth of
-15). A `depth`, `nodes` or `mate` of 0 or less counts as the smallest
-limit (depth 1, 1 node, mate in 1) rather than as no limit.
 
 ### Implementation
 

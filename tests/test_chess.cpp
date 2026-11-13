@@ -586,9 +586,46 @@ static void test_clock_time(){
     CHECK_EQ(ThinkTime(go,true,10),(unsigned int)ClockTime(go,true)-10);
 }
 
-static void test_scaled_think_time(){
+// The time management before the tuning: S = H = T.
+static TimeParams plain_time_params(){
     TimeParams tp=DefaultTimeParams();
-    // the defaults: the plain allocation, whatever the extension
+    tp.soft_stop=100;
+    tp.max=100;
+    tp.max_share=100;
+    tp.min_moves=0;
+    tp.min_moves_window=0;
+    tp.fail_low_max=0;
+    tp.fail_low_cap=0;
+    tp.window_cap=0;
+    return tp;
+}
+
+static void test_default_time_params(){
+    // the tuned values (docs/time-management.md)
+    TimeParams tp=DefaultTimeParams();
+    CHECK_EQ(tp.target,100);
+    CHECK_EQ(tp.soft_stop,40);
+    CHECK_EQ(tp.drop_extension,100);
+    CHECK_EQ(tp.max,200);
+    CHECK_EQ(tp.max_share,75);
+    CHECK_EQ(tp.min_moves,4);
+    CHECK_EQ(tp.min_moves_window,1);
+    CHECK_EQ(tp.fail_low_max,1);
+    CHECK_EQ(tp.fail_low_cap,400);
+    CHECK_EQ(tp.window_cap,400);
+    // H = 2 T, 4 T while no move is inside the window or after a fail low,
+    // at most 75% of the remaining time
+    CHECK_EQ(MaxThinkTime(1000,60000,10,tp),1990u);
+    CHECK_EQ(WindowMaxTime(1000,60000,10,tp),3990u);
+    CHECK_EQ(FailLowMaxTime(1000,60000,10,tp),3990u);
+    CHECK_EQ(FailLowMaxTime(1000,2000,10,tp),1490u);
+    // the soft stop at 40% of S
+    CHECK_EQ(ScaledThinkTime(1000,60000,10,tp,tp.soft_stop),390u);
+}
+
+static void test_scaled_think_time(){
+    TimeParams tp=plain_time_params();
+    // the plain allocation, whatever the extension
     CHECK_EQ(ScaledThinkTime(1000,60000,10,tp,100),990u);
     CHECK_EQ(ScaledThinkTime(1000,60000,10,tp,250),990u);
     CHECK_EQ(ScaledThinkTime(1000,60000,10,tp,40),390u);
@@ -613,11 +650,8 @@ static void test_scaled_think_time(){
 }
 
 static void test_max_think_time(){
-    TimeParams tp=DefaultTimeParams();
-    CHECK_EQ(tp.min_moves,0);
-    CHECK_EQ(tp.min_moves_window,0);
-    CHECK_EQ(tp.fail_low_max,0);
-    // the defaults: the plain allocation
+    TimeParams tp=plain_time_params();
+    // the plain allocation
     CHECK_EQ(MaxThinkTime(1000,60000,10,tp),990u);
     tp.max=200;
     CHECK_EQ(MaxThinkTime(1000,60000,10,tp),1990u);
@@ -627,10 +661,9 @@ static void test_max_think_time(){
 }
 
 static void test_fail_low_max_time(){
-    TimeParams tp=DefaultTimeParams();
-    CHECK_EQ(tp.fail_low_cap,0);
+    TimeParams tp=plain_time_params();
     tp.max=200;
-    // the default: H
+    // without the cap: H
     CHECK_EQ(FailLowMaxTime(1000,60000,10,tp),1990u);
     tp.fail_low_cap=400;
     CHECK_EQ(FailLowMaxTime(1000,60000,10,tp),3990u);
@@ -645,10 +678,9 @@ static void test_fail_low_max_time(){
 }
 
 static void test_window_max_time(){
-    TimeParams tp=DefaultTimeParams();
-    CHECK_EQ(tp.window_cap,0);
+    TimeParams tp=plain_time_params();
     tp.max=200;
-    // the default: H
+    // without the cap: H
     CHECK_EQ(WindowMaxTime(1000,60000,10,tp),1990u);
     tp.window_cap=400;
     CHECK_EQ(WindowMaxTime(1000,60000,10,tp),3990u);
@@ -667,20 +699,14 @@ static void test_window_max_time(){
 
 static void test_extension_percent(){
     TimeParams tp=DefaultTimeParams();
-    CHECK_EQ(ExtensionPercent(tp,true,30,true),100);
+    CHECK_EQ(ExtensionPercent(tp,true,30),100);
     tp.drop_extension=160;
-    tp.fail_low_extension=250;
-    CHECK_EQ(ExtensionPercent(tp,false,0,false),100);
-    CHECK_EQ(ExtensionPercent(tp,true,5,false),100);
-    CHECK_EQ(ExtensionPercent(tp,true,6,false),160);
-    CHECK_EQ(ExtensionPercent(tp,true,-30,false),100);
+    CHECK_EQ(ExtensionPercent(tp,false,0),100);
+    CHECK_EQ(ExtensionPercent(tp,true,5),100);
+    CHECK_EQ(ExtensionPercent(tp,true,6),160);
+    CHECK_EQ(ExtensionPercent(tp,true,-30),100);
     // the drop is not known (no line yet, or a mate)
-    CHECK_EQ(ExtensionPercent(tp,false,30,false),100);
-    CHECK_EQ(ExtensionPercent(tp,false,0,true),250);
-    // both: the larger
-    CHECK_EQ(ExtensionPercent(tp,true,30,true),250);
-    tp.drop_extension=300;
-    CHECK_EQ(ExtensionPercent(tp,true,30,true),300);
+    CHECK_EQ(ExtensionPercent(tp,false,30),100);
 }
 
 static void test_think_time(){
@@ -1519,6 +1545,7 @@ int main(){
     test_parse_go();
     test_think_time();
     test_clock_time();
+    test_default_time_params();
     test_scaled_think_time();
     test_max_think_time();
     test_fail_low_max_time();

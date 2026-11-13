@@ -87,6 +87,13 @@ namespace psion {
         return verbose;
     }
 
+    // Whether the "TM ..." options are listed and accepted (--tm-options).
+    static bool time_options = false;
+
+    void SetTimeOptions(bool on) {
+        time_options = on;
+    }
+
     // Writes complete lines only, each with a single write, so that a GUI
     // that merges stderr with stdout never splits a line of either.
     void WriteLines(FILE *out, std::string &pending, const char *text) {
@@ -1096,7 +1103,8 @@ namespace psion {
     const unsigned int DEFAULT_MOVE_OVERHEAD_MS = 10;
     const unsigned int MAX_MOVE_OVERHEAD_MS = 5000;
     static unsigned int move_overhead_ms = DEFAULT_MOVE_OVERHEAD_MS;
-    // Time management with a clock, set by the temporary "TM ..." options
+    // Time management with a clock (docs/implementation.md), with the
+    // tuned values unless set by the "TM ..." options of --tm-options
     // (docs/time-management.md).
     static TimeParams time_params = DefaultTimeParams();
     struct TimeOption {
@@ -1109,7 +1117,6 @@ namespace psion {
         {"TM Soft Stop", &TimeParams::soft_stop, 1, 100},
         {"TM Drop", &TimeParams::drop, 1, 240},
         {"TM Drop Extension", &TimeParams::drop_extension, 100, 1000},
-        {"TM Fail Low Extension", &TimeParams::fail_low_extension, 100, 1000},
         {"TM Max", &TimeParams::max, 100, 1000},
         {"TM Max Share", &TimeParams::max_share, 1, 100},
         {"TM Min Moves", &TimeParams::min_moves, 0, 100},
@@ -1470,7 +1477,7 @@ namespace psion {
     }
 
     static const TimeOption *time_option(const std::string &name) {
-        for (int i = 0; i < TIME_OPTION_COUNT; i++) {
+        for (int i = 0; time_options && i < TIME_OPTION_COUNT; i++) {
             if (SameOptionName(name, TIME_OPTIONS[i].name)) {
                 return &TIME_OPTIONS[i];
             }
@@ -1600,7 +1607,7 @@ namespace psion {
             uci_send("option name UCI_Elo type spin default %d min %d max %d\n",
                      DEFAULT_ELO, MIN_ELO, MAX_ELO);
             TimeParams defaults = DefaultTimeParams();
-            for (int i = 0; i < TIME_OPTION_COUNT; i++) {
+            for (int i = 0; time_options && i < TIME_OPTION_COUNT; i++) {
                 const TimeOption &o = TIME_OPTIONS[i];
                 uci_send("option name %s type spin default %d min %d max %d\n",
                          o.name, defaults.*o.field, o.min, o.max);
@@ -1912,9 +1919,10 @@ namespace psion {
     // these limits do not wait for MIN_THINK_MS: the GUI asked for them,
     // and Psion is searching once they are reached.
     // Whether the time for the move is up. With a clock: the target S,
-    // extended after a drop or during a fail low, up to the maximum; or
-    // an iteration has started after soft_stop of S (it would most likely
-    // not change the move). See docs/time-management.md.
+    // extended after a drop, then on for more root moves, a move inside
+    // the window or after a fail low, up to the maximum; or an iteration
+    // has started after soft_stop of S (it would most likely not change
+    // the move). See docs/implementation.md.
     static bool time_up(unsigned int now) {
         if (!uci.think_ms) {
             return false; // pondering, or no limit in time
@@ -1926,8 +1934,7 @@ namespace psion {
         }
         int drop;
         bool drop_known = Nodes_FirstLineDrop(drop);
-        int e = ExtensionPercent(time_params, drop_known, drop,
-                                 Nodes_FailLowOpen());
+        int e = ExtensionPercent(time_params, drop_known, drop);
         if (elapsed >= MoveNowTime(ScaledThinkTime(uci.allocated_ms,
                                                    uci.remaining_ms,
                                                    move_overhead_ms,

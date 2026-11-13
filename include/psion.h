@@ -41,6 +41,9 @@ namespace psion {
     // Diagnostics on stderr in UCI mode (--verbose, or "debug on").
     void SetVerbose(bool on);
     bool Verbose();
+    // The "TM ..." UCI options for tuning the time management
+    // (--tm-options).
+    void SetTimeOptions(bool on);
     // Appends text to pending and writes the complete lines in it to out.
     void WriteLines(FILE *out, std::string &pending, const char *text);
 
