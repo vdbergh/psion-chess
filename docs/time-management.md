@@ -493,7 +493,7 @@ caps the move played after a fail low nearly always comes from a
 finished search. So this version (the reference with `TM Window Cap`
 400 and `TM Fail Low Cap` 400) is kept: it is the default since v3.1.
 
-### The defaults against the old time management at 30+0.3
+### The defaults against the old time management at 30+0.3 and 10+0.1
 
 Each match above measured one step against the version before it. To
 see whether the whole gain holds when Psion searches deeper, v3.1 with
@@ -509,7 +509,22 @@ pairs:
 | **Both** | **1000** | **74, 145, 369, 239, 173** | **57.30%** | **+51 ± 13** | **0.609 / 0.625 s** |
 
 All 2,000 games ended normally. The defaults gain about 50 Elo with
-2.6% less time per move. How the defaults' searches ended, against the
+2.6% less time per move.
+
+The same match at 10+0.1, 1,000 pairs:
+
+| Machine | Pairs | Pentanomial (0 to 2 points) | Score | Elo | Time per move (defaults / old) |
+|---|---|---|---|---|---|
+| 1 | 373 | 22, 46, 155, 70, 80 | 59.4% | +66 ± 21 | 0.208 / 0.216 s |
+| 2 | 627 | 28, 57, 294, 129, 119 | 60.1% | +71 ± 15 | 0.206 / 0.212 s |
+| **Both** | **1000** | **50, 103, 449, 199, 199** | **59.85%** | **+69 ± 12** | **0.207 / 0.214 s** |
+
+One game was lost by the defaults with `bestmove 0000`: Psion declared
+a threefold repetition whose first occurrence still had a castling
+right (see implementation.md, "Quirks"). The gain at 10+0.1, about 70
+Elo with 3.3% less time per move, is close to the sum of the single
+steps above (28 + 50 + 12), and somewhat larger than at 30+0.3, but
+the two are within their errors of each other. How the defaults' searches ended, against the
 same side of the last match at 10+0.1 (in the logs of the second
 machine, about 86,800 searches; for 10+0.1 the first machine, about
 207,400):

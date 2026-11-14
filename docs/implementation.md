@@ -385,8 +385,8 @@ Each rule was kept because a match showed a gain, except the larger
 maximum, kept because it cost nothing: in self-play at 10+0.1, the soft
 stop gained about 28 Elo, the minimum root moves about 50 more, going
 on after a fail low about 12 more. Against the old time management
-directly, the defaults gained 51 ± 13 Elo at 30+0.3, with 2.6% less
-time per move. The measurements, the matches and the
+directly, the defaults gained 69 ± 12 Elo at 10+0.1 and 51 ± 13 at
+30+0.3, with about 3% less time per move. The measurements, the matches and the
 rules that were tried and dropped are in
 [time-management.md](time-management.md). They were played with the
 `TM ...` UCI options, which `--tm-options` offers; their defaults are
