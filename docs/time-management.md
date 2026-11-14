@@ -492,3 +492,41 @@ often. No clear gain shows (LOS 85%), but no cost either, and with both
 caps the move played after a fail low nearly always comes from a
 finished search. So this version (the reference with `TM Window Cap`
 400 and `TM Fail Low Cap` 400) is kept: it is the default since v3.1.
+
+### The defaults against the old time management at 30+0.3
+
+Each match above measured one step against the version before it. To
+see whether the whole gain holds when Psion searches deeper, v3.1 with
+its defaults played the time management as it was (S = H = T: `TM Soft
+Stop` 100, `TM Max` 100, `TM Max Share` 100, and 0 for the options from
+`TM Min Moves` on) at 30+0.3, three times the usual time control, 1,000
+pairs:
+
+| Machine | Pairs | Pentanomial (0 to 2 points) | Score | Elo | Time per move (defaults / old) |
+|---|---|---|---|---|---|
+| 1 | 373 | 32, 50, 138, 87, 66 | 57.0% | +49 ± 21 | 0.611 / 0.624 s |
+| 2 | 627 | 42, 95, 231, 152, 107 | 57.5% | +52 ± 16 | 0.608 / 0.625 s |
+| **Both** | **1000** | **74, 145, 369, 239, 173** | **57.30%** | **+51 ± 13** | **0.609 / 0.625 s** |
+
+All 2,000 games ended normally. The defaults gain about 50 Elo with
+2.6% less time per move. How the defaults' searches ended, against the
+same side of the last match at 10+0.1 (in the logs of the second
+machine, about 86,800 searches; for 10+0.1 the first machine, about
+207,400):
+
+| | 30+0.3 | 10+0.1 |
+|---|---|---|
+| Soft stop | 41.2% | 45.8% |
+| At the target | 43.3% | 40.2% |
+| Went on at the target, until done | 13.0% | 10.5% |
+| ... cut off at H | 2.5% | 3.5% |
+| Went on for: fewer than 4 root moves | 13.7% | 11.2% |
+| ... no move inside the window | 0.8% | 1.3% |
+| ... a fail low still open | 0.7% | 0.9% |
+| ... after a fail low | 0.4% | 0.7% |
+
+The rules act about as often at both time controls: the soft stop a
+little less at 30+0.3, the minimum root moves a little more, and cut
+off at H less often. None of them stops working when Psion searches
+deeper.
+
