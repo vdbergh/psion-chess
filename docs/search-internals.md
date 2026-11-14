@@ -70,7 +70,8 @@ second rank, and the flag is bit `04` of the square words.
 |---|---|
 | `5A42` | Incremental material/position score, updated by make from tables at `0744` |
 | `5A4C` | Return address of make/unmake (they keep undo data on the stack); also used as a pointer by the routine at `20B2` |
-| `5A72` | Side flag (bit `80`, toggled per ply) and evaluation mode: bit `40` turns on the passed-pawn code, bits `03` scale the mobility down (`61` in pawn endings, `00` in the opening) |
+| `5A72` | Side flag (bit `80`, toggled per ply) and evaluation mode, set from the material at the root (see "Pawns and the game phase"): bit `40` the endgame pawn evaluation, bits `03` scale the mobility down (`61` in pawn endings, `00` in the opening) |
+| `5A50`..`5A5F` | Pawns per rank: a file mask (bit 0 = a-file) per rank and side, White then Black, from rank 8 (`5A50`/`5A51`) to rank 1 (`5A5E`/`5A5F`); kept up to date by make |
 | `6740` | Piece list: per piece index, its square (low byte of the 0x88 address); with related tables at `6700` and `6720` |
 | `675E`, `67DE` | King squares (White, Black) |
 | `055C` | Ray table used to check whether a move leaves the king in check |
@@ -340,9 +341,9 @@ gain is its value in score units.
      through `0744`: pawn `6200`, knight `6100`, bishop `6300`, rook
      `6400`, queen `6500`, king `6600`, Black's at `+10`, negative).
    - The pawn term: a signed byte cached in `5A60`, recomputed only when
-     `5A61` is non-zero. It is recomputed in one of two ways, depending on
-     bit `40` of `5A72`: the tables at `6A00`/`6B00` (`2AE7`), or the
-     detailed code at `2AA6` with table `6D00`.
+     `5A61` is non-zero (make sets it when a pawn moves): the pawn files,
+     and in the endgame the passed pawns (see "Pawns and the game
+     phase" below).
    - Slider mobility: +1 per empty square a White slider sees and −1 for
      Black. Only diagonal and vertical rays count; the horizontal rays of
      rooks and queens are walked but counted into a value that is thrown
@@ -354,17 +355,14 @@ gain is its value in score units.
    - The mobility and pin terms so far are shifted right by `5A72 & 3`
      (`sar bp,cl` at `2A42`), e.g. halved in pawn endings (`5A72` =
      `61`). The check terms come after the shift.
-   - Passed pawns (`2D13`..`2E1D`), only with bit `40` of `5A72`, from
-     the passed-pawn file masks at `5A52`/`5A5D`. For each passed pawn
-     whose promotion square is empty, there are terms of 6, 32 (`0x20`)
-     and 72 (`0x48`) units, the 72 when only pawns are left. Which apply
-     depends on whether the side has pieces, which side is to move, and
-     which kings and pieces attack the promotion square (and `2E20` /
-     `1B69` for the square in front of it). Not decoded in full. Unlike the
+   - Pawns on the seventh rank (`2D13`..`2E1D`), only in the endgame:
+     6, 32 or 72 units each, by who is to move and who guards the
+     promotion square (see "Pawns and the game phase" below). Unlike the
      pawn term, these are not cached.
 2. **Exchange step costs.** For each attacked piece, its owner loses:
-   - `[714A]` if no pawn defends it (`714A` is 0 in the dumps, and no
-     instruction writes it directly);
+   - `[714A]` if no pawn defends it (`714A` is written only by the phase
+     code at the root, `36F4`..`3789`, from 0 to 4; it was 0 in the
+     dumps);
    - 1 if it is defended only by pieces behind others (`2BA3`);
    - 1 for each further round of captures (`2BBA`, `2BD7`).
 3. **Exchange gains.** The four largest gains, in exchange units:
@@ -402,6 +400,88 @@ The routine also returns other values:
 - Flags written into the move: `[si+2]` gets the square of T's best
   capture, with `10` set if `m1 > 0`; `[si+3]` gets bits `30` when Q
   threatens something (bit `20` cleared if `5A70 & 10`).
+
+### Pawns and the game phase
+
+**The game phase** (`3679`..`3775`) is set once at the root, from the
+material on the board, both sides together: queen 9, rook 5, bishop and
+knight 3, pawn 1 (table at `0846`), 78 at the start. With more than 51,
+bit `40` of `5A72` is clear: the middlegame evaluation. With 51 or less
+it is set: the endgame evaluation. With 39 or less (44 or less without
+queens) bit `20` is also set, and the mobility is scaled down further
+in the last phases (`61` in pawn endings). The phase also chooses the
+piece-square tables. The pawns' depend almost only on the rank: in the
+endgame phases (`38B7`/`38BF`, tables at `08E9`/`08F1`) 21 units on
+ranks 2 and 3, 22, 23 and 24 on ranks 4 to 6, and 30 or 32 on the
+seventh, plus 3 or 4 on some files (`38F1`); in the opening tables of
+the dumps 16 to 28, with the seventh rank at 23.
+
+**The pawn term** (`2A97`..`2B0D`) uses the pawns per rank at
+`5A50`..`5A5F`:
+
+- In the middlegame (`2AE7`): only the files with pawns, F(White's
+  files) − F(Black's files), with the same table F at `6B00` and
+  `6A00`: 0 for a lone file, more for files next to each other (a and
+  b 5, d and e 8, all eight 32). **There is no passed-pawn term.**
+- In the endgame (`2AA6`..`2AE2`): the same, plus P(White's passed
+  pawns) − P(Black's passed pawns). A pawn is passed when no enemy pawn
+  stands on its file or the next ones on the ranks ahead of it (table
+  `6D00`, the files a pawn mask leaves free). P (table at `6C00`, by
+  the files of the passed pawns) is 4 units per passed pawn and 2 more
+  for each pair on files next to each other: one passed pawn 4 (⅙ of a
+  pawn), two connected 10, three connected 16. **It does not depend on
+  the rank.**
+
+**Pawns on the seventh rank** (`2D13`..`2E1D`) get a term of their own
+in the endgame, computed in every evaluation when `5A52` (White's
+seventh rank) or `5A5D` (Black's second) is non-zero. For each such
+pawn whose promotion square is empty (an occupied one gives nothing):
+
+| The defending side | Pawn's side to move | Defender to move |
+|---|---|---|
+| has pieces besides pawns | +6; +32 more (38 in all) if no defender's piece guards the promotion square | nothing |
+| has only king and pawns | +72, unless the defender's king guards the promotion square and the own king does not | +72 if the own king guards the promotion square, or the defender's king is not next to it nor to the squares beside the pawn |
+
+"Guards" uses the attack tables (`+300`/`+480`: pawns, knights and the
+king in the low byte, the king's squares in the high byte), and for the
+defender's other pieces `1B69` with the pawn taken off its square, so
+that a rook or queen behind the pawn on the file counts. The pawn's own
+side's pieces play no part. With the defender to move the code also
+sets bits `18` in `709` (see "Check of the formula").
+
+So Psion values a passed pawn on ranks 2 to 6 at most at ⅙ of a pawn
+(plus about a third of a pawn more for the advance itself in the
+piece-square tables), and in the middlegame not at all. Only on the
+seventh rank, and only in the endgame, does it see more: 1.6 pawns if
+the promotion square is free and the pawn's side is to move, 3 pawns
+against a bare king. With the defender to move and pieces on the board,
+a pawn on the seventh gets nothing extra. Everything else has to come
+from the search.
+
+**Is the promotion searched?** Counted with a temporary write handler
+(`git stash` "promotion count (PSION_PROMO)", normal core): for every
+node in which the side to move has a pawn on its seventh rank with the
+square in front empty, whether the node made the promotion, by its ply
+k (the ply of its moves) against the nominal depth h. Searches of 20 s:
+
+| Position | Nodes, k ≤ h | ... promoted | Nodes, k = h + 1 | ... promoted |
+|---|---|---|---|---|
+| `8/5pk1/1P4p1/8/8/6P1/r4P1P/1R4K1 w` | 52,556 | 28,631 (54%) | | |
+| `8/6k1/8/2N5/8/1p6/6PP/6K1 w` | 5,113 | 2,122 (41%) | | |
+| `r4rk1/1P3ppp/2n5/8/8/2N5/5PPP/R4RK1 b` | 8,615 | 958 (11%) | 11,234 | 0 |
+| `4b1k1/5ppp/1P6/8/8/6P1/5PBP/6K1 b` | 12,527 | 8,467 (68%) | 76,691 | 0 |
+| `6k1/5pp1/1P5p/8/8/7P/q4PP1/1Q4K1 w` | 88,114 | 53,996 (61%) | | |
+
+The nodes at k = h + 1 are the positions at the horizon: none of them
+made any move, so there the pawn on the seventh is only evaluated (+6,
++38 or +72, see above), never promoted. (Which side has the move at the
+horizon depends on the parity, so in three positions the pawn's side
+never had it there.) Inside the nominal depth the promotion was made in
+11 to 68% of these nodes; in the others a cutoff came first, or the
+node made no move at all. None of these nodes was under the selective
+filter (bit `04` of `5A71`), which does let promotions through: in
+these endgames only 0.2 to 0.4% of all makes came from filtered nodes,
+against 17% in the Kiwipete-like middlegame.
 
 **Check of the formula.** Psion was run on the normal core with a
 temporary page handler on all of DS (`git stash` "evaluation check
