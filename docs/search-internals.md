@@ -988,6 +988,58 @@ At longer time controls (the bot's), the middlegame too is searched to
 h = 7 or 9, so the soft stop tuned at 10+0.1 may come a little early
 there.
 
+**Can the cost of the next iteration be predicted?** A soft stop could
+predict, from the iterations of the search itself, when the first move
+of a new iteration would finish, instead of starting it only before a
+fixed share of T. From the same 3,000 positions: 4,888 iterations from
+h = 7 on, 3,277 of which finished their first move within the 2 s. The
+growth of one iteration says nothing about that of the next: the
+correlation of log(D_k / D_k−1) with log(first move of k+1 / D_k) is
+−0.04 (1,150 pairs with D_k−1 ≥ 10 ms). Each prediction of the time of
+the first move, scaled by its best factor, misses it by (standard
+deviation of the log ratio, and the factor between its quartiles):
+
+| Prediction | sd | Quartiles |
+|---|---|---|
+| time since `go` at the start of the iteration (the fixed soft stop) | 0.81 | × 2.9 |
+| duration of the last iteration | 0.80 | × 2.8 |
+| last iteration × its growth over the one before | 1.13 | × 4.2 |
+| the same, with the growth clamped to 4–20 (10 below 10 ms) | 0.86 | × 3.1 |
+| the same, clamped to 5–15 | 0.84 | × 3.0 |
+
+The growth only adds noise, clamped or not; the fixed soft stop, in
+effect the last iteration times a constant, predicts as well as
+anything measured before the iteration starts. The first move took a
+median 3.5 times the time since `go` at h = 7 (quartiles 2.0–5.5; 2,354
+iterations), 2.4 at h = 9 (1.4–3.8; 765) and 2.1 at h = 11 (1.2–3.4;
+139), but a factor per depth lowers the standard deviation only from
+0.81 to 0.79: most of the spread, a factor of about 3, is the position.
+So neither a soft stop that predicts from the search nor one that
+depends on the depth is likely to gain much.
+
+A running average over the previous moves of the game does better, but
+not by much. In the `--verbose` logs of the 10+0.1 match of the
+defaults against the old time management (174,936 searches, followed
+game by game in the log of each engine), the growth is taken as
+f_d / f_d−2, with f_d the time of the first `info` line at depth d (the
+first move of that iteration done), and compared with the mean of the
+same growth over the previous moves of the game:
+
+| Growth | Searches | Median | sd of log | Correlation with the mean of the last 3 / 5 / 10 / all moves | sd of log, predicted |
+|---|---|---|---|---|---|
+| f_7 / f_5 | 40,117 | × 8.5 | 0.43 | +0.30 / +0.30 / +0.28 / +0.25 | 0.41 |
+| f_9 / f_7 | 4,635 | × 5.4 | 0.42 | +0.26 / +0.25 / +0.26 / +0.25 | 0.40 |
+
+(f_5 / f_3, from 995 searches, correlates by +0.18 and is not predicted
+better: f_3 is only a few ms.) So a game has a cost of its own, the
+same over the last 3 moves as over the last 10, but it explains only
+about 9% of the variance. As a soft stop it would move the point from
+40% of T by about ±3% (from 37% to 43%) from game to game, and change
+the decision only for the few iterations started in between, of which
+few would change the move. The cost of the next iteration is not known
+better than to a factor of about 3, and the fixed soft stop already
+uses about all that is known before the iteration starts.
+
 **Cost of the root moves.** Within an iteration the first root move (the
 previous best) is the expensive one: the others only have to be refuted
 against the best score so far (alpha, raised by the first move when it
