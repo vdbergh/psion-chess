@@ -1040,6 +1040,24 @@ few would change the move. The cost of the next iteration is not known
 better than to a factor of about 3, and the fixed soft stop already
 uses about all that is known before the iteration starts.
 
+The same holds for the effective branching factor b = N_d^(1/d), with
+N_d the nodes when the first move at depth d was done: unlike a time,
+it has no unit, and unlike a ratio of two iterations it is steady. From
+the same logs, as a predictor of the growth to the next iteration:
+
+| Growth | Searches | Median | sd of log | b: median, sd of log | Correlation with b | sd of log, predicted |
+|---|---|---|---|---|---|---|
+| f_7 / f_5 | 47,358 | × 8.5 | 0.44 | 4.38, 0.086 | −0.13 | 0.43 |
+| f_9 / f_7 | 7,700 | × 5.4 | 0.45 | 3.14, 0.083 | −0.22 | 0.43 |
+
+(The node ratio of the last two iterations, (N_d / N_d−2)^(1/2),
+correlates by −0.11 and −0.17.) b varies by only about ±9% between
+searches, so it cannot account for growths that vary by a factor of
+about 1.5 unless the two go closely together, and they do not; a large
+branching factor so far comes with a slightly smaller growth next. As
+the nodes per second hardly change within a search, nodes and time give
+the same answer.
+
 **Cost of the root moves.** Within an iteration the first root move (the
 previous best) is the expensive one: the others only have to be refuted
 against the best score so far (alpha, raised by the first move when it
