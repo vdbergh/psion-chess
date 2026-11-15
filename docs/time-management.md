@@ -545,3 +545,49 @@ little less at 30+0.3, the minimum root moves a little more, and cut
 off at H less often. None of them stops working when Psion searches
 deeper.
 
+
+### More time against a pawn on the 7th (not tried)
+
+The bot's games suggested a rule for "dangerous positions": when the
+opponent has a pawn on its 7th rank, the soft stop should not cut the
+search short. Of 2,327 games on Lichess, 38% had an opponent's pawn
+on its 7th at some point. In the 350 where the material was level
+(within a pawn when the pawn arrived and two plies later), Psion
+scored 21%, against 41% expected from the ratings; with its own pawn
+on the 7th and level material (136 games) it scored 65%, against 58%.
+Psion never searches a promotion at the horizon (see "Is the promotion
+searched?" in the search notes), so a search cut short can miss one.
+
+Whether more time pays there was measured on positions first. 3,000
+positions with Psion to move and an opponent's pawn on its 7th rank,
+the square in front empty ("danger"), and 3,000 others, one per game
+("control"), were taken from the 30+0.3 and 10+0.1 matches above and
+from the bot's games. Psion played each at `movetime` 0.25, 0.5, 1 and
+2 s, and Stockfish (2M nodes) gave the win chance of each move (the
+Lichess formula, for the side to move). Mean gain of a doubling, in
+points of win chance, with 95% intervals:
+
+| Doubling | Danger, all | Control, all | Danger, undecided (765) | Control, undecided (1,860) |
+|---|---|---|---|---|
+| 0.25 → 0.5 s | +0.36 ± 0.20 | +0.63 ± 0.20 | +0.92 ± 0.67 | +0.75 ± 0.28 |
+| 0.5 → 1 s | +0.30 ± 0.14 | +0.29 ± 0.14 | +0.94 ± 0.47 | +0.32 ± 0.20 |
+| 1 → 2 s | +0.18 ± 0.09 | +0.17 ± 0.09 | +0.58 ± 0.32 | +0.21 ± 0.14 |
+
+"Undecided" means that Stockfish's best move gives 10 to 90%. Psion
+changed its move about as often in both samples (24%, 13% and 9% for
+the three doublings in the danger positions, 28%, 13% and 9% in the
+others), and searched about one ply deeper in the danger positions.
+
+In the undecided positions, more time is worth about three times as
+much with a pawn on the 7th, from 0.5 s on. But only a quarter of the
+danger positions are undecided, against 62% of the others: by the time
+the pawn is on the 7th, the game is mostly decided. Over all positions
+the two cancel, and a move against a pawn on the 7th gains from more
+time no more than any other. Such moves are 2.6% of the moves after the
+book in the 10+0.1 match (3.0% in the bot's games), so more time for
+them would gain about what more time for any 2.6% of the moves gains,
+an estimated 1 to 3 Elo. Psion cannot tell the undecided positions
+apart, since it hardly values the pawn. A match would need tens of
+thousands of pairs to show such a gain, so the rule was not tried. The
+losses come mostly from letting the pawn get that far, which is the
+evaluation.
