@@ -584,6 +584,16 @@ static void test_clock_time(){
     // the same as ThinkTime() before the overhead
     GoParams go=ParseGo(split("go wtime 60000 btime 60000 winc 1000 binc 1000"));
     CHECK_EQ(ThinkTime(go,true,10),(unsigned int)ClockTime(go,true)-10);
+    // n and the share of the increment from the TM options
+    TimeParams tp=DefaultTimeParams();
+    tp.moves=20;
+    tp.moves_sudden_death=40;
+    tp.increment=100;
+    CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 btime 1000 winc 1000")),true,tp),4000);
+    CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 btime 1000")),true,tp),1500);
+    CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 btime 60000 movestogo 2")),false,tp),30000);
+    CHECK_EQ(ClockTime(ParseGo(split("go wtime 100 winc 1000")),true,tp),75);
+    CHECK_EQ(ThinkTime(go,true,10,tp),(unsigned int)ClockTime(go,true,tp)-10);
 }
 
 // The time management before the tuning: S = H = T.
@@ -603,6 +613,9 @@ static TimeParams plain_time_params(){
 static void test_default_time_params(){
     // the tuned values (docs/time-management.md)
     TimeParams tp=DefaultTimeParams();
+    CHECK_EQ(tp.moves,30);
+    CHECK_EQ(tp.moves_sudden_death,60);
+    CHECK_EQ(tp.increment,75);
     CHECK_EQ(tp.target,100);
     CHECK_EQ(tp.soft_stop,40);
     CHECK_EQ(tp.drop_extension,100);

@@ -1113,6 +1113,9 @@ namespace psion {
         int min, max;
     };
     static const TimeOption TIME_OPTIONS[] = {
+        {"TM Moves", &TimeParams::moves, 1, 200},
+        {"TM Moves Sudden Death", &TimeParams::moves_sudden_death, 1, 200},
+        {"TM Increment", &TimeParams::increment, 0, 100},
         {"TM Target", &TimeParams::target, 10, 1000},
         {"TM Soft Stop", &TimeParams::soft_stop, 1, 100},
         {"TM Drop", &TimeParams::drop, 1, 240},
@@ -1518,9 +1521,9 @@ namespace psion {
         // comes first: then the time for the move counts from there.
         uci.infinite = go.infinite || go.ponder;
         uci.ponder = go.ponder;
-        uci.ponderhit_ms = ThinkTime(go, white, move_overhead_ms);
+        uci.ponderhit_ms = ThinkTime(go, white, move_overhead_ms, time_params);
         uci.think_ms = go.ponder ? 0 : uci.ponderhit_ms;
-        uci.allocated_ms = ClockTime(go, white);
+        uci.allocated_ms = ClockTime(go, white, time_params);
         uci.clock_search = uci.allocated_ms >= 0;
         uci.remaining_ms = white ? go.wtime : go.btime;
         uci.depth_limit = go.depth;

@@ -54,23 +54,14 @@ namespace psion {
     };
     GoParams ParseGo(const std::vector<std::string> &tokens);
 
-    // How long to think (ms) before pressing MOVE-NOW, allowing overhead
-    // ms per move for everything else (the move being detected, the GUI,
-    // the network). 0 means no limit in time: until "stop", or until the
-    // depth, nodes or mate given are reached.
-    unsigned int ThinkTime(const GoParams &go, bool white,
-                           unsigned int overhead);
-
-    // The time for the move with a clock, in ms, before the overhead is
-    // taken off: remaining/n + 3/4 increment, at most 3/4 of the
-    // remaining time. -1 without a clock, with movetime or infinite.
-    long long ClockTime(const GoParams &go, bool white);
-
     // Time management with a clock (docs/implementation.md), tuned in
     // matches (docs/time-management.md) with the "TM ..." UCI options of
     // --tm-options. Shares in percent, the drop in Psion's units (24 per
     // pawn). The defaults are the tuned values.
     struct TimeParams {
+        int moves;              // n: ClockTime() = remaining / n ...
+        int moves_sudden_death; // ... n without an increment ...
+        int increment;          // ... + this share of the increment
         int target;             // c: target S = c * ClockTime()
         int soft_stop;          // x: no new iteration after x * S
         int drop;               // d: a drop of the first move's score of
@@ -91,6 +82,21 @@ namespace psion {
                                 // inside the window, if larger than m (0: m)
     };
     TimeParams DefaultTimeParams();
+
+    // How long to think (ms) before pressing MOVE-NOW, allowing overhead
+    // ms per move for everything else (the move being detected, the GUI,
+    // the network). 0 means no limit in time: until "stop", or until the
+    // depth, nodes or mate given are reached.
+    unsigned int ThinkTime(const GoParams &go, bool white,
+                           unsigned int overhead,
+                           const TimeParams &tp = DefaultTimeParams());
+
+    // The time for the move with a clock, in ms, before the overhead is
+    // taken off: remaining/n + 3/4 increment (n and the share from tp),
+    // at most 3/4 of the remaining time. -1 without a clock, with
+    // movetime or infinite.
+    long long ClockTime(const GoParams &go, bool white,
+                        const TimeParams &tp = DefaultTimeParams());
 
     // The think time (as from ThinkTime()) for percent of the target S,
     // capped at the maximum, both from allocated = ClockTime() and the

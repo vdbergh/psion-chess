@@ -527,7 +527,8 @@ namespace psion {
         return go;
     }
 
-    long long ClockTime(const GoParams &go, bool white) {
+    long long ClockTime(const GoParams &go, bool white,
+                        const TimeParams &tp) {
         // long long: 3 * INT_MAX must not overflow.
         long long time = white ? go.wtime : go.btime;
         long long inc = white ? go.winc : go.binc;
@@ -537,8 +538,10 @@ namespace psion {
         }
         // In sudden death a smaller share: the overhead of a move is a
         // fixed cost, so the remaining time must last for many moves.
-        long long n = go.movestogo > 0 ? go.movestogo : inc > 0 ? 30 : 60;
-        return std::min(time / n + 3 * inc / 4, 3 * time / 4);
+        long long n = go.movestogo > 0 ? go.movestogo
+                      : inc > 0       ? tp.moves
+                                      : tp.moves_sudden_death;
+        return std::min(time / n + inc * tp.increment / 100, 3 * time / 4);
     }
 
     static unsigned int less_overhead(long long t, unsigned int overhead) {
@@ -550,8 +553,8 @@ namespace psion {
     }
 
     unsigned int ThinkTime(const GoParams &go, bool white,
-                           unsigned int overhead) {
-        long long t = ClockTime(go, white);
+                           unsigned int overhead, const TimeParams &tp) {
+        long long t = ClockTime(go, white, tp);
         if (go.infinite) {
             return 0;
         }
@@ -569,6 +572,9 @@ namespace psion {
 
     TimeParams DefaultTimeParams() {
         TimeParams tp;
+        tp.moves = 30;
+        tp.moves_sudden_death = 60;
+        tp.increment = 75;
         tp.target = 100;
         tp.soft_stop = 40;
         tp.drop = 6;
