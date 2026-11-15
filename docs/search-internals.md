@@ -954,6 +954,40 @@ the one before (quartiles 11 to 23) at `09` → `0D` (h 5 → 7; 572
 searches), and 6.5 times at `0D` → `11` (58 searches, those that
 finished h = 7 within the budget, so biased towards the cheap ones).
 
+**By depth and game phase.** To see whether the soft stop should depend
+on the phase of the game, a build that logged the start of every
+iteration searched 3,000 positions (the control positions of "More time
+against a pawn on the 7th" in time-management.md, one per game from the
+30+0.3 and 10+0.1 matches and the bot's games) at `go movetime 2000`.
+The phase is Psion's material count (Q9 R5 B3 N3 P1, 78 at the start;
+see "Pawns and the game phase"). Cost of an iteration against the one
+before (median, quartiles; 1,877 pairs of finished iterations):
+
+| Phase | h = 7 | h = 9 | h = 11 |
+|---|---|---|---|
+| middlegame (> 51) | 9.7 (6.7–13.8) | – | – |
+| early endgame (40–51) | 10.4 (7.4–14.6) | – | – |
+| endgame (≤ 39) | 9.9 (7.2–13.4) | 7.5 (5.7–9.8) | 5.8 (4.7–7.7) |
+
+At the same depth an iteration costs the same in every phase; the cost
+ratio falls with depth, and in 2 s only endgames get that deep. The
+share of the iterations started at x · T that finished their first move
+by T (with the time of the first move taken in proportion to the time
+the iteration started; 4,740 iterations from h = 7 on):
+
+| Phase | x = 0.2 | 0.3 | 0.4 | 0.5 | 0.6 |
+|---|---|---|---|---|---|
+| middlegame | 40% | 16% | 7.5% | 3.2% | 1.2% |
+| early endgame | 40% | 21% | 9.9% | 5.1% | 1.3% |
+| endgame | 66% | 38% | 19% | 9.6% | 4.6% |
+
+So the soft stop at 40% of T holds in every phase. With the same chance
+as in the middlegame, it would come at about 50% of T in the endgame:
+because the endgame is searched deeper, not because of the material.
+At longer time controls (the bot's), the middlegame too is searched to
+h = 7 or 9, so the soft stop tuned at 10+0.1 may come a little early
+there.
+
 **Cost of the root moves.** Within an iteration the first root move (the
 previous best) is the expensive one: the others only have to be refuted
 against the best score so far (alpha, raised by the first move when it
