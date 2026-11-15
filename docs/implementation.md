@@ -500,6 +500,9 @@ counters; `tools/match.py` plays two engines against each other;
 `tools/lichess_check.py` checks the engine with python-chess, the way
 lichess-bot uses it. `tools/uci_log.py` runs the engine with `--verbose`
 in a match and logs its UCI traffic and diagnostics, one file per engine
-instance. `tools/lichess-bot-update.sh`, run daily by the workflow
+instance. `tools/position_test.py` tests a time management idea on
+positions: the engine moves at several times and Stockfish judges the
+moves (see the last section of [time-management.md](time-management.md)).
+`tools/lichess-bot-update.sh`, run daily by the workflow
 `lichess-bot-update.yml`, opens an issue when upstream lichess-bot is
 newer than the version the Lichess bot runs (`deploy/lichess-bot.txt`).

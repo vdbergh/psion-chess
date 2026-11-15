@@ -564,8 +564,8 @@ the square in front empty ("danger"), and 3,000 others, one per game
 ("control"), were taken from the 30+0.3 and 10+0.1 matches above and
 from the bot's games. Psion played each at `movetime` 0.25, 0.5, 1 and
 2 s, and Stockfish (2M nodes) gave the win chance of each move (the
-Lichess formula, for the side to move). Mean gain of a doubling, in
-points of win chance, with 95% intervals:
+Lichess formula, for the side to move), with `tools/position_test.py`.
+Mean gain of a doubling, in points of win chance, with 95% intervals:
 
 | Doubling | Danger, all | Control, all | Danger, undecided (765) | Control, undecided (1,860) |
 |---|---|---|---|---|
