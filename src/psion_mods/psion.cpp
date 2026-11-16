@@ -2292,19 +2292,22 @@ namespace psion {
     // While Psion waits for the GUI (it is not searching), the emulation is
     // stopped until the next command, which saves a CPU core. Psion's own
     // clock stands still meanwhile, which does not matter: the adapter
-    // keeps the time. Psion is only idle once ACTION_GAP_MS has passed
-    // since the last key, enough to handle it; then memory must show the
-    // known state for a few frames more, so that the screen is up to date.
+    // keeps the time. Psion is only idle once the effect of the last key
+    // has been seen (or else ACTION_GAP_MS has passed since it, enough to
+    // handle it); then memory must show the known state for a few frames
+    // more, so that the screen is up to date.
     const unsigned int FREEZE_DELAY_MS = 50;
 
     static void freeze_when_idle() {
         static unsigned int quiet_since = 0;
         static bool quiet = false;
-        // Not before ACTION_GAP_MS after a key, even if its effect has been
-        // seen: Psion may still be updating the screen.
+        // As in UciStep: after the '2' pressed when Psion has moved, its
+        // effect is seen at once, so in a fast game the emulation stops
+        // while the opponent thinks, not ACTION_GAP_MS later.
         if (!uci_done || !settled || pending_promotion ||
             !keyboard_buffer.Empty() ||
-            GetTicks() - uci.last_action < ACTION_GAP_MS) {
+            (!uci.action_done &&
+             GetTicks() - uci.last_action < ACTION_GAP_MS)) {
             quiet = false;
             return;
         }

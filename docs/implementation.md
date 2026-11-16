@@ -218,7 +218,8 @@ about 0.6%. Nearly all the time goes to emulating the CPU.
   mode) resets it to a known square.
 - While Psion waits for the GUI, the emulation is stopped until the next
   command arrives, so an idle engine uses no CPU (unless it ponders).
-  This starts once Psion has been idle for a moment, so that it has
+  This starts once the effect of the last key has been seen (or 300 ms
+  after it) and Psion has then been idle for 50 ms more, so that it has
   finished drawing the screen. Psion's own clock stands still meanwhile,
   which does not matter: the adapter keeps the time.
 
