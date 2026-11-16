@@ -1125,6 +1125,7 @@ namespace psion {
         {"TM Drop Extension", &TimeParams::drop_extension, 100, 1000},
         {"TM Max", &TimeParams::max, 100, 1000},
         {"TM Max Share", &TimeParams::max_share, 1, 100},
+        {"TM Reserve", &TimeParams::reserve, 0, 10000},
         {"TM Min Moves", &TimeParams::min_moves, 0, 100},
         {"TM Min Moves Window", &TimeParams::min_moves_window, 0, 1},
         {"TM Fail Low Max", &TimeParams::fail_low_max, 0, 1},

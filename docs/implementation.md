@@ -240,7 +240,9 @@ move number, counted from the start position, down to a floor. `TM
 Scale` multiplies the time for every move by a constant k: `remaining_time`
 is then that of a virtual clock which has run at 1/k of the real one since
 the first search of the game, so that every move gets k times what it
-would get with the defaults, until the real clock runs low.) Without `movetime` or a clock there is no limit in
+would get with the defaults, until the real clock runs low. `TM Reserve`
+keeps that many ms on the clock beside the 1/4 of it, whatever the
+search does.) Without `movetime` or a clock there is no limit in
 time if `go depth`, `go nodes` or `go mate` is given, and 5 seconds if
 none is.
 

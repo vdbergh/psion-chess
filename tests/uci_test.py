@@ -265,13 +265,14 @@ class UciTest(unittest.TestCase):
                          'option name TM Drop Extension type spin default 100 min 100 max 1000',
                          'option name TM Max type spin default 200 min 100 max 1000',
                          'option name TM Max Share type spin default 75 min 1 max 100',
+                         'option name TM Reserve type spin default 0 min 0 max 10000',
                          'option name TM Min Moves type spin default 4 min 0 max 100',
                          'option name TM Min Moves Window type spin default 1 min 0 max 1',
                          'option name TM Fail Low Max type spin default 1 min 0 max 1',
                          'option name TM Fail Low Cap type spin default 400 min 0 max 1000',
                          'option name TM Window Cap type spin default 400 min 0 max 1000'):
                 self.assertIn(line, before)
-            self.assertEqual(sum('TM ' in l for l in before), 17)
+            self.assertEqual(sum('TM ' in l for l in before), 18)
             moves = ['a2a4', 'h7h5']
 
             def search(go):
@@ -323,6 +324,15 @@ class UciTest(unittest.TestCase):
             self.assertGreater(used, 2.5)
             self.assertLess(used, 3.7)
             e.send('setoption name TM Scale value 100')
+            # all of the 2 s for the move, but 1.5 s kept in reserve:
+            # 0.5 s (1.5 s with the 3/4 cap alone)
+            e.send('setoption name TM Moves Sudden Death value 1')
+            e.send('setoption name TM Reserve value 1500')
+            used = search('go wtime 2000 btime 2000')
+            self.assertGreater(used, 0.3)
+            self.assertLess(used, 1.0)
+            e.send('setoption name TM Reserve value 0')
+            e.send('setoption name TM Moves Sudden Death value 60')
             # movetime is kept to
             self.assertGreater(search('go movetime 1000'), 0.9)
             e.send('setoption name TM Max Share value 0')

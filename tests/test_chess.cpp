@@ -657,6 +657,35 @@ static void test_clock_time_scale(){
     CHECK_EQ(ClockTime(g,true,tp,100,30000,9),225*50/100);
 }
 
+static void test_reserve(){
+    TimeParams tp=DefaultTimeParams();
+    tp.reserve=100;
+    // with plenty of time, 3/4 of it is the stricter cap
+    GoParams g=ParseGo(split("go wtime 10000 winc 100 movestogo 1"));
+    CHECK_EQ(ClockTime(g,true,tp),7500);
+    CHECK_EQ(MaxThinkTime(20000,10000,10,tp),7490u);
+    // at a low remaining time the reserve: 300 - 100, not 3/4 * 300
+    g=ParseGo(split("go wtime 300 winc 100 movestogo 1"));
+    CHECK_EQ(ClockTime(g,true,tp),200);
+    CHECK_EQ(MaxThinkTime(1000,300,10,tp),190u);
+    CHECK_EQ(ScaledThinkTime(1000,300,10,tp,100),190u);
+    CHECK_EQ(FailLowMaxTime(1000,300,10,tp),190u);
+    CHECK_EQ(WindowMaxTime(1000,300,10,tp),190u);
+    // below the reserve not below 0, and the minimum think time
+    g=ParseGo(split("go wtime 80 winc 100 movestogo 1"));
+    CHECK_EQ(ClockTime(g,true,tp),0);
+    CHECK_EQ(ThinkTime(g,true,10,tp),MIN_THINK_MS);
+    CHECK_EQ(MaxThinkTime(1000,80,10,tp),MIN_THINK_MS);
+    // also with the scale
+    tp.scale=110;
+    g=ParseGo(split("go wtime 150 winc 100"));
+    CHECK_EQ(ClockTime(g,true,tp,80,10000,9),50);
+    // off at 0: 3/4
+    tp=DefaultTimeParams();
+    g=ParseGo(split("go wtime 300 winc 100 movestogo 1"));
+    CHECK_EQ(ClockTime(g,true,tp),225);
+}
+
 // The time management before the tuning: S = H = T.
 static TimeParams plain_time_params(){
     TimeParams tp=DefaultTimeParams();
@@ -685,6 +714,7 @@ static void test_default_time_params(){
     CHECK_EQ(tp.drop_extension,100);
     CHECK_EQ(tp.max,200);
     CHECK_EQ(tp.max_share,75);
+    CHECK_EQ(tp.reserve,0);
     CHECK_EQ(tp.min_moves,4);
     CHECK_EQ(tp.min_moves_window,1);
     CHECK_EQ(tp.fail_low_max,1);
@@ -1623,6 +1653,7 @@ int main(){
     test_think_time();
     test_clock_time();
     test_clock_time_scale();
+    test_reserve();
     test_default_time_params();
     test_scaled_think_time();
     test_max_think_time();
