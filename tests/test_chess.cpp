@@ -619,6 +619,44 @@ static void test_clock_time(){
     CHECK_EQ(ClockTime(g,true,DefaultTimeParams(),80),ClockTime(g,true));
 }
 
+static void test_clock_time_scale(){
+    TimeParams tp=DefaultTimeParams();
+    tp.scale=120;
+    // at the first search the virtual clock is the real one: 1.2 * T
+    GoParams g=ParseGo(split("go wtime 30000 btime 30000 winc 300 binc 300"));
+    CHECK_EQ(ClockTime(g,true,tp,9,30000,9),(30000/30+225)*120/100);
+    // later: (20000 + 0.2 * (30000 + 10 * 300)) / 1.2 = 22166
+    g=ParseGo(split("go wtime 20000 btime 20000 winc 300 binc 300"));
+    CHECK_EQ(ClockTime(g,true,tp,19,30000,9),(100*22166/3000+225)*120/100);
+    // a player spending k times the default's time at the virtual clock
+    // has k times the default's time at the default's clock, every move
+    // (until its real clock runs out, after move 55 here, as both spend
+    // all of T)
+    long long def=30000,real=30000;
+    for(int move=9;move<55;move++){
+        char line[100];
+        sprintf(line,"go wtime %d winc 300",(int)def);
+        long long d=ClockTime(ParseGo(split(line)),true);
+        sprintf(line,"go wtime %d winc 300",(int)real);
+        long long t=ClockTime(ParseGo(split(line)),true,tp,move,30000,9);
+        CHECK(t>=d*120/100-2 && t<=d*120/100+2);
+        def+=300-d;
+        real+=300-t;
+    }
+    CHECK(real<def);
+    // not without the clock at the first search, nor with movestogo
+    CHECK_EQ(ClockTime(g,true,tp,19),ClockTime(g,true));
+    g=ParseGo(split("go wtime 20000 winc 300 movestogo 10"));
+    CHECK_EQ(ClockTime(g,true,tp,19,30000,9),ClockTime(g,true));
+    // at most 3/4 of the remaining time
+    g=ParseGo(split("go wtime 1000 winc 300"));
+    tp.scale=200;
+    CHECK_EQ(ClockTime(g,true,tp,100,30000,9),750);
+    // below 100 the virtual clock cannot go below 0
+    tp.scale=50;
+    CHECK_EQ(ClockTime(g,true,tp,100,30000,9),225*50/100);
+}
+
 // The time management before the tuning: S = H = T.
 static TimeParams plain_time_params(){
     TimeParams tp=DefaultTimeParams();
@@ -641,6 +679,7 @@ static void test_default_time_params(){
     CHECK_EQ(tp.moves_slope,0);
     CHECK_EQ(tp.moves_min,1);
     CHECK_EQ(tp.increment,75);
+    CHECK_EQ(tp.scale,100);
     CHECK_EQ(tp.target,100);
     CHECK_EQ(tp.soft_stop,40);
     CHECK_EQ(tp.drop_extension,100);
@@ -1583,6 +1622,7 @@ int main(){
     test_parse_go();
     test_think_time();
     test_clock_time();
+    test_clock_time_scale();
     test_default_time_params();
     test_scaled_think_time();
     test_max_think_time();

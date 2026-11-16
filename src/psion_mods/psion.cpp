@@ -1118,6 +1118,7 @@ namespace psion {
         {"TM Moves Slope", &TimeParams::moves_slope, 0, 1000},
         {"TM Moves Min", &TimeParams::moves_min, 1, 200},
         {"TM Increment", &TimeParams::increment, 0, 100},
+        {"TM Scale", &TimeParams::scale, 50, 200},
         {"TM Target", &TimeParams::target, 10, 1000},
         {"TM Soft Stop", &TimeParams::soft_stop, 1, 100},
         {"TM Drop", &TimeParams::drop, 1, 240},
@@ -1253,6 +1254,9 @@ namespace psion {
                                      // movetime or infinite
         long long allocated_ms;      // ClockTime()
         long long remaining_ms;      // the clock of the side to move
+        bool clock_base_known;       // the clock at the first search
+        long long clock_base_ms;     // with a clock in this game, and the
+        int clock_base_move;         // move number then (for "TM Scale")
         unsigned char iteration;     // Nodes_Iteration() as last seen
         bool iteration_started;      // a new iteration since "go" or
         unsigned int iteration_ticks; // "ponderhit", and when
@@ -1522,14 +1526,25 @@ namespace psion {
         // The number of the move to be played, counted from the start
         // position (a FEN's move number is not kept).
         int move = (int)((plies + (start.white ? 0 : 1)) / 2 + 1);
+        // The clock at the first search of the game: after "ucinewgame",
+        // or when the game has gone back to before that search (a new
+        // game without "ucinewgame").
+        if ((white ? go.wtime_given : go.btime_given) &&
+            (!uci.clock_base_known || move < uci.clock_base_move)) {
+            uci.clock_base_known = true;
+            uci.clock_base_ms = white ? go.wtime : go.btime;
+            uci.clock_base_move = move;
+        }
+        long long base = uci.clock_base_known ? uci.clock_base_ms : -1;
         // A ponder search ends like an infinite one, unless "ponderhit"
         // comes first: then the time for the move counts from there.
         uci.infinite = go.infinite || go.ponder;
         uci.ponder = go.ponder;
-        uci.ponderhit_ms =
-            ThinkTime(go, white, move_overhead_ms, time_params, move);
+        uci.ponderhit_ms = ThinkTime(go, white, move_overhead_ms, time_params,
+                                     move, base, uci.clock_base_move);
         uci.think_ms = go.ponder ? 0 : uci.ponderhit_ms;
-        uci.allocated_ms = ClockTime(go, white, time_params, move);
+        uci.allocated_ms = ClockTime(go, white, time_params, move, base,
+                                     uci.clock_base_move);
         uci.clock_search = uci.allocated_ms >= 0;
         uci.remaining_ms = white ? go.wtime : go.btime;
         uci.depth_limit = go.depth;
@@ -1640,6 +1655,7 @@ namespace psion {
             uci.target.clear();
             uci.move_added = false;
             uci.retries = 0;
+            uci.clock_base_known = false;
         } else if (cmd == "position") {
             if (uci.search == SEARCH_NONE) {
                 UciPosition(tokens);

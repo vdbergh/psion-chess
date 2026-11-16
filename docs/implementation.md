@@ -235,7 +235,11 @@ parameter, if present. Otherwise `n` is 30 if the increment is non-zero
 and 60 otherwise. (With `--tm-options`, `TM Moves`, `TM Moves Sudden
 Death` and `TM Increment` change the 30, the 60 and the 3/4, for
 tuning, and `TM Moves Slope` and `TM Moves Min` let `n` fall with the
-move number, counted from the start position, down to a floor.) Without `movetime` or a clock there is no limit in
+move number, counted from the start position, down to a floor. `TM
+Scale` multiplies the time for every move by a constant k: `remaining_time`
+is then that of a virtual clock which has run at 1/k of the real one since
+the first search of the game, so that every move gets k times what it
+would get with the defaults, until the real clock runs low.) Without `movetime` or a clock there is no limit in
 time if `go depth`, `go nodes` or `go mate` is given, and 5 seconds if
 none is.
 

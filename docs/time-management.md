@@ -171,7 +171,7 @@ remaining time can be kept as it is.
 
 One UCI option per parameter, all spins, shares in percent, offered
 only with `--tm-options`. The defaults are the values kept (see
-"Results"; the first five, added later, are the base time T as it has
+"Results"; the first six, added later, are the base time T as it has
 always been); the time management as it was before (S = H = T) is
 `TM Soft Stop` 100, `TM Max` 100, `TM Max Share` 100, and 0 for the
 other options from `TM Min Moves` on. The last column gives the values
@@ -184,6 +184,7 @@ first proposed:
 | s | `TM Moves Slope` | 0 | 0–1000 | | n (or n_sd) falls by s/100 per move: n − s · move/100, move the number of the move to be played |
 | n_min | `TM Moves Min` | 1 | 1–200 | | ... but not below n_min (nor n itself, if that is smaller) |
 | i | `TM Increment` | 75 | 0–100 | | share i of the increment in T |
+| k | `TM Scale` | 100 | 50–200 | | T times k, from a virtual clock that has run at 1/k of the real one since the first search of the game: (remaining + (k − 1) · (clock then + increments since)) / k; not with `movestogo` |
 | x | `TM Soft Stop` | 40 | 1–100 | 40 | soft stop: no new iteration after x · S |
 | c | `TM Target` | 100 | 10–1000 | 120 | target S = c · T |
 | d | `TM Drop` | 6 | 1–240 | 6 | drop (units, 24 per pawn) that counts as instability |

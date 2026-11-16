@@ -528,7 +528,8 @@ namespace psion {
     }
 
     long long ClockTime(const GoParams &go, bool white,
-                        const TimeParams &tp, int move) {
+                        const TimeParams &tp, int move, long long base,
+                        int base_move) {
         // long long: 100 * INT_MAX must not overflow.
         long long time = white ? go.wtime : go.btime;
         long long inc = white ? go.winc : go.binc;
@@ -540,13 +541,26 @@ namespace psion {
         // fixed cost, so the remaining time must last for many moves.
         // n in hundredths of a move.
         long long n = 100LL * go.movestogo;
+        long long virtual_time = time;
+        bool scaled = false;
         if (go.movestogo <= 0) {
             long long n0 = inc > 0 ? tp.moves : tp.moves_sudden_death;
             n = std::max(100 * n0 - (long long)tp.moves_slope * move,
                          100 * std::min(n0, (long long)tp.moves_min));
+            // If every move takes k times what the virtual clock allows,
+            // that clock follows the real one at 1/k of its use.
+            if (tp.scale != 100 && base >= 0) {
+                long long given = base + std::max(move - base_move, 0) * inc;
+                virtual_time = std::max(
+                    (100 * time + (tp.scale - 100) * given) / tp.scale, 0LL);
+                scaled = true;
+            }
         }
-        return std::min(100 * time / n + inc * tp.increment / 100,
-                        3 * time / 4);
+        long long t = 100 * virtual_time / n + inc * tp.increment / 100;
+        if (scaled) {
+            t = t * tp.scale / 100;
+        }
+        return std::min(t, 3 * time / 4);
     }
 
     static unsigned int less_overhead(long long t, unsigned int overhead) {
@@ -559,8 +573,8 @@ namespace psion {
 
     unsigned int ThinkTime(const GoParams &go, bool white,
                            unsigned int overhead, const TimeParams &tp,
-                           int move) {
-        long long t = ClockTime(go, white, tp, move);
+                           int move, long long base, int base_move) {
+        long long t = ClockTime(go, white, tp, move, base, base_move);
         if (go.infinite) {
             return 0;
         }
@@ -583,6 +597,7 @@ namespace psion {
         tp.moves_slope = 0;
         tp.moves_min = 1;
         tp.increment = 75;
+        tp.scale = 100;
         tp.target = 100;
         tp.soft_stop = 40;
         tp.drop = 6;

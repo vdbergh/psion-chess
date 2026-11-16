@@ -64,7 +64,11 @@ namespace psion {
         int moves_slope;        // ... falling by this / 100 per move ...
         int moves_min;          // ... but not below this (or n itself)
         int increment;          // ... + this share of the increment
-        int target;             // c: target S = c * ClockTime()
+        int scale;              // k: ClockTime() * k, from a virtual
+                                // clock that has run at 1/k of the real
+                                // one (with the clock at the first search
+                                // known, without movestogo)
+        int target;            // c: target S = c * ClockTime()
         int soft_stop;          // x: no new iteration after x * S
         int drop;               // d: a drop of the first move's score of
                                 // at least d units ...
@@ -88,20 +92,26 @@ namespace psion {
     // How long to think (ms) before pressing MOVE-NOW, allowing overhead
     // ms per move for everything else (the move being detected, the GUI,
     // the network). 0 means no limit in time: until "stop", or until the
-    // depth, nodes or mate given are reached. move: as for ClockTime().
+    // depth, nodes or mate given are reached. move, base and base_move:
+    // as for ClockTime().
     unsigned int ThinkTime(const GoParams &go, bool white,
                            unsigned int overhead,
                            const TimeParams &tp = DefaultTimeParams(),
-                           int move = 1);
+                           int move = 1, long long base = -1,
+                           int base_move = 1);
 
     // The time for the move with a clock, in ms, before the overhead is
     // taken off: remaining/n + 3/4 increment (n and the share from tp,
     // n falling with move, the number of the move to be played), at most
     // 3/4 of the remaining time. -1 without a clock, with movetime or
-    // infinite.
+    // infinite. With the scale k, the remaining time is that of a virtual
+    // clock which has run at 1/k of the real one since it showed base ms
+    // (< 0: not known) at move number base_move:
+    // (remaining + (k - 1) * (base + moves since * increment)) / k.
     long long ClockTime(const GoParams &go, bool white,
                         const TimeParams &tp = DefaultTimeParams(),
-                        int move = 1);
+                        int move = 1, long long base = -1,
+                        int base_move = 1);
 
     // The think time (as from ThinkTime()) for percent of the target S,
     // capped at the maximum, both from allocated = ClockTime() and the

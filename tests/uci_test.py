@@ -258,6 +258,7 @@ class UciTest(unittest.TestCase):
                          'option name TM Moves Slope type spin default 0 min 0 max 1000',
                          'option name TM Moves Min type spin default 1 min 1 max 200',
                          'option name TM Increment type spin default 75 min 0 max 100',
+                         'option name TM Scale type spin default 100 min 50 max 200',
                          'option name TM Target type spin default 100 min 10 max 1000',
                          'option name TM Soft Stop type spin default 40 min 1 max 100',
                          'option name TM Drop type spin default 6 min 1 max 240',
@@ -270,7 +271,7 @@ class UciTest(unittest.TestCase):
                          'option name TM Fail Low Cap type spin default 400 min 0 max 1000',
                          'option name TM Window Cap type spin default 400 min 0 max 1000'):
                 self.assertIn(line, before)
-            self.assertEqual(sum('TM ' in l for l in before), 16)
+            self.assertEqual(sum('TM ' in l for l in before), 17)
             moves = ['a2a4', 'h7h5']
 
             def search(go):
@@ -313,6 +314,15 @@ class UciTest(unittest.TestCase):
             self.assertLess(used, 1.6)
             e.send('setoption name TM Moves Slope value 0')
             e.send('setoption name TM Moves Sudden Death value 60')
+            # twice the time from a virtual clock that has run at half
+            # the speed since the first search (120 s): 60 s on the clock
+            # are (60 + 120) / 2 = 90 s on it, 2 * 90 / 60 = 3 s (1 s
+            # without the scale, 2 s for twice T)
+            e.send('setoption name TM Scale value 200')
+            used = search('go wtime 60000 btime 60000')
+            self.assertGreater(used, 2.5)
+            self.assertLess(used, 3.7)
+            e.send('setoption name TM Scale value 100')
             # movetime is kept to
             self.assertGreater(search('go movetime 1000'), 0.9)
             e.send('setoption name TM Max Share value 0')
