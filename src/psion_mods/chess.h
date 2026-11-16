@@ -61,6 +61,8 @@ namespace psion {
     struct TimeParams {
         int moves;              // n: ClockTime() = remaining / n ...
         int moves_sudden_death; // ... n without an increment ...
+        int moves_slope;        // ... falling by this / 100 per move ...
+        int moves_min;          // ... but not below this (or n itself)
         int increment;          // ... + this share of the increment
         int target;             // c: target S = c * ClockTime()
         int soft_stop;          // x: no new iteration after x * S
@@ -86,17 +88,20 @@ namespace psion {
     // How long to think (ms) before pressing MOVE-NOW, allowing overhead
     // ms per move for everything else (the move being detected, the GUI,
     // the network). 0 means no limit in time: until "stop", or until the
-    // depth, nodes or mate given are reached.
+    // depth, nodes or mate given are reached. move: as for ClockTime().
     unsigned int ThinkTime(const GoParams &go, bool white,
                            unsigned int overhead,
-                           const TimeParams &tp = DefaultTimeParams());
+                           const TimeParams &tp = DefaultTimeParams(),
+                           int move = 1);
 
     // The time for the move with a clock, in ms, before the overhead is
-    // taken off: remaining/n + 3/4 increment (n and the share from tp),
-    // at most 3/4 of the remaining time. -1 without a clock, with
-    // movetime or infinite.
+    // taken off: remaining/n + 3/4 increment (n and the share from tp,
+    // n falling with move, the number of the move to be played), at most
+    // 3/4 of the remaining time. -1 without a clock, with movetime or
+    // infinite.
     long long ClockTime(const GoParams &go, bool white,
-                        const TimeParams &tp = DefaultTimeParams());
+                        const TimeParams &tp = DefaultTimeParams(),
+                        int move = 1);
 
     // The think time (as from ThinkTime()) for percent of the target S,
     // capped at the maximum, both from allocated = ClockTime() and the

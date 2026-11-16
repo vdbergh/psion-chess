@@ -255,6 +255,8 @@ class UciTest(unittest.TestCase):
             _, before = e.expect('uciok', 10)
             for line in ('option name TM Moves type spin default 30 min 1 max 200',
                          'option name TM Moves Sudden Death type spin default 60 min 1 max 200',
+                         'option name TM Moves Slope type spin default 0 min 0 max 1000',
+                         'option name TM Moves Min type spin default 1 min 1 max 200',
                          'option name TM Increment type spin default 75 min 0 max 100',
                          'option name TM Target type spin default 100 min 10 max 1000',
                          'option name TM Soft Stop type spin default 40 min 1 max 100',
@@ -268,7 +270,7 @@ class UciTest(unittest.TestCase):
                          'option name TM Fail Low Cap type spin default 400 min 0 max 1000',
                          'option name TM Window Cap type spin default 400 min 0 max 1000'):
                 self.assertIn(line, before)
-            self.assertEqual(sum('TM ' in l for l in before), 14)
+            self.assertEqual(sum('TM ' in l for l in before), 16)
             moves = ['a2a4', 'h7h5']
 
             def search(go):
@@ -302,6 +304,14 @@ class UciTest(unittest.TestCase):
             used = search('go wtime 120000 btime 120000')
             self.assertGreater(used, 0.8)
             self.assertLess(used, 1.5)
+            # n falling by 10 per move: 30 - 10 * 2 = 10 at move 2, 1.2 s
+            # (0.4 s without the slope, 0.6 s if the move number were 1)
+            e.send('setoption name TM Moves Sudden Death value 30')
+            e.send('setoption name TM Moves Slope value 1000')
+            used = search('go wtime 12000 btime 12000')
+            self.assertGreater(used, 0.95)
+            self.assertLess(used, 1.6)
+            e.send('setoption name TM Moves Slope value 0')
             e.send('setoption name TM Moves Sudden Death value 60')
             # movetime is kept to
             self.assertGreater(search('go movetime 1000'), 0.9)

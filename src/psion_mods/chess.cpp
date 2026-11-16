@@ -528,8 +528,8 @@ namespace psion {
     }
 
     long long ClockTime(const GoParams &go, bool white,
-                        const TimeParams &tp) {
-        // long long: 3 * INT_MAX must not overflow.
+                        const TimeParams &tp, int move) {
+        // long long: 100 * INT_MAX must not overflow.
         long long time = white ? go.wtime : go.btime;
         long long inc = white ? go.winc : go.binc;
         bool clock = white ? go.wtime_given : go.btime_given;
@@ -538,10 +538,15 @@ namespace psion {
         }
         // In sudden death a smaller share: the overhead of a move is a
         // fixed cost, so the remaining time must last for many moves.
-        long long n = go.movestogo > 0 ? go.movestogo
-                      : inc > 0       ? tp.moves
-                                      : tp.moves_sudden_death;
-        return std::min(time / n + inc * tp.increment / 100, 3 * time / 4);
+        // n in hundredths of a move.
+        long long n = 100LL * go.movestogo;
+        if (go.movestogo <= 0) {
+            long long n0 = inc > 0 ? tp.moves : tp.moves_sudden_death;
+            n = std::max(100 * n0 - (long long)tp.moves_slope * move,
+                         100 * std::min(n0, (long long)tp.moves_min));
+        }
+        return std::min(100 * time / n + inc * tp.increment / 100,
+                        3 * time / 4);
     }
 
     static unsigned int less_overhead(long long t, unsigned int overhead) {
@@ -553,8 +558,9 @@ namespace psion {
     }
 
     unsigned int ThinkTime(const GoParams &go, bool white,
-                           unsigned int overhead, const TimeParams &tp) {
-        long long t = ClockTime(go, white, tp);
+                           unsigned int overhead, const TimeParams &tp,
+                           int move) {
+        long long t = ClockTime(go, white, tp, move);
         if (go.infinite) {
             return 0;
         }
@@ -574,6 +580,8 @@ namespace psion {
         TimeParams tp;
         tp.moves = 30;
         tp.moves_sudden_death = 60;
+        tp.moves_slope = 0;
+        tp.moves_min = 1;
         tp.increment = 75;
         tp.target = 100;
         tp.soft_stop = 40;

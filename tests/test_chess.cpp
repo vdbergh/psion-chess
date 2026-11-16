@@ -594,6 +594,29 @@ static void test_clock_time(){
     CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 btime 60000 movestogo 2")),false,tp),30000);
     CHECK_EQ(ClockTime(ParseGo(split("go wtime 100 winc 1000")),true,tp),75);
     CHECK_EQ(ThinkTime(go,true,10,tp),(unsigned int)ClockTime(go,true,tp)-10);
+    // n falling with the move number: max(55 - move/2, 20)
+    tp=DefaultTimeParams();
+    tp.moves=55;
+    tp.moves_slope=50;
+    tp.moves_min=20;
+    GoParams g=ParseGo(split("go wtime 60000 btime 60000 winc 1000 binc 1000"));
+    CHECK_EQ(ClockTime(g,true,tp,10),60000*100/5000+750);
+    CHECK_EQ(ClockTime(g,true,tp,11),60000*100/4950+750);
+    CHECK_EQ(ClockTime(g,true,tp,70),60000/20+750);
+    CHECK_EQ(ClockTime(g,true,tp,500),60000/20+750);
+    CHECK_EQ(ThinkTime(g,true,10,tp,11),(unsigned int)ClockTime(g,true,tp,11)-10);
+    // also in sudden death, from that n
+    tp.moves_sudden_death=100;
+    CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000")),true,tp,20),600*100/90);
+    // movestogo still decides
+    CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 movestogo 2")),true,tp,70),30000);
+    // a floor above n does not raise it
+    tp.moves=10;
+    tp.moves_slope=0;
+    tp.moves_min=50;
+    CHECK_EQ(ClockTime(g,true,tp,40),6000+750);
+    // without a slope the move number does not matter
+    CHECK_EQ(ClockTime(g,true,DefaultTimeParams(),80),ClockTime(g,true));
 }
 
 // The time management before the tuning: S = H = T.
@@ -615,6 +638,8 @@ static void test_default_time_params(){
     TimeParams tp=DefaultTimeParams();
     CHECK_EQ(tp.moves,30);
     CHECK_EQ(tp.moves_sudden_death,60);
+    CHECK_EQ(tp.moves_slope,0);
+    CHECK_EQ(tp.moves_min,1);
     CHECK_EQ(tp.increment,75);
     CHECK_EQ(tp.target,100);
     CHECK_EQ(tp.soft_stop,40);

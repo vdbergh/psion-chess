@@ -1115,6 +1115,8 @@ namespace psion {
     static const TimeOption TIME_OPTIONS[] = {
         {"TM Moves", &TimeParams::moves, 1, 200},
         {"TM Moves Sudden Death", &TimeParams::moves_sudden_death, 1, 200},
+        {"TM Moves Slope", &TimeParams::moves_slope, 0, 1000},
+        {"TM Moves Min", &TimeParams::moves_min, 1, 200},
         {"TM Increment", &TimeParams::increment, 0, 100},
         {"TM Target", &TimeParams::target, 10, 1000},
         {"TM Soft Stop", &TimeParams::soft_stop, 1, 100},
@@ -1517,13 +1519,17 @@ namespace psion {
         size_t plies =
             uci.has_target ? uci.target.size() : game_state.moves.size();
         bool white = start.white == (plies % 2 == 0);
+        // The number of the move to be played, counted from the start
+        // position (a FEN's move number is not kept).
+        int move = (int)((plies + (start.white ? 0 : 1)) / 2 + 1);
         // A ponder search ends like an infinite one, unless "ponderhit"
         // comes first: then the time for the move counts from there.
         uci.infinite = go.infinite || go.ponder;
         uci.ponder = go.ponder;
-        uci.ponderhit_ms = ThinkTime(go, white, move_overhead_ms, time_params);
+        uci.ponderhit_ms =
+            ThinkTime(go, white, move_overhead_ms, time_params, move);
         uci.think_ms = go.ponder ? 0 : uci.ponderhit_ms;
-        uci.allocated_ms = ClockTime(go, white, time_params);
+        uci.allocated_ms = ClockTime(go, white, time_params, move);
         uci.clock_search = uci.allocated_ms >= 0;
         uci.remaining_ms = white ? go.wtime : go.btime;
         uci.depth_limit = go.depth;
