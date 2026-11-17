@@ -197,6 +197,12 @@ namespace psion {
     std::string GameOver(const StartPosition &start,
                          const std::vector<std::string> &moves);
 
+    // As GameOver, or "REPETITION" (the position the third time) or
+    // "FIFTY" (50 moves by each side without a capture or a pawn move,
+    // counted from start): draws a GUI ends the game with.
+    std::string GameEnd(const StartPosition &start,
+                        const std::vector<std::string> &moves);
+
     // The keys that set up start in Psion's set-up mode, once it is in
     // that mode in a new game: 'e' (empty board), '0' (empty the square),
     // the cursor keys 'U', 'D', 'L', 'R', a piece letter ("kqrbnp") to

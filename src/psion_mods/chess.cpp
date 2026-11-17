@@ -893,19 +893,35 @@ namespace psion {
         return false;
     }
 
+    // A position, for repetitions: the board, the side to move, the
+    // castling rights and the en passant file (also when no pawn can take
+    // there, which can only miss a repetition).
+    static std::string position_key(const Board b, bool white,
+                                    const std::string &castling,
+                                    int ep_file) {
+        return std::string(&b[0][0], sizeof(Board)) + (white ? 'w' : 'b') +
+               castling + (char)('a' + ep_file);
+    }
+
     // Whether moves are legal from start. If not, error says which move
     // is not, and why when the game was already over. If they are, over
     // says whether the game is over after them: "CHECKMATE", "STALEMATE"
-    // or "".
+    // or "", and with draws also "REPETITION" (the position the third
+    // time) or "FIFTY" (50 moves by each side without a capture or a pawn
+    // move, counted from start).
     static bool check_game(const StartPosition &start,
                            const std::vector<std::string> &moves,
-                           std::string &error, std::string *over = NULL) {
+                           std::string &error, std::string *over = NULL,
+                           bool draws = false) {
         Board b;
         bool white = start.standard || start.white;
         std::string castling = start.standard ? "KQkq" : start.castling;
         int ep_file = -1;
         size_t i, j;
+        int halfmoves = 0;
+        std::vector<std::string> positions;
         BoardAfter(start, moves, 0, b);
+        positions.push_back(position_key(b, white, castling, ep_file));
         for (i = 0; i < moves.size(); i++) {
             const std::string &m = moves[i];
             if (!legal_move(b, white, castling, ep_file, m)) {
@@ -916,8 +932,12 @@ namespace psion {
                 }
                 return false;
             }
-            int ff = m[0] - 'a', fr = m[1] - '1', tr = m[3] - '1';
+            int ff = m[0] - 'a', fr = m[1] - '1', tf = m[2] - 'a',
+                tr = m[3] - '1';
             ep_file = toupper(b[ff][fr]) == 'P' && abs(tr - fr) == 2 ? ff : -1;
+            halfmoves = toupper(b[ff][fr]) == 'P' || b[tf][tr] != '.'
+                            ? 0
+                            : halfmoves + 1;
             // A king or rook leaving its square, or a rook taken there,
             // ends the right.
             static const char *squares[4] = {"e1h1", "e1a1", "e8h8", "e8a8"};
@@ -934,11 +954,20 @@ namespace psion {
             }
             make_move(b, m);
             white = !white;
+            positions.push_back(position_key(b, white, castling, ep_file));
         }
         if (over) {
             *over = has_legal_move(b, white, castling, ep_file) ? ""
                     : in_check(b, white)                       ? "CHECKMATE"
                                                                : "STALEMATE";
+            if (draws && over->empty()) {
+                if (std::count(positions.begin(), positions.end(),
+                               positions.back()) >= 3) {
+                    *over = "REPETITION";
+                } else if (halfmoves >= 100) {
+                    *over = "FIFTY";
+                }
+            }
         }
         return true;
     }
@@ -947,6 +976,12 @@ namespace psion {
                          const std::vector<std::string> &moves) {
         std::string error, over;
         return check_game(start, moves, error, &over) ? over : "";
+    }
+
+    std::string GameEnd(const StartPosition &start,
+                        const std::vector<std::string> &moves) {
+        std::string error, over;
+        return check_game(start, moves, error, &over, true) ? over : "";
     }
 
     PositionRequest ParsePosition(const std::vector<std::string> &tokens) {

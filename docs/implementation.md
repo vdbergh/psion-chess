@@ -420,6 +420,19 @@ about 130 ms; with the default of 10 ms, 2 games of an 8,000-game match
 were lost on time there while the machine was busy with other work.
 Increase `Move Overhead` on a loaded machine or over a network.
 
+Psion usually plays its move within 20 ms of MOVE-NOW, but a move that
+ends the game (a mate, or a draw by repetition or the fifty-move rule)
+sometimes takes it 150 to 300 ms: in the 10+0.1 matches 4 of about 120
+such moves, which lost on time with the clock near 200 ms. So if Psion
+has not moved 50 ms after MOVE-NOW and the best move of its last line
+ends the game by the rules, the adapter sends that move as `bestmove`
+at once ("Reporting e1e2, which ends the game, before Psion plays it"
+with `--verbose`). The game is over then, so it does not matter if
+Psion plays another move, and the commands that follow wait until it
+has moved. The adapter counts the fifty moves from the position given,
+and a position with an en passant square differs from the same one
+without, so it may miss such a draw, but never sees one that is not.
+
 With `--verbose` the adapter logs why it pressed MOVE-NOW: "Time up
 after N ms: target E%" (with ", drop" when extended by the
 `TM Drop Extension` of `--tm-options`), or "iteration NN started after

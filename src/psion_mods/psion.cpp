@@ -1242,6 +1242,11 @@ namespace psion {
     // Pause after a key action before the screen is consulted again.
     const unsigned int ACTION_GAP_MS = 300;
     const unsigned int MOVE_TIMEOUT_MS = 5000;
+    // Psion usually plays its move within 20 ms of MOVE-NOW, but one that
+    // ends the game (a mate, or a draw by repetition or the fifty-move
+    // rule) sometimes takes 150 to 300 ms: after this long its best move
+    // is reported without waiting for it, if that move ends the game.
+    const unsigned int GAME_END_WAIT_MS = 50;
     // Without a sign of thinking this long after 'c', a game over shown is
     // taken to be the reason.
     const unsigned int GAME_OVER_MS = 300;
@@ -1292,6 +1297,7 @@ namespace psion {
         unsigned int thinking_start; // when Psion started to think
         bool movenow_sent;
         unsigned int movenow_ticks;
+        std::string early_move; // reported before Psion played it
         bool below_window;           // when MOVE-NOW was pressed (see
         unsigned short below_alpha;  // Nodes_BelowWindow()), and the
         int below_depth;             // depth of that iteration
@@ -1406,11 +1412,24 @@ namespace psion {
         uci.movenow_ticks = now;
     }
 
+    static void send_bestmove(const std::string &move);
+
     static void finish_search(const std::string &move) {
-        int alpha_cp;
         search_speed(false);
         uci.search = SEARCH_NONE;
         game_state.thinking = false;
+        if (uci.early_move.empty()) {
+            send_bestmove(move);
+        } else if (move != uci.early_move) {
+            say("Psion played %s, not %s (reported already)\n", move.c_str(),
+                uci.early_move.c_str());
+        }
+        uci.early_move.clear();
+    }
+
+    // The last line of the search and bestmove.
+    static void send_bestmove(const std::string &move) {
+        int alpha_cp;
         if (!uci.info_move.empty() && move != uci.info_move && move != "0000") {
             std::string info = info_head(uci.info_mate, uci.info_score);
             std::vector<std::string> pv = uci.info_pv;
@@ -1869,7 +1888,7 @@ namespace psion {
     static void UciAnalysis() {
         MemoryPv p;
         while (Nodes_TakePv(p)) {
-            if (uci.search != SEARCH_RUNNING) {
+            if (uci.search != SEARCH_RUNNING || !uci.early_move.empty()) {
                 continue;
             }
             Analysis a;
@@ -2094,6 +2113,16 @@ namespace psion {
                            uci.info_score >= uci.mate_limit));
     }
 
+    // Whether move, from the position searched, ends the game.
+    static bool ends_game(const std::string &move) {
+        if (move.empty() || !uci.has_target || uci.unsupported) {
+            return false;
+        }
+        std::vector<std::string> moves = uci.target;
+        moves.push_back(move);
+        return !GameEnd(uci.target_start, moves).empty();
+    }
+
     // Drives Psion towards the state the GUI asked for. Called every tick.
     static void UciStep() {
         unsigned int now = GetTicks();
@@ -2141,6 +2170,17 @@ namespace psion {
             } else if (!uci.movenow_sent &&
                        (time_up(now) || search_limit_reached())) {
                 press_move_now(now);
+            } else if (uci.movenow_sent && uci.early_move.empty() &&
+                       now - uci.movenow_ticks >= GAME_END_WAIT_MS &&
+                       (!uci.infinite || uci.stop_received) &&
+                       ends_game(uci.info_move)) {
+                // The game is over with this move, so it does not matter
+                // if Psion plays another one; the commands that follow wait
+                // until it has.
+                say("Reporting %s, which ends the game, before Psion plays it\n",
+                    uci.info_move.c_str());
+                uci.early_move = uci.info_move;
+                send_bestmove(uci.early_move);
             } else if (uci.movenow_sent &&
                        now - uci.movenow_ticks > MOVE_TIMEOUT_MS) {
                 say("Psion did not move\n");
@@ -2320,6 +2360,7 @@ namespace psion {
             uci.info_depth = 0;
             uci.info_seldepth = 0;
             uci.movenow_sent = false;
+            uci.early_move.clear();
             uci.below_window = false;
             uci.iteration = 0;
             uci.iteration_started = false;

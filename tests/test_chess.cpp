@@ -534,6 +534,46 @@ static void test_game_over(){
     CHECK_EQ(GameOver(req.start,req.moves),std::string("CHECKMATE"));
 }
 
+static void test_game_end(){
+    StartPosition start=StandardStart();
+    CHECK_EQ(GameEnd(start,split("f2f3 e7e5 g2g4 d8h4")),std::string("CHECKMATE"));
+    // the start position the third time (GameOver ignores draws)
+    std::string knights="g1f3 g8f6 f3g1 f6g8 g1f3 g8f6 f3g1 f6g8";
+    CHECK_EQ(GameEnd(start,split(knights.c_str())),std::string("REPETITION"));
+    CHECK_EQ(GameOver(start,split(knights.c_str())),std::string(""));
+    CHECK_EQ(GameEnd(start,split("g1f3 g8f6 f3g1 f6g8 g1f3 g8f6 f3g1")),std::string(""));
+    // after e7e5 the en passant file is set, so that position does not
+    // count (a repetition missed), but a third time with the knights does
+    std::string e4e5="e2e4 e7e5 g1f3 b8c6 f3g1 c6b8 g1f3 b8c6 f3g1 c6b8";
+    CHECK_EQ(GameEnd(start,split(e4e5.c_str())),std::string(""));
+    CHECK_EQ(GameEnd(start,split((e4e5+" g1f3 b8c6 f3g1 c6b8").c_str())),std::string("REPETITION"));
+    // the castling rights go after the king moves
+    CHECK_EQ(GameEnd(start,split("e2e4 e7e5 e1e2 e8e7 e2e1 e7e8 e1e2 e8e7 e2e1 e7e8")),std::string(""));
+    // an illegal move: not over
+    CHECK_EQ(GameEnd(start,split("g1f3 g8f6 f3g1 f6g8 g1f3 g8f6 f3g1 f6f8")),std::string(""));
+    // the fifty-move rule: White's king walks without repeating a square
+    // more than twice while Black's goes to and fro
+    PositionRequest req=ParsePosition(split("position fen 7k/8/8/8/8/8/7P/KR6 w - - 0 1"));
+    CHECK(req.supported);
+    std::vector<std::string> wk=split("a1a2 a2a3 a3a4 a4a5 a5a6 a6b6 b6b5 b5b4 b4b3 b3b2 b2c1 c1c2 c2c3 c3c4 c4c5 c5c6 c6d6 d6d5 d5d4 d4d3 d3d2 d2d1 d1e1 e1e2 e2e3 e3e4 e4e5 e5e6 e6f6 f6f5 f5f4 f4f3 f3f2 f2f1 f1g1 g1g2 g2g3 g3g4 g4g5 g5g6 g6h6 h6h5 h5h4 h4h3 h3g4 g4f5 f5e6 e6d5 d5c4 c4b3");
+    CHECK_EQ((int)wk.size(),50);
+    std::vector<std::string> walk;
+    for(size_t i=0;i<wk.size();i++){
+        walk.push_back(wk[i]);
+        walk.push_back(i%2 ? "g8h8" : "h8g8");
+    }
+    CHECK_EQ(GameEnd(req.start,std::vector<std::string>(walk.begin(),walk.end()-1)),std::string(""));
+    CHECK_EQ(GameEnd(req.start,walk),std::string("FIFTY"));
+    // a pawn move resets the count
+    std::vector<std::string> pawn(walk.begin(),walk.end()-2);
+    pawn.push_back("h2h3");
+    pawn.push_back(walk.back());
+    CHECK_EQ(GameEnd(req.start,pawn),std::string(""));
+    // counted from the position given, not from its halfmove clock
+    req=ParsePosition(split("position fen 7k/8/8/8/8/8/7P/KR6 w - - 99 80 moves a1a2"));
+    CHECK_EQ(GameEnd(req.start,req.moves),std::string(""));
+}
+
 static void test_depth_reached(){
     // the counter: 05 (3 plies), 09 (5), 0D (7), ...; 0 before the search
     CHECK(!DepthReached(5,0x00));
@@ -1663,6 +1703,7 @@ int main(){
     test_move_now_time();
     test_depth_reached();
     test_game_over();
+    test_game_end();
     test_set_option();
     test_elo_cycles();
     test_parse_position();
