@@ -76,6 +76,11 @@ How the engine handles the gray areas of the protocol is described under
   i5-1135G7. Increase `Move Overhead` if the engine loses on time, for
   example when playing fast games over a slow network or on a busy
   machine.
+- `Clock Reserve` (ms, default 0): no search leaves less than this on
+  the clock, besides the quarter of it that is always kept. When the
+  clock runs low in a game with an increment, it then settles at the
+  increment plus the reserve instead of 4/3 of the increment, which
+  leaves a margin for delays. Useful in fast games, e.g. 100 at 10+0.1.
 - `Cycles` (default `highest`): the number of instructions per
   millisecond (capped at 1,000,000) of the emulated PC, e.g. `300` for roughly an original IBM PC (see
   [Speed](#speed)). The special value "`highest`" means running as fast as the host allows.
@@ -180,7 +185,8 @@ then follows Psion's search: it stops early when a new iteration would
 not finish in time, and goes on when the search is unsettled (too few
 moves searched, the best move just refuted), up to twice the allocated
 time, four times after a fail low, and never more than three quarters
-of the remaining time. Psion always thinks for at least 50 ms.
+of the remaining time (nor more than the remaining time less `Clock
+Reserve`). Psion always thinks for at least 50 ms.
 `Move Overhead` is taken off all these times: increase it if the engine
 loses on time. `go depth`, `go nodes` and `go mate` end the search as
 well, whichever limit comes first; the depth is rounded up to Psion's

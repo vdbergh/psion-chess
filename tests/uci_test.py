@@ -237,6 +237,33 @@ class UciTest(unittest.TestCase):
             e.send('setoption name Move Overhead value 10')
             e.ready()
 
+    def test_clock_reserve(self):
+        e = self.engine
+        e.send('uci')
+        _, before = e.expect('uciok', 10)
+        self.assertIn('option name Clock Reserve type spin default 0 min 0 max 5000',
+                      before)
+        moves = ['b2b4', 'g7g5', 'g2g4', 'b7b5']
+        try:
+            # all of the 2 s left for the last move, but 1.5 s kept in
+            # reserve: 0.5 s (1.5 s with the 3/4 cap alone)
+            e.send('setoption name Clock Reserve value 1500')
+            e.send('position startpos moves ' + ' '.join(moves))
+            e.ready()
+            start = time.time()
+            e.send('go wtime 2000 btime 2000 movestogo 1')
+            move = bestmove(e, 10)
+            used = time.time() - start
+            self.assertTrue(Board(moves).plausible(move), move)
+            self.assertGreater(used, 0.3)
+            self.assertLess(used, 1.0)
+            e.send('setoption name Clock Reserve value -1')
+            line, _ = e.expect('info string', 5)
+            self.assertIn('Clock Reserve must be 0 to 5000', line)
+        finally:
+            e.send('setoption name Clock Reserve value 0')
+            e.ready()
+
     def test_time_management_options(self):
         """The TM options of --tm-options (docs/time-management.md) apply
         with a clock, not with movetime. Without --tm-options there are
@@ -265,14 +292,13 @@ class UciTest(unittest.TestCase):
                          'option name TM Drop Extension type spin default 100 min 100 max 1000',
                          'option name TM Max type spin default 200 min 100 max 1000',
                          'option name TM Max Share type spin default 75 min 1 max 100',
-                         'option name TM Reserve type spin default 0 min 0 max 10000',
                          'option name TM Min Moves type spin default 4 min 0 max 100',
                          'option name TM Min Moves Window type spin default 1 min 0 max 1',
                          'option name TM Fail Low Max type spin default 1 min 0 max 1',
                          'option name TM Fail Low Cap type spin default 400 min 0 max 1000',
                          'option name TM Window Cap type spin default 400 min 0 max 1000'):
                 self.assertIn(line, before)
-            self.assertEqual(sum('TM ' in l for l in before), 18)
+            self.assertEqual(sum('TM ' in l for l in before), 17)
             moves = ['a2a4', 'h7h5']
 
             def search(go):
@@ -324,15 +350,6 @@ class UciTest(unittest.TestCase):
             self.assertGreater(used, 2.5)
             self.assertLess(used, 3.7)
             e.send('setoption name TM Scale value 100')
-            # all of the 2 s for the move, but 1.5 s kept in reserve:
-            # 0.5 s (1.5 s with the 3/4 cap alone)
-            e.send('setoption name TM Moves Sudden Death value 1')
-            e.send('setoption name TM Reserve value 1500')
-            used = search('go wtime 2000 btime 2000')
-            self.assertGreater(used, 0.3)
-            self.assertLess(used, 1.0)
-            e.send('setoption name TM Reserve value 0')
-            e.send('setoption name TM Moves Sudden Death value 60')
             # movetime is kept to
             self.assertGreater(search('go movetime 1000'), 0.9)
             e.send('setoption name TM Max Share value 0')

@@ -191,12 +191,15 @@ first proposed:
 | e_drop | `TM Drop Extension` | 100 | 100–1000 | 160 | extension after a drop |
 | m | `TM Max` | 200 | 100–1000 | 300 | maximum H, as a share of T |
 | r | `TM Max Share` | 75 | 1–100 | 25 | maximum H, as a share of the remaining time |
-| R | `TM Reserve` | 0 | 0–10000 | | maximum H, and T, at most the remaining time less R ms: an absolute safety margin beside the share r, for a low clock (0: off) |
 | N | `TM Min Moves` | 4 | 0–100 | 4 | at the target, go on until N root moves are searched (0: off) |
 | | `TM Min Moves Window` | 1 | 0–1 | 1 | 1: also go on until a root move has come back inside the window |
 | | `TM Fail Low Max` | 1 | 0–1 | 1 | 1: at the target, an iteration that has failed low goes on until H |
 | m_low | `TM Fail Low Cap` | 400 | 0–1000 | 400 | H for an iteration that has failed low, as a share of T, if larger than m (0: m) |
 | m_win | `TM Window Cap` | 400 | 0–1000 | 400 | H while no root move is inside the window, as a share of T, if larger than m (0: m) |
+
+An absolute safety margin R beside the share r, first tried as `TM
+Reserve`, is the regular UCI option `Clock Reserve` (default 0, see
+[implementation.md](implementation.md#time-management)).
 
 `TM Fail Low Extension` (e_low, the extension of S while a fail low is
 open) was removed: the window rule covers what it was for (see "After a

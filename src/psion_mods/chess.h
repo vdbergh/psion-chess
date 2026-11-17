@@ -76,7 +76,8 @@ namespace psion {
         int max;                // m: at most m * ClockTime() ...
         int max_share;          // r: ... and r * the remaining time
         int reserve;            // R: ... and the remaining time - R ms,
-                                // also for ClockTime() (0: off)
+                                // also for ClockTime() (0: off; the
+                                // "Clock Reserve" option, not a TM one)
         int min_moves;          // N: at the target, an iteration that has
                                 // searched its first root move goes on
                                 // until it has searched N (0: off)

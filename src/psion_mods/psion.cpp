@@ -1108,6 +1108,12 @@ namespace psion {
     const unsigned int DEFAULT_MOVE_OVERHEAD_MS = 10;
     const unsigned int MAX_MOVE_OVERHEAD_MS = 5000;
     static unsigned int move_overhead_ms = DEFAULT_MOVE_OVERHEAD_MS;
+    // The "Clock Reserve" option: no search leaves less than this on the
+    // clock (besides the quarter of it), so that the clock settles at
+    // the increment plus this when it runs low, not at 4/3 of the
+    // increment: a margin for delays in fast games (0: off).
+    const unsigned int DEFAULT_CLOCK_RESERVE_MS = 0;
+    const unsigned int MAX_CLOCK_RESERVE_MS = 5000;
     // Time management with a clock (docs/implementation.md), with the
     // tuned values unless set by the "TM ..." options of --tm-options
     // (docs/time-management.md).
@@ -1130,7 +1136,6 @@ namespace psion {
         {"TM Drop Extension", &TimeParams::drop_extension, 100, 1000},
         {"TM Max", &TimeParams::max, 100, 1000},
         {"TM Max Share", &TimeParams::max_share, 1, 100},
-        {"TM Reserve", &TimeParams::reserve, 0, 10000},
         {"TM Min Moves", &TimeParams::min_moves, 0, 100},
         {"TM Min Moves Window", &TimeParams::min_moves_window, 0, 1},
         {"TM Fail Low Max", &TimeParams::fail_low_max, 0, 1},
@@ -1630,6 +1635,9 @@ namespace psion {
             uci_send("option name Move Overhead type spin default %u min 0 "
                      "max %u\n",
                      DEFAULT_MOVE_OVERHEAD_MS, MAX_MOVE_OVERHEAD_MS);
+            uci_send("option name Clock Reserve type spin default %u min 0 "
+                     "max %u\n",
+                     DEFAULT_CLOCK_RESERVE_MS, MAX_CLOCK_RESERVE_MS);
             // Not "max", a keyword of the option command: GUIs would read an
             // empty default.
             uci_send("option name Cycles type string default highest\n");
@@ -1723,6 +1731,16 @@ namespace psion {
                              MAX_MOVE_OVERHEAD_MS);
                 } else {
                     move_overhead_ms = (unsigned int)v;
+                }
+            } else if (SameOptionName(name, "Clock Reserve")) {
+                char *end;
+                long v = strtol(value.c_str(), &end, 10);
+                if (value.empty() || *end || v < 0 ||
+                    v > (long)MAX_CLOCK_RESERVE_MS) {
+                    uci_send("info string Clock Reserve must be 0 to %u\n",
+                             MAX_CLOCK_RESERVE_MS);
+                } else {
+                    time_params.reserve = (int)v;
                 }
             } else if (SameOptionName(name, "Cycles")) {
                 char *end;

@@ -241,9 +241,7 @@ move number, counted from the start position, down to a floor. `TM
 Scale` multiplies the time for every move by a constant k: `remaining_time`
 is then that of a virtual clock which has run at 1/k of the real one since
 the first search of the game, so that every move gets k times what it
-would get with the defaults, until the real clock runs low. `TM Reserve`
-keeps that many ms on the clock beside the 1/4 of it, whatever the
-search does.) Without `movetime` or a clock there is no limit in
+would get with the defaults, until the real clock runs low.) Without `movetime` or a clock there is no limit in
 time if `go depth`, `go nodes` or `go mate` is given, and 5 seconds if
 none is.
 
@@ -406,7 +404,11 @@ the values above.
 The time used per move stays about the same as with T alone: the soft
 stop saves about as much as the other rules spend. At 75% of the
 remaining time, the margin at H is a quarter of the remaining time plus
-`Move Overhead`. In long endgames at 10+0.1 the clock can be down to
+`Move Overhead`. The `Clock Reserve` option (R ms, default 0) caps H,
+and T, at the remaining time less R as well: when the clock runs low
+with an increment i, it settles where the cap is i, at 4/3 i without
+the reserve (a margin of i/3) and at i + R with it (a margin of R), if
+that is more. In long endgames at 10+0.1 the clock can be down to
 about 130 ms; with the default of 10 ms, 2 games of an 8,000-game match
 were lost on time there while the machine was busy with other work.
 Increase `Move Overhead` on a loaded machine or over a network.
