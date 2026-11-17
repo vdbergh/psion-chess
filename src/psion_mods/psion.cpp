@@ -538,6 +538,7 @@ namespace psion {
     const unsigned int MEM_BOARD = 0x28AC; // 64 bytes, a8..h8, a7..h7, ...
     const unsigned int MEM_SIDE = 0x725B;  // 00 White, FF Black to move
     const unsigned int MEM_PLY = 0x7260;   // word, counts the ponder move
+    const unsigned int MEM_MODE = 0x7262;  // 80 in 2-player mode, else 00
     const unsigned int MEM_SEARCH_BOARD = 0x5B00; // 0x88 words, a8 first
 
     static bool read_state_at(unsigned int segment, PsionState &state) {
@@ -670,6 +671,13 @@ namespace psion {
     static bool have_known = false;
     static bool settled = false; // memory showed the known state when
                                  // last read successfully
+
+    // 2-player mode as Psion's memory shows it: within a tick of the key,
+    // sooner than the screen.
+    static bool two_player_flag() {
+        return have_known &&
+               mem_readb(known.segment * 16 + MEM_MODE) == 0x80;
+    }
 
     static bool same_state(const PsionState &a, const PsionState &b) {
         return a.ply == b.ply && a.white_to_move == b.white_to_move &&
@@ -1006,6 +1014,12 @@ namespace psion {
                r.find("PROGRAM") == std::string::npos;
     }
 
+    // Whether Psion is in 2-player mode, as soon as memory shows it (the
+    // screen follows a little later), or as the screen shows it.
+    static bool in_two_player_mode() {
+        return two_player_flag() || two_player_mode();
+    }
+
     // The level used: 4 minutes per move, longer than any search the
     // adapter asks for (MOVE-NOW ends it). Not "Infinite": at that level
     // Psion stops reading the keyboard once its search reaches the
@@ -1285,6 +1299,7 @@ namespace psion {
         unsigned int last_action;
         bool action_done;        // its effect seen: no need to wait
         bool two_player_pending; // '2' pressed after the engine moved
+        bool two_player_by_flag; // ... seen in memory, not on the screen
         bool saw_program;        // the screen showed Psion thinking
         Board search_board;      // the position searched
         bool search_white;
@@ -1483,9 +1498,13 @@ namespace psion {
         }
         game_state.thinking = false;
         press(KBD_2); // back to 2-player mode
-        // That it worked shows on the screen, unless Psion moved before
-        // the screen showed it thinking.
-        uci.two_player_pending = uci.saw_program;
+        // That it worked shows in memory within a tick, also when Psion
+        // moved before the screen showed it thinking (as when "stop" comes
+        // right after "go ponder"); otherwise the next step would wait
+        // ACTION_GAP_MS. Should memory show 2-player mode already, it is
+        // left to the screen, as long as that showed Psion thinking.
+        uci.two_player_by_flag = !two_player_flag();
+        uci.two_player_pending = uci.two_player_by_flag || uci.saw_program;
         if (uci.has_target && !uci.unsupported) {
             uci.target.push_back(move);
             uci.move_added = true;
@@ -2090,7 +2109,8 @@ namespace psion {
             takeback_to = -1;
             uci.action_done = true;
         }
-        if (uci.two_player_pending && two_player_mode()) {
+        if (uci.two_player_pending &&
+            (uci.two_player_by_flag ? two_player_flag() : two_player_mode())) {
             uci.two_player_pending = false;
             uci.action_done = true;
         }
@@ -2167,7 +2187,7 @@ namespace psion {
                     return;
                 }
             }
-            if (!two_player_mode() && takeback_to < 0 &&
+            if (!in_two_player_mode() && takeback_to < 0 &&
                 SameStart(game_state.start, uci.target_start) &&
                 PlanSync(moves, uci.target) == SYNC_TAKEBACK) {
                 // Psion takes back moves also when it considers the game
@@ -2176,7 +2196,7 @@ namespace psion {
                 take_back();
                 return;
             }
-            if (!two_player_mode()) {
+            if (!in_two_player_mode()) {
                 // Once Psion considers the game over (e.g. it announced a
                 // draw) it ignores '2'; only a new game helps then.
                 if (++uci.two_player_presses > MAX_TWO_PLAYER_PRESSES) {

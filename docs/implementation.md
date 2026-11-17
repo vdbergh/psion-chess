@@ -21,7 +21,7 @@ ways:
 - **Psion's analysis** (score and principal variation) is read from its
   memory too (below).
 - **Everything else** is read from the screen: the level, the modes and
-  prompts.
+  prompts (2-player mode also from memory, which shows it sooner).
 
 The rule: what must be exactly right to keep the game in sync comes from
 memory; what is only checked, or shown to the user, may come from the
@@ -72,6 +72,7 @@ taken for the game.
 | `28AC` | The board: 64 bytes, a8..h8, a7..h7, ..., a1..h1. |
 | `725B` | Side to move: `00` White, `FF` Black. Unreliable while the engine searches its own move. |
 | `7260` | Ply counter (word). While pondering it includes the predicted reply. After set-up mode it starts at 20 (21 with Black to move). |
+| `7262` | `80` in 2-player mode, `00` while Psion plays a side (from `c` on). It changes within about 10 ms of the key, while the screen follows 10 to 50 ms later. |
 
 Square codes: empty `00`, pawn `2C`, knight `24`, bishop `1C`, rook `0A`,
 queen `17`, king `01`; bit `80` is set for Black and bits `40`/`04` are
@@ -122,7 +123,7 @@ contents, because some rows blink. The adapter uses the text for:
 
 | Row | Text | Used for |
 |---|---|---|
-| 6 | `PLAYER PLAYER` | 2-player mode is on (checked after each engine move, and before typing moves). |
+| 6 | `PLAYER PLAYER` | 2-player mode is on (checked after each engine move, and before typing moves), when memory (`7262`) does not show it already. |
 | 20 | `SET-UP POSITION`, `WHITE`/`BLACK` | Set-up mode, and the colour being set up. |
 | 20 | `DRAW`, `CHECKMATE`, `STALEMATE` (instead of `YOUR MOVE`) | Psion considers the game over (only as long as the board is the one shown with the text, which stays a little after a takeback). |
 | 22 | `LEVEL 11  4 Min`, `LEVEL E` | Level 11 is set; easy mode (no pondering) is on. |
@@ -183,6 +184,12 @@ about 0.6%. Nearly all the time goes to emulating the CPU.
   of that iteration, e.g. `info depth 7 seldepth 9 time 180 score cp
   -704 upperbound pv g8g7`.
 - `2` sets 2-player mode, in which moves for both sides can be entered.
+  After Psion's move the adapter presses `2` and waits until `7262`
+  shows 2-player mode. The screen would not do: when Psion moves before
+  the screen showed it thinking (as when `stop` comes just after `go
+  ponder`), the screen may still show 2-player mode from before, so it
+  cannot show that the key worked, and the adapter would wait 300 ms
+  before taking back the moves after a ponder miss.
 - `c` (Compute) starts a search, `m` (Move now) ends it when the time
   allocated to the move is used up.
 - `t` takes back one ply, `$` starts a new game. Several plies are taken
