@@ -862,9 +862,14 @@ namespace psion {
                                                      : NULL)) {
             return false;
         }
+        // A piece looked up on the search board counts like one read here:
+        // no promotion is in progress (no prompt cycles the square), so it
+        // is the piece Psion has put there. This is how a promoted Black
+        // bishop (98, a prompt code too) is read, which would otherwise
+        // wait STABLE_MS instead of MOVE_STABLE_MS.
         std::string candidate;
         bool one_move =
-            have_known && !cur.unknown &&
+            have_known &&
             DeriveMove(known.board, cur.board, known.white_to_move, candidate);
         bool written = one_move && !setting_up && takeback_to < 0 &&
                        move_written(known, cur, candidate);

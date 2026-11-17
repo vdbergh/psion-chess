@@ -93,7 +93,8 @@ while the board at `28AC` still shows it as unmoved.
 The adapter reads these every 10 ms and derives each move from the change
 of the board. It accepts a memory state once it has been unchanged for a
 while: 20 ms if it differs from the last one by a single move (the usual
-case, also for the position a takeback leads to), and 200 ms for any other
+case, also for the position a takeback leads to, or with a piece looked up
+on the search board, such as a promoted Black bishop), and 200 ms for any other
 change, such as a new game, the position after set-up mode or a
 resynchronization. The states Psion passes through while it plays a move,
 such as a piece lifted, are not taken for positions. A single move is

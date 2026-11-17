@@ -909,13 +909,22 @@ class UciTest(unittest.TestCase):
     def test_takeback_promoted(self):
         """Psion takes back its move to reach the GUI's position, with a
         promoted Black piece on the board: such pieces have codes of their
-        own until they move (D3 for a queen), and a takeback restores them.
+        own until they move (D3 for a queen, 98 for a bishop, which is
+        looked up on the search board), and a takeback restores them.
         v2.7 did not recognize the position the takeback led to, waited
         for two timeouts (5 s each) and set it up again: 16 s for a move
         after a ponder miss, found with python-chess."""
         e = self.engine
-        fen = 'position fen K7/8/8/8/8/8/p7/7k b - - 0 1 moves a2a1q'
-        king = ['a8b8', 'a8b7']   # a8a7: the queen covers the a-file
+        # With the queen a8a7 is illegal (the a-file); with the bishop a
+        # pawn more, so that the game is not drawn.
+        for board, piece, king in (('K7/8/8/8/8/8/p7/7k', 'q',
+                                    ['a8b8', 'a8b7']),
+                                   ('K7/8/8/8/8/7p/p7/7k', 'b',
+                                    ['a8a7', 'a8b7'])):
+            fen = 'position fen %s b - - 0 1 moves a2a1%s' % (board, piece)
+            self.takeback_promoted(e, fen, king)
+
+    def takeback_promoted(self, e, fen, king):
         for before in ([], ['a8b7']):
             e.send('ucinewgame')
             e.send(' '.join([fen] + before))
