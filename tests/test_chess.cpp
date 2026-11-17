@@ -611,11 +611,14 @@ static void test_move_now_time(){
 }
 
 static void test_clock_time(){
-    // remaining/n + 3/4 increment, at most 3/4 of the remaining time
+    // remaining/n + 3/4 increment, at most 3/4 of the remaining time and
+    // the remaining time less the reserve (100 ms)
     CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 btime 1000 winc 1000")),true),2750);
     CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 btime 1000")),true),1000);
     CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 btime 60000 movestogo 2")),false),30000);
-    CHECK_EQ(ClockTime(ParseGo(split("go wtime 100 winc 1000")),true),75);
+    CHECK_EQ(ClockTime(ParseGo(split("go wtime 1000 winc 2000")),true),750);
+    CHECK_EQ(ClockTime(ParseGo(split("go wtime 300 winc 1000")),true),200);
+    CHECK_EQ(ClockTime(ParseGo(split("go wtime 100 winc 1000")),true),0);
     // no clock
     CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 movetime 500")),true),-1);
     CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 infinite")),true),-1);
@@ -632,7 +635,7 @@ static void test_clock_time(){
     CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 btime 1000 winc 1000")),true,tp),4000);
     CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 btime 1000")),true,tp),1500);
     CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 btime 60000 movestogo 2")),false,tp),30000);
-    CHECK_EQ(ClockTime(ParseGo(split("go wtime 100 winc 1000")),true,tp),75);
+    CHECK_EQ(ClockTime(ParseGo(split("go wtime 1000 winc 2000")),true,tp),750);
     CHECK_EQ(ThinkTime(go,true,10,tp),(unsigned int)ClockTime(go,true,tp)-10);
     // n falling with the move number: max(55 - move/2, 20)
     tp=DefaultTimeParams();
@@ -722,6 +725,7 @@ static void test_reserve(){
     CHECK_EQ(ClockTime(g,true,tp,80,10000,9),50);
     // off at 0: 3/4
     tp=DefaultTimeParams();
+    tp.reserve=0;
     g=ParseGo(split("go wtime 300 winc 100 movestogo 1"));
     CHECK_EQ(ClockTime(g,true,tp),225);
 }
@@ -737,6 +741,7 @@ static TimeParams plain_time_params(){
     tp.fail_low_max=0;
     tp.fail_low_cap=0;
     tp.window_cap=0;
+    tp.reserve=0;
     return tp;
 }
 
@@ -754,7 +759,7 @@ static void test_default_time_params(){
     CHECK_EQ(tp.drop_extension,100);
     CHECK_EQ(tp.max,200);
     CHECK_EQ(tp.max_share,75);
-    CHECK_EQ(tp.reserve,0);
+    CHECK_EQ(tp.reserve,100);
     CHECK_EQ(tp.min_moves,4);
     CHECK_EQ(tp.min_moves_window,1);
     CHECK_EQ(tp.fail_low_max,1);

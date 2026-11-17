@@ -605,7 +605,7 @@ namespace psion {
         tp.drop_extension = 100;
         tp.max = 200;
         tp.max_share = 75;
-        tp.reserve = 0;
+        tp.reserve = 100;
         tp.min_moves = 4;
         tp.min_moves_window = 1;
         tp.fail_low_max = 1;

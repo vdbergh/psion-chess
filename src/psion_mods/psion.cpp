@@ -1126,7 +1126,7 @@ namespace psion {
     // clock (besides the quarter of it), so that the clock settles at
     // the increment plus this when it runs low, not at 4/3 of the
     // increment: a margin for delays in fast games (0: off).
-    const unsigned int DEFAULT_CLOCK_RESERVE_MS = 0;
+    const unsigned int DEFAULT_CLOCK_RESERVE_MS = 100;
     const unsigned int MAX_CLOCK_RESERVE_MS = 5000;
     // Time management with a clock (docs/implementation.md), with the
     // tuned values unless set by the "TM ..." options of --tm-options

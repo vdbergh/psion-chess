@@ -76,11 +76,12 @@ How the engine handles the gray areas of the protocol is described under
   i5-1135G7. Increase `Move Overhead` if the engine loses on time, for
   example when playing fast games over a slow network or on a busy
   machine.
-- `Clock Reserve` (ms, default 0): no search leaves less than this on
+- `Clock Reserve` (ms, default 100): no search leaves less than this on
   the clock, besides the quarter of it that is always kept. When the
   clock runs low in a game with an increment, it then settles at the
   increment plus the reserve instead of 4/3 of the increment, which
-  leaves a margin for delays. Useful in fast games, e.g. 100 at 10+0.1.
+  leaves a margin for delays: at 10+0.1 it prevents losses on time at
+  no measurable cost. 0 switches it off.
 - `Cycles` (default `highest`): the number of instructions per
   millisecond (capped at 1,000,000) of the emulated PC, e.g. `300` for roughly an original IBM PC (see
   [Speed](#speed)). The special value "`highest`" means running as fast as the host allows.

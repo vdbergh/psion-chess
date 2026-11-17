@@ -241,7 +241,7 @@ class UciTest(unittest.TestCase):
         e = self.engine
         e.send('uci')
         _, before = e.expect('uciok', 10)
-        self.assertIn('option name Clock Reserve type spin default 0 min 0 max 5000',
+        self.assertIn('option name Clock Reserve type spin default 100 min 0 max 5000',
                       before)
         moves = ['b2b4', 'g7g5', 'g2g4', 'b7b5']
         try:
@@ -261,7 +261,7 @@ class UciTest(unittest.TestCase):
             line, _ = e.expect('info string', 5)
             self.assertIn('Clock Reserve must be 0 to 5000', line)
         finally:
-            e.send('setoption name Clock Reserve value 0')
+            e.send('setoption name Clock Reserve value 100')
             e.ready()
 
     def test_time_management_options(self):

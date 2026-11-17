@@ -411,13 +411,15 @@ the values above.
 The time used per move stays about the same as with T alone: the soft
 stop saves about as much as the other rules spend. At 75% of the
 remaining time, the margin at H is a quarter of the remaining time plus
-`Move Overhead`. The `Clock Reserve` option (R ms, default 0) caps H,
+`Move Overhead`. The `Clock Reserve` option (R ms, default 100) caps H,
 and T, at the remaining time less R as well: when the clock runs low
 with an increment i, it settles where the cap is i, at 4/3 i without
 the reserve (a margin of i/3) and at i + R with it (a margin of R), if
-that is more. In long endgames at 10+0.1 the clock can be down to
-about 130 ms; with the default of 10 ms, 2 games of an 8,000-game match
-were lost on time there while the machine was busy with other work.
+that is more. At 10+0.1, in 1000 game pairs with `TM Scale` 110, the
+reserve of 100 ms kept the clock at 169 ms or more, while without it
+the clock went down to 100 ms and 15 games were lost on time with
+overruns of 1 to 51 ms (none with the reserve), at no measurable cost
+(+5.0 ± 11.2 Elo for the reserve).
 Increase `Move Overhead` on a loaded machine or over a network.
 
 Psion usually plays its move within 20 ms of MOVE-NOW, but a move that
