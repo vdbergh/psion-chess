@@ -136,6 +136,8 @@ How the engine handles the gray areas of the protocol is described under
     units per pawn).
   - A book move gets only `info depth 1 time T nodes 1 pv` and the move,
     without a score: Psion does not search it.
+- Psion does not use its opening book after a position set up from a FEN
+  (other than the start position).
 - Psion searches to a fixed maximum depth (15 plies) and moves as soon as it is
   reached, whatever the time left. So in a locked pawn ending, with few moves
   per ply (like Fine 70), Psion moves almost at once even at
@@ -208,6 +210,8 @@ management](docs/implementation.md#time-management).
 How the adapter reads Psion's memory and screen, controls it with
 simulated keypresses and manages the time, and the tools for experiments,
 are described in [docs/implementation.md](docs/implementation.md).
+Psion's own opening book (3,691 moves, up to 23 plies), its format and
+how Psion uses it are in [docs/opening-book.md](docs/opening-book.md).
 
 ### Diagnostic mode
 

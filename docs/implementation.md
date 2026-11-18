@@ -542,6 +542,8 @@ moves (see the last section of [time-management.md](time-management.md)).
 command for the position in a Lichess link, since Psion searches a
 position set up from a FEN differently from the same position reached by
 the moves (see [Limitations](../README.md#limitations)).
+`tools/psion_book.py` dumps Psion's opening book from `Chess2.ovl` (see
+[opening-book.md](opening-book.md)).
 `tools/lichess-bot-update.sh`, run daily by the workflow
 `lichess-bot-update.yml`, opens an issue when upstream lichess-bot is
 newer than the version the Lichess bot runs (`deploy/lichess-bot.txt`).
