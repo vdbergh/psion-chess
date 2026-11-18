@@ -12,10 +12,10 @@ half-moves played, as after the # in a Lichess link (#36 is the position
 before White's 19th move); without it, the final position is taken.
 
 Psion searches a position set up from a FEN differently from the same
-position reached by playing the moves (probably because its piece list
-is then in another order), so only the moves reproduce the search of a
-game. The PGN is fetched with curl, since Lichess blocks Python's own
-HTTP clients.
+position reached by playing the moves (its pieces get other indices in
+its piece list, so its moves are generated in another order), so only
+the moves reproduce the search of a game. The PGN is fetched with curl,
+since Lichess blocks Python's own HTTP clients.
 """
 import argparse
 import io

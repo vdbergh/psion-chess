@@ -117,8 +117,10 @@ How the engine handles the gray areas of the protocol is described under
 - The move counters of a FEN are ignored, so Psion's 50-move rule counts
   from the FEN (the GUI should still apply the rule itself).
 - Psion searches a position set up from a FEN differently from the same
-  position reached by playing the moves (probably because its piece list
-  is then in another order), and can choose another move. To reproduce the
+  position reached by playing the moves (its pieces get other indices in
+  its piece list, so its moves are generated in another order; see
+  [docs/search-internals.md](docs/search-internals.md#piece-indices-after-a-fen)),
+  and can choose another move. To reproduce the
   search of a game, e.g. a move of the Lichess bot, give the moves:
   `python3 tools/lichess_position.py 'https://lichess.org/game/z2JNAv5h/white#36'`
   prints the `position startpos moves ...` command for the position in a

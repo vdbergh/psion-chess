@@ -82,6 +82,42 @@ second rank, and the flag is bit `04` of the square words.
 | `5A66` | `5A67 & 1C`: moves are pre-sorted at plies up to `5A66` / 2 |
 | `714C` | Extension counter, set per iteration from the table at `0408` |
 
+### Piece indices after a FEN
+
+A position set up from a FEN gets other piece indices than the same
+position reached by playing the moves, so Psion searches it differently
+(already at depth 3) and can choose another move. Seen in the position
+before White's 19th move of the Lichess game z2JNAv5h, from dumps
+(`PSION_MEMDUMP`) after each setup:
+
+| | White's pawns, by index | Na3 |
+|---|---|---|
+| Moves | `00` h3, `02` g2, `04` f2, `06` e3, `0C` b2, `0E` a2 | `12` |
+| FEN | `08` g2, `0A` f2, `0C` b2, `0E` a2, `10` h3, `12` e3 | `14` |
+
+(Black's are shuffled the same way.) After the moves, a piece keeps the
+index it had in the start position, and a captured piece's slot points
+at `5ABA` with the handler `30DA` at `6720`/`67A0`. Psion's set-up mode
+gives the indices from the top instead: the king `1E`, then queen,
+rooks, bishops, knights and pawns downwards. The slots below the last
+piece keep the squares and handlers of the start position. With a lone
+pawn on a2, the pawn got `1C`, and slots `00`..`1A` still listed eight
+pawns, two knights, two bishops and two rooks on their start squares.
+These stale slots do not seem to take part in the search: that position
+and similar ones with few pieces gave only legal principal variations
+with sane scores. Possibly the setup at the start of each search (see
+"Search depth") rebuilds the list, but that has not been checked.
+
+The moves are generated piece by piece in index order (see "Move
+ordering"), so the order of the generated moves differs, and with it
+the move ordering beyond the 10 sorted moves near the root and
+everywhere deeper. In the game position, Psion played Qb3 there after
+a ponder miss, in a search that tools/lichess_position.py and the game's
+clocks reproduce to within a few dozen nodes: Qb3 was its best move at
+depth 7 (after 1.6 s) and still at the start of depth 9; b4 took over
+after 24 s. From the FEN, b4 was its best move from depth 5 on, and Qb3
+did not show up in any principal variation.
+
 ## Writers of the search board
 
 All writes during a 3.2 s search (normal core), 700,187 writes from 11
