@@ -538,6 +538,10 @@ in a match and logs its UCI traffic and diagnostics, one file per engine
 instance. `tools/position_test.py` tests a time management idea on
 positions: the engine moves at several times and Stockfish judges the
 moves (see the last section of [time-management.md](time-management.md)).
+`tools/lichess_position.py` prints the `position startpos moves ...`
+command for the position in a Lichess link, since Psion searches a
+position set up from a FEN differently from the same position reached by
+the moves (see [Limitations](../README.md#limitations)).
 `tools/lichess-bot-update.sh`, run daily by the workflow
 `lichess-bot-update.yml`, opens an issue when upstream lichess-bot is
 newer than the version the Lichess bot runs (`deploy/lichess-bot.txt`).

@@ -116,6 +116,13 @@ How the engine handles the gray areas of the protocol is described under
 - Chess960 is not supported.
 - The move counters of a FEN are ignored, so Psion's 50-move rule counts
   from the FEN (the GUI should still apply the rule itself).
+- Psion searches a position set up from a FEN differently from the same
+  position reached by playing the moves (probably because its piece list
+  is then in another order), and can choose another move. To reproduce the
+  search of a game, e.g. a move of the Lichess bot, give the moves:
+  `python3 tools/lichess_position.py 'https://lichess.org/game/z2JNAv5h/white#36'`
+  prints the `position startpos moves ...` command for the position in a
+  Lichess link (it needs python-chess and curl).
 - Limitations of `info` lines:
   - The node count is counted by the adapter from Psion's board writes
     (see [docs/search-internals.md](docs/search-internals.md)); it is
