@@ -125,8 +125,8 @@ def main():
     game.headers["Site"] = "Chess2.ovl"
     game.headers["White"] = game.headers["Black"] = "?"
     game.headers["Result"] = "*"
-    game.comment = (f"{len(entries)} moves. ?! = recognised only (Psion "
-                    "never plays it), ! = preferred by Psion")
+    game.comment = (f"{len(entries)} moves. ?! = only recognised, "
+                    "! = preferred")
     nodes: dict[tuple, chess.pgn.GameNode] = {(): game}
     for line, move, to_byte in entries:
         parent = nodes[tuple(line)]
@@ -136,7 +136,8 @@ def main():
         if to_byte & PREFERRED:
             node.nags.add(chess.pgn.NAG_GOOD_MOVE)
         nodes[tuple(line + [move])] = node
-    print(game)
+    # Export format: lines of at most 79 characters (PGN standard 8.2.2).
+    print(game.accept(chess.pgn.StringExporter(columns=79)))
 
 
 if __name__ == "__main__":
