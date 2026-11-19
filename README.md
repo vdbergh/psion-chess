@@ -39,9 +39,8 @@ once in the directory where you unpacked the package to get it to run. A self co
   instructions per millisecond instead of as fast as possible (see
   [Speed](#speed)), e.g. `--cycles 300` for roughly an original IBM PC,
   from start-up on; the `Cycles` option does the same from a GUI.
-- `--tm-options`: also offer the `TM ...` UCI options, with which the
-  time management was tuned (see
-  [docs/time-management.md](docs/time-management.md)). For matches.
+- `--tm-options`: expose the the time management UCI options described in
+  [docs/time-management.md](docs/time-management.md).
 - `-d`, `--download`: download Psion Chess and install its files in the
   directory where the adapter looks for them (see
   [data/README.md](data/README.md)), after showing its copyright status
