@@ -52,7 +52,9 @@ install its files in a directory where the adapter can find them (see
 `uci`, `isready`, `ucinewgame`, `position startpos|fen ... [moves ...]`, `go`
 (`wtime`, `btime`, `winc`, `binc`, `movestogo`, `movetime`, `depth`,
 `nodes`, `mate`, `infinite`, `ponder`; the first limit reached ends the
-search, see [Time allocation](#time-allocation)), `ponderhit`, `stop`,
+search, see [Time
+management](docs/implementation.md#time-management).
+`ponderhit`, `stop`,
 `setoption`, `debug on|off` and `quit`.
 How the engine handles the gray areas of the protocol is described under
 [Quirks](docs/implementation.md#quirks).
@@ -64,8 +66,7 @@ How the engine handles the gray areas of the protocol is described under
 the moment that the adapter tells Psion to stop searching and
 the moment that the opponent actually sees the move via the GUI
 or the network.
-  How this option is used is explained in more detail
-  in [Time allocation](#time-allocation) below. The default
+  The default
   of 10 ms is the engine's own overhead on an unloaded i5-1135G7.
   Increase `Move Overhead` if the engine loses on time, for
   example when playing fast games over a slow network or on a busy
@@ -88,25 +89,18 @@ taken care of by `Move Overhead`.
   The scale was calibrated at the CCRL blitz time control 2'+1".
   A host that is too slow for the requested speed will play weaker.
 
-### Environment variables
-
-| Variable | Description |
-|---|---|
-| `PSION_DIR` | Directory with Psion's files. |
-| `PSION_ZIP_URL` | URL pointing to `psion213.zip` for use with `-d`. |
-
 ### Limitations
 
 - Chess960 is not supported.
 - `go searchmoves` is ignored: Psion searches all moves.
-- Psion's depths are odd numbers: `go depth 6` searches to depth 7 (see [Time
-  allocation](#time-allocation)). Psion ends its search as soon as it
+- Psion's depths are odd numbers: `go depth 6` searches to depth 7.
+  Psion ends its search as soon as it
   has found a mate, so `go mate 2` can also give a mate in 3.
-- Psion ends a search by itself after about 3–4 minutes (Psion level 11),
-  so longer `movetime` searches end before the allocated time. The Psion
-  level *Infinite* has no such limit, but it has a bug that causes
+- Psion's  level *Infinite* could not be used since it has a bug that causes
   Psion to lock up once its search reaches the maximum depth,
-  which typically happens in locked pawn endings.
+  which happens for example in locked pawn endings. Hence the adapter sets Psion
+  to level 11 (4 minutes per moves) which implies that longer `movetime` searches end before
+  the requested time.
 - The move counters of a FEN are ignored, so Psion's 50-move rule counts
   from the FEN (the GUI should still apply the rule itself).
 - Psion searches a position set up from a FEN differently from the same
@@ -139,7 +133,7 @@ taken care of by `Move Overhead`.
 - Entering the opponent's move and reporting the engine's take about
   30 ms per move on an i5-1135G7 (20 ms and 10 ms). This time is taken
   from the engine's own clock, so very fast time controls leave little
-  time for thinking (see [Time allocation](#time-allocation)).
+  time for thinking.
 - Psion ends the game itself at a threefold repetition (and by the
   fifty-move rule) and then refuses to play on. A GUI that continues
   after a threefold repetition gets `bestmove 0000`, after `info string
@@ -152,6 +146,14 @@ taken care of by `Move Overhead`.
 - Psion does not recognise insufficient material: it plays on with bare
   kings, and scores a lone bishop or knight against a bare king as about
   three pawns up. GUIs end such games themselves.
+
+### Opening book
+
+Psion's comes with its own opening book of 3,691 moves with lines which are up 23 plies deep.
+The format of the book and
+the way Psion uses it are documented in [docs/opening-book.md](docs/opening-book.md).
+
+
 
 ### Speed
 
@@ -179,37 +181,31 @@ from pondering. The matches and rating lists are in
 
 ### Time allocation
 
-A move gets the time given by `go movetime`. With a clock, the adapter
-allocates a share of the remaining time plus most of the increment, and
-then follows Psion's search: it stops early when a new iteration would
-not finish in time, and goes on when the search is unsettled (too few
-moves searched, the best move just refuted), up to twice the allocated
-time, four times after a fail low, and never more than three quarters
-of the remaining time (nor more than the remaining time less `Clock
-Buffer`). Psion always thinks for at least 50 ms.
-`Move Overhead` is taken off all these times: increase it if the engine
-loses on time. `go depth`, `go nodes` and `go mate` end the search as
-well, whichever limit comes first; the depth is rounded up to Psion's
-next depth (3, 5, ..., 15). The details are in [Time
+Psion itself has no time management to speak off. It simply searches for
+a fixed amount of time which is preset by the user.
+The adapter however tries to improve upon this by stopping Psion's
+search at an opportune time.
+The detail are discussed in  [Time
 management](docs/implementation.md#time-management).
+
+### Environment variables
+
+| Variable | Description |
+|---|---|
+| `PSION_DIR` | Directory with Psion's files. |
+| `PSION_ZIP_URL` | URL pointing to `psion213.zip` for use with `-d`. |
 
 ### Implementation
 
 How the adapter reads Psion's memory and screen, controls it with
 simulated keypresses and manages the time, and the tools for experiments,
 are described in [docs/implementation.md](docs/implementation.md).
-Psion's own opening book (3,691 moves, up to 23 plies), its format and
-how Psion uses it are in [docs/opening-book.md](docs/opening-book.md).
 
 ### Diagnostic mode
 
-Started with `--verbose` and without the `uci` command, the program
-reads moves like `e2e4` from stdin and Psion replies to them; the
-diagnostics (the moves and the board after each move, and the time,
-emulated cycles and nodes of each search) then go to stdout. Moves typed while
-Psion thinks are played once it has moved; `quit` ends the program at
-once, and at the end of the input it ends once Psion has replied to the
-last move.
+Started with `--verbose` and without the `uci` command, the adapter
+reads moves like `e2e4` from stdin and Psion replies to them. In this mode the
+diagnostics go to stdout instead of stderr.
 
 ## Building
 
