@@ -70,7 +70,7 @@ or the network.
   i5-1135G7. Increase `Move Overhead` if the engine loses on time, for
   example when playing fast games over a slow network or on a busy
   machine.
-- `Clock Reserve` (ms, default 100): the adapter tries
+- `Clock Buffer` (ms, default 100): the adapter tries
 to leave at least this much time on the clock after every search. This is
 an emergency buffer meant for dealing with exceptional events. Systemic overhead should be
 incorporated in `Move Overhead`.
@@ -190,7 +190,7 @@ not finish in time, and goes on when the search is unsettled (too few
 moves searched, the best move just refuted), up to twice the allocated
 time, four times after a fail low, and never more than three quarters
 of the remaining time (nor more than the remaining time less `Clock
-Reserve`). Psion always thinks for at least 50 ms.
+Buffer`). Psion always thinks for at least 50 ms.
 `Move Overhead` is taken off all these times: increase it if the engine
 loses on time. `go depth`, `go nodes` and `go mate` end the search as
 well, whichever limit comes first; the depth is rounded up to Psion's

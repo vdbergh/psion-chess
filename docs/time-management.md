@@ -198,7 +198,7 @@ first proposed:
 | m_win | `TM Window Cap` | 400 | 0–1000 | 400 | H while no root move is inside the window, as a share of T, if larger than m (0: m) |
 
 An absolute safety margin R beside the share r, first tried as `TM
-Reserve`, is the regular UCI option `Clock Reserve` (default 100, see
+Reserve`, is the regular UCI option `Clock Buffer` (default 100, see
 [implementation.md](implementation.md#time-management)).
 
 `TM Fail Low Extension` (e_low, the extension of S while a fail low is

@@ -75,9 +75,9 @@ namespace psion {
         int drop_extension;     // e_drop: ... extends S by this
         int max;                // m: at most m * ClockTime() ...
         int max_share;          // r: ... and r * the remaining time
-        int reserve;            // R: ... and the remaining time - R ms,
+        int buffer;             // R: ... and the remaining time - R ms,
                                 // also for ClockTime() (0: off; the
-                                // "Clock Reserve" option, not a TM one)
+                                // "Clock Buffer" option, not a TM one)
         int min_moves;          // N: at the target, an iteration that has
                                 // searched its first root move goes on
                                 // until it has searched N (0: off)
@@ -107,7 +107,7 @@ namespace psion {
     // taken off: remaining/n + 3/4 increment (n and the share from tp,
     // n falling with move, the number of the move to be played), at most
     // 3/4 of the remaining time, and at most the remaining time less
-    // tp.reserve (but not below 0). -1 without a clock, with movetime or
+    // tp.buffer (but not below 0). -1 without a clock, with movetime or
     // infinite. With the scale k, the remaining time is that of a virtual
     // clock which has run at 1/k of the real one since it showed base ms
     // (< 0: not known) at move number base_move:

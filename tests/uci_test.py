@@ -237,17 +237,17 @@ class UciTest(unittest.TestCase):
             e.send('setoption name Move Overhead value 10')
             e.ready()
 
-    def test_clock_reserve(self):
+    def test_clock_buffer(self):
         e = self.engine
         e.send('uci')
         _, before = e.expect('uciok', 10)
-        self.assertIn('option name Clock Reserve type spin default 100 min 0 max 5000',
+        self.assertIn('option name Clock Buffer type spin default 100 min 0 max 5000',
                       before)
         moves = ['b2b4', 'g7g5', 'g2g4', 'b7b5']
         try:
-            # all of the 2 s left for the last move, but 1.5 s kept in
-            # reserve: 0.5 s (1.5 s with the 3/4 cap alone)
-            e.send('setoption name Clock Reserve value 1500')
+            # all of the 2 s left for the last move, but 1.5 s kept as a
+            # buffer: 0.5 s (1.5 s with the 3/4 cap alone)
+            e.send('setoption name Clock Buffer value 1500')
             e.send('position startpos moves ' + ' '.join(moves))
             e.ready()
             start = time.time()
@@ -257,11 +257,11 @@ class UciTest(unittest.TestCase):
             self.assertTrue(Board(moves).plausible(move), move)
             self.assertGreater(used, 0.3)
             self.assertLess(used, 1.0)
-            e.send('setoption name Clock Reserve value -1')
+            e.send('setoption name Clock Buffer value -1')
             line, _ = e.expect('info string', 5)
-            self.assertIn('Clock Reserve must be 0 to 5000', line)
+            self.assertIn('Clock Buffer must be 0 to 5000', line)
         finally:
-            e.send('setoption name Clock Reserve value 100')
+            e.send('setoption name Clock Buffer value 100')
             e.ready()
 
     def test_time_management_options(self):

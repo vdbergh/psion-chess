@@ -561,7 +561,7 @@ namespace psion {
             t = t * tp.scale / 100;
         }
         return std::min(t, std::min(3 * time / 4,
-                                    std::max(time - tp.reserve, 0LL)));
+                                    std::max(time - tp.buffer, 0LL)));
     }
 
     static unsigned int less_overhead(long long t, unsigned int overhead) {
@@ -605,7 +605,7 @@ namespace psion {
         tp.drop_extension = 100;
         tp.max = 200;
         tp.max_share = 75;
-        tp.reserve = 100;
+        tp.buffer = 100;
         tp.min_moves = 4;
         tp.min_moves_window = 1;
         tp.fail_low_max = 1;
@@ -626,10 +626,10 @@ namespace psion {
 
     unsigned int MaxThinkTime(long long allocated, long long remaining,
                               unsigned int overhead, const TimeParams &tp) {
-        // Whatever the share, the reserve stays on the clock: at a low
+        // Whatever the share, the buffer stays on the clock: at a low
         // remaining time the share alone leaves too little for a delay.
         long long share = std::min(remaining * tp.max_share / 100,
-                                   std::max(remaining - tp.reserve, 0LL));
+                                   std::max(remaining - tp.buffer, 0LL));
         return less_overhead(std::min(allocated * tp.max / 100, share),
                              overhead);
     }

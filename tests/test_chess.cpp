@@ -612,7 +612,7 @@ static void test_move_now_time(){
 
 static void test_clock_time(){
     // remaining/n + 3/4 increment, at most 3/4 of the remaining time and
-    // the remaining time less the reserve (100 ms)
+    // the remaining time less the buffer (100 ms)
     CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 btime 1000 winc 1000")),true),2750);
     CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 btime 1000")),true),1000);
     CHECK_EQ(ClockTime(ParseGo(split("go wtime 60000 btime 60000 movestogo 2")),false),30000);
@@ -700,21 +700,21 @@ static void test_clock_time_scale(){
     CHECK_EQ(ClockTime(g,true,tp,100,30000,9),225*50/100);
 }
 
-static void test_reserve(){
+static void test_buffer(){
     TimeParams tp=DefaultTimeParams();
-    tp.reserve=100;
+    tp.buffer=100;
     // with plenty of time, 3/4 of it is the stricter cap
     GoParams g=ParseGo(split("go wtime 10000 winc 100 movestogo 1"));
     CHECK_EQ(ClockTime(g,true,tp),7500);
     CHECK_EQ(MaxThinkTime(20000,10000,10,tp),7490u);
-    // at a low remaining time the reserve: 300 - 100, not 3/4 * 300
+    // at a low remaining time the buffer: 300 - 100, not 3/4 * 300
     g=ParseGo(split("go wtime 300 winc 100 movestogo 1"));
     CHECK_EQ(ClockTime(g,true,tp),200);
     CHECK_EQ(MaxThinkTime(1000,300,10,tp),190u);
     CHECK_EQ(ScaledThinkTime(1000,300,10,tp,100),190u);
     CHECK_EQ(FailLowMaxTime(1000,300,10,tp),190u);
     CHECK_EQ(WindowMaxTime(1000,300,10,tp),190u);
-    // below the reserve not below 0, and the minimum think time
+    // below the buffer not below 0, and the minimum think time
     g=ParseGo(split("go wtime 80 winc 100 movestogo 1"));
     CHECK_EQ(ClockTime(g,true,tp),0);
     CHECK_EQ(ThinkTime(g,true,10,tp),MIN_THINK_MS);
@@ -725,7 +725,7 @@ static void test_reserve(){
     CHECK_EQ(ClockTime(g,true,tp,80,10000,9),50);
     // off at 0: 3/4
     tp=DefaultTimeParams();
-    tp.reserve=0;
+    tp.buffer=0;
     g=ParseGo(split("go wtime 300 winc 100 movestogo 1"));
     CHECK_EQ(ClockTime(g,true,tp),225);
 }
@@ -741,7 +741,7 @@ static TimeParams plain_time_params(){
     tp.fail_low_max=0;
     tp.fail_low_cap=0;
     tp.window_cap=0;
-    tp.reserve=0;
+    tp.buffer=0;
     return tp;
 }
 
@@ -759,7 +759,7 @@ static void test_default_time_params(){
     CHECK_EQ(tp.drop_extension,100);
     CHECK_EQ(tp.max,200);
     CHECK_EQ(tp.max_share,75);
-    CHECK_EQ(tp.reserve,100);
+    CHECK_EQ(tp.buffer,100);
     CHECK_EQ(tp.min_moves,4);
     CHECK_EQ(tp.min_moves_window,1);
     CHECK_EQ(tp.fail_low_max,1);
@@ -1698,7 +1698,7 @@ int main(){
     test_think_time();
     test_clock_time();
     test_clock_time_scale();
-    test_reserve();
+    test_buffer();
     test_default_time_params();
     test_scaled_think_time();
     test_max_think_time();
