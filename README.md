@@ -66,19 +66,20 @@ the moment that the opponent actually sees the move via the GUI
 or the network.
   How this option is used is explained in more detail
   in [Time allocation](#time-allocation) below. The default
-  of 10 ms is the engine's own overhead on an unloaded
-  i5-1135G7. Increase `Move Overhead` if the engine loses on time, for
+  of 10 ms is the engine's own overhead on an unloaded i5-1135G7.
+  Increase `Move Overhead` if the engine loses on time, for
   example when playing fast games over a slow network or on a busy
   machine.
 - `Clock Buffer` (ms, default 100): the adapter tries
 to leave at least this much time on the clock after every search. This is
 only a protection against exceptional events such as an occasional dropout on a busy machine. Systemic overhead should be
-incorporated in `Move Overhead`.
+taken care of by `Move Overhead`.
 - `Cycles` (default `highest`): the number of instructions per
-  millisecond (capped at 1,000,000) of the emulated PC, e.g. `300` for roughly an original IBM PC (see
-  [Speed](#speed)). The special value "`highest`" means running as fast as the host allows.
-   Values above what the host is capable of
-  also result in running at full speed. The `Cycles` option applies only while Psion searches:
+  millisecond (capped at 1,000,000) of the emulated PC (see
+  [Speed](#speed)).
+   Values above what the host is capable of, as well as
+   the special value "`highest`,
+  result in maximum emulator speed. The `Cycles` option applies only while Psion searches:
   other actions such as setting up the position and entering moves
   are executed at full speed.
 - `UCI_LimitStrength` (default false) and `UCI_Elo` (1150 to 1650,
