@@ -97,27 +97,23 @@ taken care of by `Move Overhead`.
 
 ### Limitations
 
+- Chess960 is not supported.
 - `go searchmoves` is ignored: Psion searches all moves.
-- Psion's depths are odd: `go depth 6` searches to depth 7 (see [Time
+- Psion's depths are odd numbers: `go depth 6` searches to depth 7 (see [Time
   allocation](#time-allocation)). Psion ends its search as soon as it
   has found a mate, so `go mate 2` can also give a mate in 3.
-- Psion ends a search by itself after about 3–4 minutes (its level 11,
-  "4 minutes per move"), so longer `movetime` searches end earlier. Its
-  level *Infinite* has no such limit, but there Psion stops reading the
-  keyboard once its search reaches the maximum depth, which happens almost
-  at once in a locked pawn ending; it would then never move.
-- Chess960 is not supported.
+- Psion ends a search by itself after about 3–4 minutes (Psion level 11),
+  so longer `movetime` searches end before the allocated time. The Psion
+  level *Infinite* has no such limit, but it has a bug that causes
+  Psion to lock up once its search reaches the maximum depth,
+  which typically happens in locked pawn endings.
 - The move counters of a FEN are ignored, so Psion's 50-move rule counts
   from the FEN (the GUI should still apply the rule itself).
 - Psion searches a position set up from a FEN differently from the same
   position reached by playing the moves (its pieces get other indices in
   its piece list, so its moves are generated in another order; see
-  [docs/search-internals.md](docs/search-internals.md#piece-indices-after-a-fen)),
-  and can choose another move. To reproduce the
-  search of a game, e.g. a move of the Lichess bot, give the moves:
-  `python3 tools/lichess_position.py 'https://lichess.org/game/z2JNAv5h/white#36'`
-  prints the `position startpos moves ...` command for the position in a
-  Lichess link (it needs python-chess and curl).
+  [docs/search-internals.md](docs/search-internals.md#piece-indices-after-a-fen)).
+  So it may generate different info lines and choose another move.
 - Limitations of `info` lines:
   - The node count is counted by the adapter from Psion's board writes
     (see [docs/search-internals.md](docs/search-internals.md)); it is
@@ -138,9 +134,8 @@ taken care of by `Move Overhead`.
   ability to understand certain positions, is part of Psion's program and
   is left as it is.
 - The move to ponder on (`bestmove ... ponder ...`) is the second move of
-  Psion's principal variation, so there is none after a book move or a
-  forced move. A ponder miss costs about 50 ms of the
-  engine's clock.
+  Psion's principal variation, so there is none after a book move, a
+  forced move or a beta cut off.
 - Entering the opponent's move and reporting the engine's take about
   30 ms per move on an i5-1135G7 (20 ms and 10 ms). This time is taken
   from the engine's own clock, so very fast time controls leave little
