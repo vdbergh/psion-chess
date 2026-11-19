@@ -36,14 +36,13 @@ once in the directory where you unpacked the package to get it to run. A self co
 install its files in a directory where the adapter can find them (see
   [data/README.md](data/README.md)). Needs `curl`, which Linux, macOS and
   Windows 10+ normally have.
-- `-V`, `--verbose`: besides the UCI output, write diagnostics to stderr:
-  the moves and board after each move, start-up messages, etc. The UCI
-  command `debug on` does the same.
 - `-c N`, `--cycles N`: run the emulated PC at a fixed speed of N
   instructions per millisecond instead of as fast as possible (see
   [Speed](#speed)), e.g. `--cycles 300` for roughly an original IBM PC,
   from start-up on; the `Cycles` option does the same from a GUI.
-- `--tm-options`: expose the the time management UCI options described in
+- `-V`, `--verbose`: augment the UCI output with lots of diagnostics
+   (written to stderr). The standard UCI command `debug on` does the same.
+- `--tm-options`: expose the time management UCI options described in
   [docs/time-management.md](docs/time-management.md).
 - `-v`, `--version`: print the version of the adapter, e.g. `Psion Chess
   UCI adapter v1.18`, and exit. Built from a commit after a release tag,
