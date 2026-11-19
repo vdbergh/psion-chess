@@ -41,7 +41,7 @@ install its files in a directory where the adapter can find them (see
   [Speed](#speed)), e.g. `-c 300` to emulate the original IBM PC.
   Equivalent to setting the `Cycles` UCI option.
 - `-V`, `--verbose`: augment the UCI output with lots of diagnostics
-   (written to stderr). The standard UCI command `debug on` does the same.
+   written to stderr. Equivalent to issuing the UCI command `debug on`.
 - `--tm-options`: expose the time management UCI options described in
   [docs/time-management.md](docs/time-management.md).
 - `-v`, `--version`: print the version of the adapter.
