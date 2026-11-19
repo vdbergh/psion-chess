@@ -65,14 +65,14 @@ the moment that the adapter tells Psion to stop searching and
 the moment that the opponent actually sees the move via the GUI
 or the network.
   How this option is used is explained in more detail
-  in the [Time allocation](#time-allocation) section below. The default
-  of 10 ms was measured on an unloaded
+  in [Time allocation](#time-allocation) below. The default
+  of 10 ms is the engine's own overhead on an unloaded
   i5-1135G7. Increase `Move Overhead` if the engine loses on time, for
   example when playing fast games over a slow network or on a busy
   machine.
 - `Clock Buffer` (ms, default 100): the adapter tries
 to leave at least this much time on the clock after every search. This is
-an emergency buffer meant for dealing with exceptional events. Systemic overhead should be
+only a protection against exceptional events such as an occasional dropout on a busy machine. Systemic overhead should be
 incorporated in `Move Overhead`.
 - `Cycles` (default `highest`): the number of instructions per
   millisecond (capped at 1,000,000) of the emulated PC, e.g. `300` for roughly an original IBM PC (see
