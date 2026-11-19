@@ -37,9 +37,9 @@ install its files in a directory where the adapter can find them (see
   [data/README.md](data/README.md)). Needs `curl`, which Linux, macOS and
   Windows 10+ normally have.
 - `-c N`, `--cycles N`: run the emulated PC at a fixed speed of N
-  instructions per millisecond instead of as fast as possible (see
-  [Speed](#speed)), e.g. `--cycles 300` for roughly an original IBM PC,
-  from start-up on; the `Cycles` option does the same from a GUI.
+  instructions per millisecond (see
+  [Speed](#speed)), e.g. `-c 300` to emulate the original IBM PC.
+  Equivalent to setting the `Cycles` UCI option.
 - `-V`, `--verbose`: augment the UCI output with lots of diagnostics
    (written to stderr). The standard UCI command `debug on` does the same.
 - `--tm-options`: expose the time management UCI options described in
