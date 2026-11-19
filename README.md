@@ -44,10 +44,7 @@ install its files in a directory where the adapter can find them (see
    (written to stderr). The standard UCI command `debug on` does the same.
 - `--tm-options`: expose the time management UCI options described in
   [docs/time-management.md](docs/time-management.md).
-- `-v`, `--version`: print the version of the adapter, e.g. `Psion Chess
-  UCI adapter v1.18`, and exit. Built from a commit after a release tag,
-  the version also has the number of commits since the tag and the commit,
-  e.g. `v1.18-5-g2d7a9cd`.
+- `-v`, `--version`: print the version of the adapter.
 - `-h`, `--help`: list these options and exit.
 
 ### Supported UCI commands
