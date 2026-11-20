@@ -220,7 +220,7 @@ class UciTest(unittest.TestCase):
                       before)
         moves = ['b2b4', 'g7g5', 'g2g4', 'b7b5']
         try:
-            # 2000 ms for the move minus 1500 ms overhead: the 50 ms minimum
+            # 2000 ms for the move minus 1500 ms overhead: 500 ms
             e.send('setoption name Move Overhead value 1500')
             e.send('position startpos moves ' + ' '.join(moves))
             e.ready()

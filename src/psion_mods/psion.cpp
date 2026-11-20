@@ -2003,8 +2003,8 @@ namespace psion {
     // every tick, so the search goes on a little longer. "go mate n": a
     // line of this search mates in at most n moves, or with n < 0, is
     // mated in at most -n moves. Unlike the time,
-    // these limits do not wait for MIN_THINK_MS: the GUI asked for them,
-    // and Psion is searching once they are reached.
+    // these limits do not wait for Psion's first iteration: the GUI asked
+    // for them, and Psion is searching once they are reached.
     // Whether the time for the move is up. With a clock: the target S,
     // extended after a drop, then on for more root moves, a move inside
     // the window or after a fail low, up to the maximum; or an iteration
@@ -2013,6 +2013,12 @@ namespace psion {
     static bool time_up(unsigned int now) {
         if (!uci.think_ms) {
             return false; // pondering, or no limit in time
+        }
+        // Not before Psion has completed its first iteration (depth 3), so
+        // started the next one, or MIN_THINK_MS should that take longer.
+        if (!DepthReached(3, Nodes_Iteration()) &&
+            now - uci.thinking_start < MIN_THINK_MS) {
+            return false;
         }
         unsigned int setup = setup_time();
         unsigned int elapsed = now - uci.search_start;

@@ -597,15 +597,16 @@ static void test_depth_reached(){
 static void test_move_now_time(){
     // a normal setup comes out of the time for the move
     CHECK_EQ(MoveNowTime(970,0),970u);
-    CHECK_EQ(MoveNowTime(970,40),970u);
-    CHECK_EQ(MoveNowTime(970,200),970u);
-    // but at most 200 ms of it: then Psion still thinks the rest
-    CHECK_EQ(MoveNowTime(970,300),1070u);
-    CHECK_EQ(MoveNowTime(970,3000),3770u);
-    // at least 50 ms of thinking after the setup
-    CHECK_EQ(MoveNowTime(70,40),90u);
-    CHECK_EQ(MoveNowTime(50,0),50u);
-    CHECK_EQ(MoveNowTime(50,3000),3050u);
+    CHECK_EQ(MoveNowTime(970,20),970u);
+    CHECK_EQ(MoveNowTime(970,30),970u);
+    // but at most 30 ms of it: then Psion still thinks the rest
+    CHECK_EQ(MoveNowTime(970,60),1000u);
+    CHECK_EQ(MoveNowTime(970,3000),3940u);
+    // the time used up: as soon as the setup is done (and Psion's first
+    // iteration, which the adapter waits for)
+    CHECK_EQ(MoveNowTime(10,20),20u);
+    CHECK_EQ(MoveNowTime(1,0),1u);
+    CHECK_EQ(MoveNowTime(1,3000),3000u);
     // no overflow
     CHECK_EQ(MoveNowTime(UINT_MAX,UINT_MAX),UINT_MAX);
 }
@@ -714,11 +715,12 @@ static void test_buffer(){
     CHECK_EQ(ScaledThinkTime(1000,300,10,tp,100),190u);
     CHECK_EQ(FailLowMaxTime(1000,300,10,tp),190u);
     CHECK_EQ(WindowMaxTime(1000,300,10,tp),190u);
-    // below the buffer not below 0, and the minimum think time
+    // below the buffer not below 0, and the minimum think time (1 ms;
+    // Psion's first iteration is waited for anyway)
     g=ParseGo(split("go wtime 80 winc 100 movestogo 1"));
     CHECK_EQ(ClockTime(g,true,tp),0);
-    CHECK_EQ(ThinkTime(g,true,10,tp),MIN_THINK_MS);
-    CHECK_EQ(MaxThinkTime(1000,80,10,tp),MIN_THINK_MS);
+    CHECK_EQ(ThinkTime(g,true,10,tp),1u);
+    CHECK_EQ(MaxThinkTime(1000,80,10,tp),1u);
     // also with the scale
     tp.scale=110;
     g=ParseGo(split("go wtime 150 winc 100"));
@@ -791,9 +793,10 @@ static void test_scaled_think_time(){
     // ... and at the share of the remaining time
     tp.max_share=25;
     CHECK_EQ(ScaledThinkTime(1000,8000,10,tp,250),1990u);
-    // at least MIN_THINK_MS
-    CHECK_EQ(ScaledThinkTime(20,60000,10,tp,100),MIN_THINK_MS);
-    CHECK_EQ(ScaledThinkTime(0,0,10,tp,100),MIN_THINK_MS);
+    // at least 1 ms (0 would mean no limit)
+    CHECK_EQ(ScaledThinkTime(20,60000,10,tp,100),14u);
+    CHECK_EQ(ScaledThinkTime(5,60000,10,tp,100),1u);
+    CHECK_EQ(ScaledThinkTime(0,0,10,tp,100),1u);
     // no overflow
     tp.target=1000;
     tp.max=1000;
@@ -809,7 +812,7 @@ static void test_max_think_time(){
     CHECK_EQ(MaxThinkTime(1000,60000,10,tp),1990u);
     tp.max_share=75;
     CHECK_EQ(MaxThinkTime(1000,2000,10,tp),1490u);
-    CHECK_EQ(MaxThinkTime(0,0,10,tp),MIN_THINK_MS);
+    CHECK_EQ(MaxThinkTime(0,0,10,tp),1u);
 }
 
 static void test_fail_low_max_time(){
@@ -878,12 +881,12 @@ static void test_think_time(){
     // at most 3/4 of the remaining time
     go=ParseGo(split("go wtime 10000 btime 10000 movestogo 1"));
     CHECK_EQ(ThinkTime(go,true,400),7100u);
-    // never less than 50 ms
+    // never less than 1 ms (0 would mean no limit)
     go=ParseGo(split("go wtime 100 btime 100"));
-    CHECK_EQ(ThinkTime(go,true,400),50u);
+    CHECK_EQ(ThinkTime(go,true,400),1u);
     // movetime 0: the minimum, not the default of 5 s
     go=ParseGo(split("go movetime 0"));
-    CHECK_EQ(ThinkTime(go,true,30),50u);
+    CHECK_EQ(ThinkTime(go,true,30),1u);
     // depth or nodes without a time: no limit in time
     go=ParseGo(split("go depth 5"));
     CHECK_EQ(ThinkTime(go,true,30),0u);
@@ -894,8 +897,8 @@ static void test_think_time(){
     CHECK_EQ(ThinkTime(go,true,400),1600u);
     // the time used up (negative or 0): the minimum, not the default
     go=ParseGo(split("go wtime -20 btime 0"));
-    CHECK_EQ(ThinkTime(go,true,94),50u);
-    CHECK_EQ(ThinkTime(go,false,94),50u);
+    CHECK_EQ(ThinkTime(go,true,94),1u);
+    CHECK_EQ(ThinkTime(go,false,94),1u);
     // huge clocks and increments do not overflow
     go=ParseGo(split("go wtime 2147483647 btime 2147483647 winc 2147483647 binc 0"));
     CHECK_EQ(ThinkTime(go,true,0),(unsigned int)(3*2147483647LL/4)); // the 3/4 cap

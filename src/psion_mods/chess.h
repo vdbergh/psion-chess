@@ -142,17 +142,21 @@ namespace psion {
     // and neither is a mate).
     int ExtensionPercent(const TimeParams &tp, bool drop_known, int drop);
 
-    // Psion thinks at least this long, also when the time for the move
-    // was used up before it could start (e.g. setting up the position).
+    // Psion thinks until it has completed its first iteration (depth 3,
+    // about 5 ms), also when the time for the move was used up before it
+    // could start (e.g. setting up the position), or for at least this
+    // long, should that iteration take longer.
     const unsigned int MIN_THINK_MS = 50;
     // At most this much of the time still needed after "go" to set up the
-    // position comes out of the time for the move: a longer setup (a FEN,
-    // a replay) would leave hardly any time to think.
-    const unsigned int MAX_SETUP_MS = 200;
+    // position comes out of the time for the move: entering a move takes
+    // 20 ms, castling or en passant 40 ms, a promotion 50 to 60 ms; a
+    // longer setup (a FEN, a replay) would leave hardly any time to think.
+    const unsigned int MAX_SETUP_MS = 30;
 
     // When to press MOVE-NOW, in ms from "go" (or "ponderhit"), with
     // think_ms from ThinkTime() and Psion thinking from setup_ms on:
-    // setup + max(think - min(setup, MAX_SETUP_MS), MIN_THINK_MS).
+    // setup + max(think - min(setup, MAX_SETUP_MS), 0). Not before Psion's
+    // first iteration is complete (see MIN_THINK_MS).
     unsigned int MoveNowTime(unsigned int think_ms, unsigned int setup_ms);
 
     // UCI_Elo: the strength on the CCRL Blitz scale (2'+1"), from

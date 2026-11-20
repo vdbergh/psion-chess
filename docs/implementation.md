@@ -254,7 +254,7 @@ none is.
 
 `go depth`, `go nodes` and `go mate` apply together with the time: the first limit
 reached ends the search (not before `ponderhit`, nor with `go
-infinite`), with MOVE-NOW as when the time is up, but without the 50 ms
+infinite`), with MOVE-NOW as when the time is up, but without the
 minimum below: the GUI asked for these limits, and Psion is searching
 once they are reached. For the depth the node counter's write handler watches
 Psion's iteration counter at `5A67` (see
@@ -265,9 +265,9 @@ complete, and Psion plays its best move. Psion stops by itself after
 its iteration at depth 15. The nodes are compared with the node count
 every tick (10 ms), so the search goes on a little longer: 20,145 nodes
 for `go nodes 20000` and 200,179 for `go nodes 200000` on an i5-1135G7.
-`go depth 2` after 1.a4 h5 stops after 10 ms with depth 3 (with the
-50 ms minimum it went on into depth 5, and played the move that depth
-preferred). `go mate n` is reached by a
+`go depth 2` after 1.a4 h5 stops after 10 ms with depth 3 (with a
+50 ms minimum, as the adapter once had, it went on into depth 5, and
+played the move that depth preferred). `go mate n` is reached by a
 line of this search that mates in at most n moves (with n < 0: that is
 mated in at most -n moves; `go mate 0` counts as `go mate 1`). A depth or
 node count of 0 or less counts as 1, so it is still a limit, not the
@@ -287,13 +287,19 @@ There are several complications, however, that have to be dealt with:
   from `go` as well, so it comes out of the allocated time. For GUIs or
   match runners (such as fastchess) that send `isready` after the
   `position` command, this setup time is of course zero.
-- But the adapter ensures that at most 200 ms of the setup time comes
-  out of the allocated time. Setting up a new position from scratch,
-  from a FEN or by replaying the moves (e.g. after `ucinewgame`), takes
-  much longer (0.6 to 0.9 s for a FEN on an i5-1135G7) and would otherwise
-  leave Psion hardly any time to think.
-- The adapter makes sure that Psion thinks at least 50 ms, for otherwise
-  Psion plays very weak moves.
+- But the adapter ensures that at most 30 ms of the setup time comes
+  out of the allocated time. Entering the opponent's move takes 20 ms
+  (castling or en passant 40 ms, a promotion 50 to 60 ms, a capture now
+  and then 30 ms). Setting up a new position from scratch, from a FEN or
+  by replaying the moves (e.g. after `ucinewgame`), takes much longer
+  (0.6 to 0.9 s for a FEN on an i5-1135G7) and would otherwise leave
+  Psion hardly any time to think.
+- The adapter makes sure that Psion completes its first iteration
+  (depth 3), for otherwise Psion plays very weak moves. It does so once
+  Psion starts its next iteration (or plays a move itself), on average
+  4.5 ms after it started to think (at most 17 ms in 200 positions from
+  games), or after 50 ms at the latest, should that iteration take
+  longer.
 - Once Psion is told to move, it takes some time to play the move and
   for the adapter to report it (about 10 ms on an i5-1135G7), and then
   the move still has to reach the opponent via the GUI or the network.
@@ -302,50 +308,55 @@ There are several complications, however, that have to be dealt with:
 
 The result is that after receiving `go`, Psion is told to move at
 
-    setup_time + max(allocated_time - min(setup_time, 200 ms)
-                     - move_overhead, 50 ms)
+    setup_time + max(allocated_time - min(setup_time, 30 ms)
+                     - move_overhead, 0)
 
-For a setup time of at most 200 ms, the usual case and the one assumed
-from here on, this can also be written more compactly as
+but not before Psion has completed depth 3, which takes it a time d
+(about 5 ms, but the adapter looks every tick of 10 ms). For a setup
+time of at most 30 ms, the usual case and the one assumed from here on,
+this can also be written more compactly as
 
-    max(allocated_time - move_overhead, setup_time + 50 ms)
+    max(allocated_time - move_overhead, setup_time + d)
 
 The actual time a move takes is then
 
-    max(allocated_time - move_overhead, setup_time + 50 ms) + real_overhead
+    max(allocated_time - move_overhead, setup_time + d) + real_overhead
 
 where `real_overhead` is the time the move really takes from then on.
 Assuming that `move_overhead` and `real_overhead` coincide, this
 simplifies to
 
-    max(allocated_time, setup_time + move_overhead + 50 ms)
+    max(allocated_time, setup_time + move_overhead + d)
 
-With the default `move_overhead` of 10 ms and a setup time of 20 ms (to
-enter the opponent's move) this becomes
+With the default `move_overhead` of 10 ms, a setup time of 20 ms (to
+enter the opponent's move) and d rounded up to the tick, this becomes
 
-    max(allocated_time, 80 ms)
+    max(allocated_time, 40 ms)
 
 On the other hand, for a GUI that sends `isready` first, the setup time
 is zero, so that we get
 
-    max(allocated_time, 60 ms)
+    max(allocated_time, 20 ms)
 
 The following table summarizes this: the time a move takes by the
-formulas, and in parentheses the median measured on an i5-1135G7.
+formulas, and in parentheses the median measured on an i5-1135G7 (25
+positions from the UHO openings each, after a move that is not castling,
+en passant or a promotion).
 
 | | With `isready` | Without |
 |---|---|---|
-| `go movetime 0` | 60 ms (60) | 80 ms (80) |
+| `go movetime 0` | 20 ms (20) | 40 ms (40) |
+| `go movetime 20` | 20 ms (20) | 40 ms (40) |
+| `go movetime 50` | 50 ms (50) | 50 ms (50) |
 | `go movetime 100` | 100 ms (100) | 100 ms (101) |
-| `go movetime 120` | 120 ms (121) | 120 ms (119) |
-| `go movetime 150` | 150 ms (152) | 150 ms (147) |
+| `go movetime 150` | 150 ms (151) | 150 ms (151) |
 
 Note that Psion can also move earlier: from its book, or when it finds
 the move at once (a mate).
 
 The case of `ponderhit` is similar, with the time counted from
 `ponderhit` instead of `go`, except that Psion has been thinking all
-along: the setup time is zero and the 50 ms minimum plays no part
+along: the setup time is zero and the minimum plays no part
 (unless `ponderhit` comes before the move pondered on has even been
 entered).
 
@@ -357,7 +368,7 @@ adapter does not simply move at T but follows Psion's search. Not with
 only `depth`, `nodes` or `mate`; while pondering nothing changes. It
 uses two times, counted from `go` (or `ponderhit`), and both treated
 like `allocated_time` above (the setup time, `Move Overhead`, the
-50 ms minimum):
+minimum of depth 3):
 
 - the **target** S = T;
 - the **maximum** H = min(2 · T, 75% of the remaining time), which is
@@ -471,7 +482,7 @@ How the engine handles what the UCI protocol leaves open or forbids:
 
 - Values out of range in `go` are clamped rather than rejected. A
   negative clock (`wtime`, `btime`) or `movetime` counts as 0: the time
-  used up, so Psion moves after its minimum of 50 ms. Negative
+  used up, so Psion moves after its first iteration (depth 3). Negative
   increments count as 0, and a `movestogo` of 0 or less as not given.
   A `depth` or `nodes` of 0 or less counts as 1, so it is still a limit
   (`go depth -3` searches to Psion's smallest depth, 3). `go mate n`

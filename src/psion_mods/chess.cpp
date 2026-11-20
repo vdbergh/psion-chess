@@ -567,9 +567,8 @@ namespace psion {
     static unsigned int less_overhead(long long t, unsigned int overhead) {
         // Over the n moves this keeps overhead per move in reserve:
         // time/n - overhead = (time - n * overhead) / n.
-        // At most INT_MAX, so it fits.
-        return (unsigned int)std::max(t - (long long)overhead,
-                                      (long long)MIN_THINK_MS);
+        // At least 1 (0 means no limit), at most INT_MAX, so it fits.
+        return (unsigned int)std::max(t - (long long)overhead, 1LL);
     }
 
     unsigned int ThinkTime(const GoParams &go, bool white,
@@ -662,7 +661,7 @@ namespace psion {
             (long long)think_ms - std::min(setup, (long long)MAX_SETUP_MS);
         // The sum can exceed UINT_MAX (but not a long long).
         return (unsigned int)std::min(
-            setup + std::max(t, (long long)MIN_THINK_MS), (long long)UINT_MAX);
+            setup + std::max(t, 0LL), (long long)UINT_MAX);
     }
 
     unsigned int EloCycles(int elo) {
