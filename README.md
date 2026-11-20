@@ -12,11 +12,10 @@ protocol, so that it can be used from any chess GUI or match runner.
 The adapter does not modify the chess program. It reads the game from the
 emulated machine's memory and plays moves by pressing keys, as a user would.
 
-Psion Chess is currently playing online at Lichess as
-[psion-chess](https://lichess.org/@/psion-chess). It can be challenged at
-[https://lichess.org/?user=psion-chess#friend](https://lichess.org/?user=psion-chess#friend)
-(no account needed). Alternatively you can observe it playing at
-[https://lichess.org/@/psion-chess/tv](https://lichess.org/@/psion-chess/tv).
+Psion Chess is playing at Lichess as
+[psion-chess](https://lichess.org/@/psion-chess). Feel free to
+[challenge](https://lichess.org/?user=psion-chess#friend) it
+(no account needed).
 
 ## Running
 
@@ -50,11 +49,9 @@ install its files in a directory where the adapter can find them (see
 ### Supported UCI commands
 
 `uci`, `isready`, `ucinewgame`, `position startpos|fen ... [moves ...]`, `go`
-(`wtime`, `btime`, `winc`, `binc`, `movestogo`, `movetime`, `depth`,
-`nodes`, `mate`, `infinite`, `ponder`; the first limit reached ends the
-search, see [Time
-management](docs/implementation.md#time-management).
-`ponderhit`, `stop`,
+`wtime`, `btime`, `winc`, `binc`, `movestogo`, `movetime`, `depth`,
+`nodes`, `mate`, `infinite`, `ponder` (the first limit reached ends the
+search), `ponderhit`, `stop`,
 `setoption`, `debug on|off` and `quit`.
 How the engine handles the gray areas of the protocol is described under
 [Quirks](docs/implementation.md#quirks).
@@ -92,7 +89,7 @@ taken care of by `Move Overhead`.
 ### Limitations
 
 - Chess960 is not supported.
-- `go searchmoves` is ignored: Psion searches all moves.
+- `go searchmoves` is ignored.
 - Psion's depths are odd numbers: `go depth 6` searches to depth 7.
   Psion ends its search as soon as it
   has found a mate, so `go mate 2` can also give a mate in 3.
@@ -102,29 +99,24 @@ taken care of by `Move Overhead`.
   to level 11 (4 minutes per moves) which implies that longer `movetime` searches end before
   the requested time.
 - The move counters of a FEN are ignored, so Psion's 50-move rule counts
-  from the FEN (the GUI should still apply the rule itself).
+  from the FEN (the GUI should still apply the correct rule itself).
 - Psion searches a position set up from a FEN differently from the same
-  position reached by playing the moves (its pieces get other indices in
-  its piece list, so its moves are generated in another order; see
+  position reached by playing moves (the piece lists are ordered differently,
+  which influences move generation order; see
   [docs/search-internals.md](docs/search-internals.md#piece-indices-after-a-fen)).
   So it may generate different info lines and choose another move.
 - Limitations of `info` lines:
-  - The node count is counted by the adapter from Psion's board writes
+  - The node count is obtained by counting Psion's board writes
     (see [docs/search-internals.md](docs/search-internals.md)); it is
-    within about 0.5% of the moves Psion searched.
-  - The depth is the nominal depth of Psion's iteration (always odd:
-    3, 5, ..., 15), the selective depth the deepest ply searched so far.
-    The principal variation has at most 8 moves, as Psion keeps no more.
-  - The score has a resolution of about 4 centipawns (Psion counts 24
-    units per pawn).
-  - A book move gets only `info depth 1 time T nodes 1 pv` and the move,
-    without a score: Psion does not search it.
+    within 0.5% of the true value.
+  - Psion truncates the principal variation to 8 moves.
+  - Psion's score has a resolution of about 4 centipawns.
 - Psion does not use its opening book after a position set up from a FEN
   (other than the start position).
 - Psion searches to a fixed maximum depth (15 plies) and moves as soon as it is
   reached, whatever the time left. So in a locked pawn ending, with few moves
-  per ply (like Fine 70), Psion moves almost at once even at
-  long time controls. This depth limit, which inherently limits Psion's
+  per ply (like Fine 70), Psion moves almost instantly, independently of the
+  actual time control. This depth limit, which inherently limits Psion's
   ability to understand certain positions, is part of Psion's program and
   is left as it is.
 - The move to ponder on (`bestmove ... ponder ...`) is the second move of
@@ -139,13 +131,12 @@ taken care of by `Move Overhead`.
   after a threefold repetition gets `bestmove 0000`, after `info string
   Game over (Psion shows DRAW)` (see [Quirks](docs/implementation.md#quirks)).
 - Psion does not take castling and en passant rights into account when
-  it detects a threefold repetition. So in very rare cases it declares a
-  draw that the rules do not, e.g. after a rook has moved away and back,
-  losing the right to castle, and refuses to play on: the GUI then gets
-  `bestmove 0000`.
-- Psion does not recognise insufficient material: it plays on with bare
-  kings, and scores a lone bishop or knight against a bare king as about
-  three pawns up. GUIs end such games themselves.
+  it detects a threefold repetition. So in very rare cases it incorrectly declares a
+  draw (e.g. after a rook has moved away and back,
+  thereby losing its castling right) and refuses to play on. The GUI then receives
+  the illegal `bestmove 0000`.
+- Psion does not recognise insufficient material. It plays on and even scores a lone bishop or knight against a bare king as about
+  three pawns up. GUIs should end such games themselves.
 
 ### Opening book
 
