@@ -905,8 +905,9 @@ h − 3 for d = 3). How the routines of d = 3 differ is not decoded.
 **The steps** (`0F72`..`0FD6`). The first iteration is `05`, or `03`
 when the byte at `725A` (`0B` in our runs) is 0, 1 or `0D`. After that
 `5A67` normally goes up by 4: the same variant, two plies deeper. With
-t = `5A7C` + `713C` (probably the time used) and T = `5A78` (probably the
-time allotted, set at `0F00`; `F2` and `114` in the runs below):
+t = `5A7C` + `713C` (the time used, in Psion's seconds) and T = `5A78`
+(the time allotted, set at `0F00`; `F2` and `114` in the runs below; see
+[Psion's own time management](#psions-own-time-management-the-levels)):
 
 - t < 3T/32: + 4 (but + 2 from `09` once t ≥ 3T/64);
 - 3T/32 ≤ t < T/2: + 2;
@@ -970,6 +971,129 @@ Never more than 4: past ply h the table holds only `186D 175A 186D
 1796`, and `1796` at h + 4 always stops. In the searches of 15 s above,
 the middlegame showed +4 in every line (3/7, 5/9, 7/11), the opening and
 the pawn ending 0.
+
+## Psion's own time management: the levels
+
+How Psion decides by itself how long to think at a level (the adapter
+uses level 11 and ends its searches with MOVE-NOW, so this matters only
+for searches longer than about 90 s, or in a game against Psion without
+the adapter). Decoded from Chess2.ovl (addresses in segment `0259` as elsewhere, i.e.
+the offset in the load image of Chess2.ovl less `910`) and checked by
+reading the
+variables after each search, at level 3 ("6 Sec"), with a temporary build
+of the adapter that sets that level and lets Psion move by itself.
+
+In short: a level is not a fixed time per move but a time control (20
+moves in 20 times the level's time, then 10 moves in 10 times it,
+repeated), with an account of the
+time Psion has used. Each move gets a target from that account; Psion
+starts no new iteration after half the target, ends the search at a root
+move after 1.375 times the target unless the score has dropped, and stops
+at a hard limit. At "6 Sec", 30 searches in positions from the UHO
+openings took 2.2 to 11.6 s (5.8 s on average).
+
+**The clock** (`0B7B`). Chess2.ovl hooks the user timer interrupt 1Ch
+(18.2 per second, handler at `00E1`). Every 19 ticks (17 if the byte at
+`0248` is `4F`, which was not the case in our runs) it calls
+`0B7B`, so Psion's second is 1.044 s. While Psion thinks (`713F` set),
+`0B7B` adds 1 to `5A7C`, the time of the current search. In a timed
+search (bit `80` of `5A6B`, see below) it sets the flag `5A6D` (time up,
+which ends the search as MOVE-NOW does) when `5A7C` reaches `5A7A`, not
+while bit `80` of `5A67` is set nor at level `0D`.
+
+**The level** is the byte at `725A`, 1 to 11 for the levels shown (`L`
+raises it, `^L` lowers it), `0D` for *Infinite*; the values with bit
+`80` (`80`..`9C`) are other modes, which do not use this time
+management. The table at `0417` gives L, the time per move in Psion's
+seconds:
+
+| `725A` | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Shown as | | 2 Sec | 4 Sec | 6 Sec | 15 Sec | 30 Sec | 45 Sec | 1 Min | 1.5 Min | 2 Min | 3 Min | 4 Min | | Infinite |
+| L | 2 | 2 | 4 | 6 | 15 | 30 | 45 | 60 | 90 | 110 | 170 | 230 | 0 | 240 |
+
+So the longer levels are a little shorter than shown (230 of Psion's
+seconds are 240 s). For an entry of 0, Psion uses `7266` instead, a
+running average of its own search times (`0990`: `7266` = (7·`7266` +
+`5A7C`)/8 after each search, starting at 15).
+
+**The account** `7268` is the time Psion has used in the game, in its
+seconds. `0E84` sets it to the nominal value L·(m − 2) (0 if negative),
+with m = `7260`/2 the number of full moves played: when the level is
+changed (`0378`), when the account has run over (below), and, as seen in
+traces, at a new game (0) and on leaving set-up mode (L·(m − 2) for the
+move counter it then has: 1840 at level 11 for the UHO positions, where
+`7260` is 20). After each
+timed search (`10C7`) `5A7C` is added to it, halved if the byte `7262`
+is set (not identified). There is only one account, so when Psion plays
+both sides (as when the adapter asks it for every move), both sides'
+searches go into it and each gets about half the time.
+
+**The time for a move** (`0EB1`, before each search), with integer
+arithmetic throughout:
+
+1. The next control is at c, the smallest multiple of 10 above m but at
+   least 20, so that n = c − m moves remain to it (1 to 20: the first
+   control is after move 20, then one every 10 moves).
+2. A = (L·c − `7268`) / n, the time left to the control per move. If
+   L·c − `7268` is negative, the account is reset to the nominal value
+   and A computed again.
+3. If A ≤ L: A = A − A/4 (Psion is on or behind its schedule).
+4. The target S = `5A78` = min(A, 2L).
+5. The hard limit H = `5A7A` = min(A·(n + 3)/4, 3S) + 1.
+6. If n = 1 (the last move before the control), or under a condition on
+   the moves just played that is not fully decoded (it compares a move
+   with `5A6E`, where Psion keeps a move of its last principal variation:
+   probably the opponent's reply being the one expected): S = S − S/4 + 1.
+
+For example, at "6 Sec" (L = 6) after 1. ... 10. ... (m = 10, c = 20,
+n = 10) with 48 used: A = (120 − 48)/10 = 7, S = 7, H = min(7·13/4, 21)
++ 1 = 22. With 55 used at m = 10: A = 6, so 6 − 1 = 5, S = 5,
+H = min(5·13/4, 15) + 1 = 16. All 12 searches of a game traced this way
+had the S and H of these formulas, and at level 11 (L = 230) a search
+at m = 9 with nothing used got A = 4600/11 = 418, so S = 418 and
+H = min(418·14/4, 1254) + 1 = 1255, as read.
+
+**The search** then uses t = `5A7C` + `713C` (`713C` is the time Psion
+pondered on the move before the opponent played it, see below) and S:
+
+- **Between iterations** (`0F46`, see "The steps" above): no new iteration
+  once t ≥ S/2; before that, the step depends on t against 3S/32 and
+  3S/64.
+- **At each root move** (`127B`..`12C8`, when a new root move is started
+  at ply 2): once `5A7C` ≥ S + 3·⌊S/8⌋ (about 1.375 S), the search ends,
+  with the best move so far, unless the iteration's best score
+  (`704E`) is at least 12 units below the best score of the previous
+  iteration (`5A76`), or `704E` equals `713A` (the lower bound of the
+  window, set at `0FD8`: probably no root move inside the window yet).
+  A pawn is 16–28 units, so this lets a fail low of about half a pawn
+  or more go on.
+- **The hard limit**: the time-up flag when `5A7C` reaches H (above).
+- As always, the search also ends after the iteration at depth 15, and
+  at a mate.
+
+At "6 Sec", the 30 positions all had m = 10 and 48 used, so S = 7 and
+H = 22. About 12 searches ended at a root move after 7 of Psion's
+seconds (6.9 to 7.7 s: the first second of a search can be shorter, as
+the count of 19 ticks is not reset), the others when an iteration
+finished after S/2 = 3 (2.2 to 6.7 s), and one went on to 11.6 s after
+a drop.
+
+**Pondering** (when easy mode is off): `5A6B` is `FF` while Psion
+thinks on the opponent's time and `80` in its own timed search (0
+otherwise). If the opponent plays the move Psion pondered on (`06D0`),
+the time pondered goes from `5A7C` to `713C`, `5A7C` starts again at 0,
+and `5A6B` becomes `80`. So the pondered time counts for the decision to
+start an iteration, but not for the root-move check, the hard limit or
+the account.
+
+**With the adapter** (level 11, L = 230, easy mode on) the account holds
+Psion's own search times, which stay small in fast games. Psion then
+starts no new iteration after S/2: 86 of its seconds (90 s) at the first
+move (m = 0, n = 20: A = 230, so S = 173), then more, up to L = 230
+(240 s) once A reaches 2L. A longer `go movetime` or `go infinite` can
+therefore end before the time asked, at a root move after 1.375 S, or
+at the hard limit.
 
 ## Time use of the iterations
 

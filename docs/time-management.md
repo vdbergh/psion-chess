@@ -602,3 +602,24 @@ apart, since it hardly values the pawn. A match would need tens of
 thousands of pairs to show such a gain, so the rule was not tried. The
 losses come mostly from letting the pawn get that far, which is the
 evaluation.
+
+## Compared with Psion's own time management
+
+Psion has a time management of its own for its levels (decoded later, see
+[search-internals.md](search-internals.md#psions-own-time-management-the-levels)),
+which the adapter does not use: it sets level 11 and presses MOVE-NOW.
+The rules found here turn out to be close to it in spirit:
+
+| Psion (its levels) | The adapter (defaults) |
+|---|---|
+| No new iteration once half the target S has passed | Soft stop: no new iteration after 40% of S |
+| At a new root move after about 1.375 S: the move is played... | At S the move is played (after the minimum root moves)... |
+| ... unless the score has dropped by 12 units (about half a pawn), or probably no root move is inside the window yet | ... unless the iteration has failed low, or no root move is inside the window |
+| ... and then on up to the hard limit min(A·(n + 3)/4, 3S) + 1 | ... and then on up to 4 T (otherwise H = 2 T), within 75% of the remaining time |
+
+The differences: Psion has no minimum number of root moves, ignores the
+score before 1.375 S, and plans towards a control (20 moves, then every
+10) with an account of the time it has used, so that time saved goes
+to the remaining moves of the block; the adapter divides the remaining
+time by a fixed number of moves (30, or 60 in sudden death) and adds
+three quarters of the increment.

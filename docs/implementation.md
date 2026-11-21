@@ -149,7 +149,9 @@ about 0.6%. Nearly all the time goes to emulating the CPU.
 - Level: set to 11 (4 minutes per move) at start-up, so Psion moves
   when told to (`m`, below). Not *Infinite*: at that level Psion stops
   reading the keyboard once its search reaches the maximum depth, which
-  happens almost at once in a locked pawn ending.
+  happens almost at once in a locked pawn ending. Even at level 11
+  Psion's own time management can end a search after 90 s or more (see
+  [search-internals.md](search-internals.md#psions-own-time-management-the-levels)).
 - `e` switches easy mode on: Psion does not think on the opponent's
   time. (Pondering, too, can hang in such positions.)
 - Analysis mode (`a`) stays off. Each time the best root move changes,
