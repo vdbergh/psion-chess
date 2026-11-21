@@ -975,9 +975,9 @@ the pawn ending 0.
 ## Psion's own time management: the levels
 
 How Psion decides by itself how long to think at a level (the adapter
-uses level 11 and ends its searches with MOVE-NOW, so this matters only
-for searches longer than about 90 s, or in a game against Psion without
-the adapter). Decoded from Chess2.ovl (addresses in segment `0259` as elsewhere, i.e.
+uses level *Infinite* and ends its searches with MOVE-NOW, so this
+matters only in a game against Psion without the adapter, and did for
+searches longer than about 90 s up to v3.3, which used level 11). Decoded from Chess2.ovl (addresses in segment `0259` as elsewhere, i.e.
 the offset in the load image of Chess2.ovl less `910`) and checked by
 reading the
 variables after each search, at level 3 ("6 Sec"), with a temporary build
@@ -1087,7 +1087,9 @@ and `5A6B` becomes `80`. So the pondered time counts for the decision to
 start an iteration, but not for the root-move check, the hard limit or
 the account.
 
-**With the adapter** (level 11, L = 230, easy mode on) the account holds
+**With the adapter up to v3.3** (level 11, L = 230, easy mode on; now
+only in the positions of "At the root" in "Repetitions in the search",
+where Psion moves at once) the account holds
 Psion's own search times, which stay small in fast games. Psion then
 starts no new iteration after S/2: 86 of its seconds (90 s) at the first
 move (m = 0, n = 20: A = 230, so S = 173), then more, up to L = 230
@@ -1581,8 +1583,36 @@ instead of 79 ms at `go movetime 0`.
 
 ## Repetitions in the search
 
-Psion's only repetition test in the search is in make (`1DE0`..`1E89`),
-and it compares moves, not positions:
+**At the root** (`1276`) Psion calls `41B5` after making each root move:
+it walks back through the move list from the current ply, up to the
+first move with one of the flag bits `1111` (see below), and follows the
+squares each piece moved between (up to four pieces at a time). Once all
+moves since an earlier position cancel out, with the same side to move
+(`4233`), the position after the root move occurred before: the move is
+taken back and scored as a draw (`1247` → `143B`), with nothing searched
+below it. One earlier occurrence is enough; for the game itself (`41A1`)
+Psion runs the same walk twice, so that a position counts there only the
+third time.
+
+If every legal root move is such a repetition, an iteration makes no
+move below the root. Psion reads the keyboard during a search only at
+`13EB`, when a node below the root has run out of moves (`0632`, where
+MOVE-NOW sets `5A6D`), so it then reads no key at all. At level `0D`
+(*Infinite*) the iteration loop never ends by itself after `1B`
+(`10C3`), and the clock does not set `5A6D` there either: Psion repeats
+its iteration at depth 15 for ever, and takes no more keys (MOVE-NOW, a
+takeback, a new game). This happened in the locked pawn ending of
+`test_locked_pawn_ending` (tests/uci_test.py): after 127 moves Black's
+king could only go to b7, a7 or b6, each of which it had stood on before
+with White's king on d2. The same position set up from a FEN, without
+that history, is searched normally, as are locked endings in general (a
+node below the root runs out of moves there all the time). At any other
+level the loop ends after `1B` and Psion moves; the adapter switches to
+level 11 for such a position (see implementation.md, "Controlling
+Psion").
+
+**Below the root** Psion's only repetition test is in make
+(`1DE0`..`1E89`), and it compares moves, not positions:
 
 - The moves of the game and of the current search path are in one list:
   `[7264]` points just past the game's last move (`28F4`..`28F6` advance

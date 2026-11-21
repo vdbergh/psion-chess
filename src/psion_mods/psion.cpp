@@ -1020,15 +1020,28 @@ namespace psion {
         return two_player_flag() || two_player_mode();
     }
 
-    // The level used: 4 minutes per move, longer than any search the
-    // adapter asks for (MOVE-NOW ends it). Not "Infinite": at that level
-    // Psion stops reading the keyboard once its search reaches the
-    // maximum depth, which happens at once in a locked pawn ending.
-    // "LEVEL 11  4 Min", or "LEVEL E 11  4 Min" in easy mode.
-    static bool level_ok() {
+    // The levels used. Infinite, so that Psion only moves when told to
+    // (MOVE-NOW), or at a mate or a single legal move. At that level,
+    // though, Psion never reads the keyboard again once every legal move
+    // repeats a position (see AllMovesRepeat()), so such a position is
+    // searched at level 11 (4 minutes per move), at which Psion moves
+    // after its last iteration, at once there.
+    enum Level { LEVEL_NONE, LEVEL_11, LEVEL_INFINITE };
+
+    // "LEVEL Infinite" or "LEVEL 11  4 Min", with "E " after "LEVEL " in
+    // easy mode.
+    static Level level_shown() {
         const std::string &r = screen_rows[22];
-        return r.compare(0, 6, "LEVEL ") == 0 &&
-               r.find(" 11  4 Min") != std::string::npos;
+        if (r.compare(0, 6, "LEVEL ") != 0) {
+            return LEVEL_NONE;
+        }
+        if (r.find(" 11  4 Min") != std::string::npos) {
+            return LEVEL_11;
+        }
+        if (r.find(" Infinite ") != std::string::npos) {
+            return LEVEL_INFINITE;
+        }
+        return LEVEL_NONE;
     }
 
     // In easy mode Psion does not ponder. (While pondering, it can hang
@@ -1313,7 +1326,13 @@ namespace psion {
         size_t inflight_size;
         unsigned int inflight_since;
         int retries;
-        bool level_set;
+        Level level;               // the level Psion is known to have
+        std::string level_row;     // the level shown before a level key
+        bool level_pending;        // ... until the screen changes
+        bool repeats_known;        // AllMovesRepeat() for ...
+        bool all_repeat;
+        StartPosition repeats_start; // ... this position
+        std::vector<std::string> repeats_moves;
         int two_player_presses;    // '2' pressed without effect
         int easy_presses;          // 'e' pressed without effect
         std::string info_move;     // first move of the last info pv
@@ -1834,17 +1853,50 @@ namespace psion {
         }
     }
 
-    // Sets the level (see level_ok()).
-    // Returns true once that is done.
+    // The level for the position the GUI wants (see Level).
+    static Level wanted_level() {
+        if (!uci.has_target || uci.unsupported) {
+            return LEVEL_INFINITE;
+        }
+        if (!uci.repeats_known || uci.repeats_moves != uci.target ||
+            !SameStart(uci.repeats_start, uci.target_start)) {
+            uci.repeats_known = true;
+            uci.repeats_start = uci.target_start;
+            uci.repeats_moves = uci.target;
+            uci.all_repeat = AllMovesRepeat(uci.target_start, uci.target);
+        }
+        return uci.all_repeat ? LEVEL_11 : LEVEL_INFINITE;
+    }
+
+    // Sets the level (see Level): 'l' raises it, ^L lowers it, from 11
+    // over "Equal time" to Infinite. Returns true once that is done.
     static bool level_set_check() {
-        if (uci.level_set) {
+        Level want = wanted_level();
+        if (uci.level == want) {
             return true;
         }
-        if (level_ok()) {
-            uci.level_set = true;
+        Level shown = level_shown();
+        if (shown == want) {
+            if (want == LEVEL_11) {
+                uci_send("info string Every move repeats a position: level 11, "
+                         "as Psion would hang at level Infinite\n");
+            } else {
+                say("Level Infinite\n");
+            }
+            uci.level = want;
             return true;
         }
-        if (screen_rows[22].find("LEVEL") != std::string::npos) {
+        uci.level = LEVEL_NONE;
+        const std::string &r = screen_rows[22];
+        if (r.find("LEVEL") == std::string::npos) {
+            return false;
+        }
+        uci.level_row = r;
+        uci.level_pending = true;
+        if (want == LEVEL_11 && (shown == LEVEL_INFINITE ||
+                                 r.find("Equal time") != std::string::npos)) {
+            press(KBD_leftctrl, KBD_l);
+        } else {
             press(KBD_l);
         }
         return false;
@@ -2134,7 +2186,8 @@ namespace psion {
         unsigned int now = GetTicks();
         std::vector<std::string> &moves = game_state.moves;
         // The pause after an action ends early once its effect is seen: a
-        // move entered appears in memory, '2' on the screen.
+        // move entered appears in memory, '2' and a level key on the
+        // screen.
         if (uci.inflight && moves.size() != uci.inflight_size) {
             uci.inflight = false;
             uci.retries = 0;
@@ -2147,6 +2200,10 @@ namespace psion {
         if (uci.two_player_pending &&
             (uci.two_player_by_flag ? two_player_flag() : two_player_mode())) {
             uci.two_player_pending = false;
+            uci.action_done = true;
+        }
+        if (uci.level_pending && screen_rows[22] != uci.level_row) {
+            uci.level_pending = false;
             uci.action_done = true;
         }
         bool idle = keyboard_buffer.Empty() &&

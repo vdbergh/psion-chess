@@ -669,8 +669,9 @@ class UciTest(unittest.TestCase):
                       ' '.join(l for l in before if l.startswith('info ')))
 
     def test_locked_pawn_ending(self):
-        """Psion used to hang here (at level Infinite): only the kings can
-        move, and the search reaches its maximum depth at once."""
+        """At level Infinite Psion hangs here: every move of Black's king
+        repeats a position, so Psion searches nothing below the root and
+        never reads the keyboard. The adapter switches to level 11."""
         e = self.engine
         moves = (
         'e2e4 c7c6 d2d4 g7g6 b1c3 d7d5 h2h3 h7h5 g1f3 f8g7 c1f4 d5e4 c3e4 '
@@ -686,8 +687,18 @@ class UciTest(unittest.TestCase):
         e.send('ucinewgame')
         e.send('position startpos moves ' + ' '.join(moves))
         e.send('go movetime 100')
-        move = bestmove(e, 150)
+        line, before = e.expect('bestmove', 150)
+        move = line.split()[1]
         self.assertTrue(Board(moves).plausible(move), move)
+        self.assertIn('info string Every move repeats a position: level 11,'
+                      ' as Psion would hang at level Infinite', before)
+        # A move earlier White's king has new squares: back to Infinite.
+        e.send('position startpos moves ' + ' '.join(moves[:-1]))
+        e.send('go movetime 100')
+        line, before = e.expect('bestmove', 30)
+        move = line.split()[1]
+        self.assertTrue(Board(moves[:-1]).plausible(move), move)
+        self.assertNotIn('info string', ' '.join(before))
 
     def test_fen_castling_rights(self):
         # Castling with the right, and refused without.
@@ -803,9 +814,10 @@ class UciTest(unittest.TestCase):
             self.fen_search('6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1')[0], 'a1a8')
         self.assertEqual(
             self.fen_search('r5k1/8/8/8/8/8/5PPP/6K1 b - - 0 1')[0], 'a8a1')
-        # Moves after the FEN, then the start position again
+        # Moves after the FEN (a mate in one again), then the start
+        # position again
         self.assertEqual(self.fen_search(
-            '6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1 moves a1b1 h7h6')[0], 'b1b8')
+            '6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1 moves a1b1 g8h8')[0], 'b1b8')
         self.search(['e2e4'])
 
     def test_fen_en_passant(self):
@@ -899,7 +911,7 @@ class UciTest(unittest.TestCase):
         self.assertEqual(line.split()[:2], ['bestmove', 'c4f7'])
         self.assertIn('score mate 2 pv c4f7 e8e7 c3d5', ' '.join(before))
         # A mate in 3, from the score (2 units per ply), not the line.
-        e.send('position fen 8/8/6k1/8/8/8/1K2R3/7Q w - - 0 1')
+        e.send('position fen 8/8/8/5k2/8/8/1K2R3/7Q w - - 0 1')
         e.ready()
         e.send('go mate 3')
         line, before = e.expect('bestmove', 30)

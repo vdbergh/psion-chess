@@ -207,6 +207,16 @@ namespace psion {
     std::string GameEnd(const StartPosition &start,
                         const std::vector<std::string> &moves);
 
+    // Whether every legal move after moves from start leads to a position
+    // (board and side to move) that occurred before, since the last
+    // capture or pawn move. Psion's own test (41B5) finds a part of these;
+    // if it finds all moves, Psion searches nothing below the root and,
+    // at level Infinite, never reads the keyboard again
+    // (docs/search-internals.md, "Repetitions in the search"). False if
+    // there is no legal move or a move is illegal.
+    bool AllMovesRepeat(const StartPosition &start,
+                        const std::vector<std::string> &moves);
+
     // The keys that set up start in Psion's set-up mode, once it is in
     // that mode in a new game: 'e' (empty board), '0' (empty the square),
     // the cursor keys 'U', 'D', 'L', 'R', a piece letter ("kqrbnp") to

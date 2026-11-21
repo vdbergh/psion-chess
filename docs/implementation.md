@@ -126,7 +126,7 @@ contents, because some rows blink. The adapter uses the text for:
 | 6 | `PLAYER PLAYER` | 2-player mode is on (checked after each engine move, and before typing moves), when memory (`7262`) does not show it already. |
 | 20 | `SET-UP POSITION`, `WHITE`/`BLACK` | Set-up mode, and the colour being set up. |
 | 20 | `DRAW`, `CHECKMATE`, `STALEMATE` (instead of `YOUR MOVE`) | Psion considers the game over (only as long as the board is the one shown with the text, which stays a little after a takeback). |
-| 22 | `LEVEL 11  4 Min`, `LEVEL E` | Level 11 is set; easy mode (no pondering) is on. |
+| 22 | `LEVEL Infinite`, `LEVEL 11  4 Min`, `LEVEL E` | The level is set (see below); easy mode (no pondering) is on. |
 | 24 | `PROMOTE TO` | When to type the piece of a promotion. |
 | 24 | `ILLEGAL MOVE`, `ILLEGAL POSITION` | A typed move was refused; the set-up failed. |
 
@@ -146,12 +146,26 @@ about 0.6%. Nearly all the time goes to emulating the CPU.
 
 ## Controlling Psion
 
-- Level: set to 11 (4 minutes per move) at start-up, so Psion moves
-  when told to (`m`, below). Not *Infinite*: at that level Psion stops
-  reading the keyboard once its search reaches the maximum depth, which
-  happens almost at once in a locked pawn ending. Even at level 11
-  Psion's own time management can end a search after 90 s or more (see
-  [search-internals.md](search-internals.md#psions-own-time-management-the-levels)).
+- Level: *Infinite*, so Psion moves only when told to (`m`, below), or
+  by itself at a mate or a single legal move. Its iterations are then
+  `03`, `07`, `0B`, ... (the variant d = 3 throughout; see
+  [search-internals.md](search-internals.md#iterative-deepening-the-iteration-counter-5a67)).
+  At that level, though, Psion never reads the keyboard again once
+  every legal move repeats a position of the game: it then searches
+  nothing below the root (see
+  [search-internals.md](search-internals.md#repetitions-in-the-search)).
+  Before such a search (`AllMovesRepeat()`: every legal move leads to a
+  position that occurred since the last capture or pawn move, with the
+  same side to move), the adapter switches to level 11 (4 minutes per
+  move, `^L` twice; `info string Every move repeats a position: level
+  11, as Psion would hang at level Infinite`), at which Psion moves
+  after its last iteration, at once here, and back to *Infinite*
+  afterwards (`l` twice). The pause
+  after such a key ends as soon as the level shown changes. Up to v3.3
+  the adapter used level 11 throughout, at which Psion's own time
+  management can end a search after 90 s or more (see
+  [search-internals.md](search-internals.md#psions-own-time-management-the-levels)),
+  and its iterations are `05`, `09`, `0D`, ... (d = 1).
 - `e` switches easy mode on: Psion does not think on the opponent's
   time. (Pondering, too, can hang in such positions.)
 - Analysis mode (`a`) stays off. Each time the best root move changes,

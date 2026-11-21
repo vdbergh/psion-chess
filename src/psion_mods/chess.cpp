@@ -863,8 +863,12 @@ namespace psion {
         return !in_check(after, white);
     }
 
-    static bool has_legal_move(const Board b, bool white,
-                               const std::string &castling, int ep_file) {
+    // The legal moves on board b (white to move), promotions only to a
+    // queen.
+    static std::vector<std::string> legal_moves(const Board b, bool white,
+                                                const std::string &castling,
+                                                int ep_file) {
+        std::vector<std::string> moves;
         int ff, fr, tf, tr;
         for (ff = 0; ff < 8; ff++) {
             for (fr = 0; fr < 8; fr++) {
@@ -883,13 +887,18 @@ namespace psion {
                             m += 'q';
                         }
                         if (legal_move(b, white, castling, ep_file, m)) {
-                            return true;
+                            moves.push_back(m);
                         }
                     }
                 }
             }
         }
-        return false;
+        return moves;
+    }
+
+    static bool has_legal_move(const Board b, bool white,
+                               const std::string &castling, int ep_file) {
+        return !legal_moves(b, white, castling, ep_file).empty();
     }
 
     // A position, for repetitions: the board, the side to move, the
@@ -902,16 +911,30 @@ namespace psion {
                castling + (char)('a' + ep_file);
     }
 
+    // The final position of a game, and the boards with the side to move
+    // since the last capture or pawn move (or start), that one included.
+    struct GameTail {
+        Board board;
+        bool white;
+        std::string castling;
+        int ep_file;
+        std::vector<std::string> boards;
+    };
+
+    static std::string board_key(const Board b, bool white) {
+        return std::string(&b[0][0], sizeof(Board)) + (white ? 'w' : 'b');
+    }
+
     // Whether moves are legal from start. If not, error says which move
     // is not, and why when the game was already over. If they are, over
     // says whether the game is over after them: "CHECKMATE", "STALEMATE"
     // or "", and with draws also "REPETITION" (the position the third
     // time) or "FIFTY" (50 moves by each side without a capture or a pawn
-    // move, counted from start).
+    // move, counted from start); tail gets the end of the game.
     static bool check_game(const StartPosition &start,
                            const std::vector<std::string> &moves,
                            std::string &error, std::string *over = NULL,
-                           bool draws = false) {
+                           bool draws = false, GameTail *tail = NULL) {
         Board b;
         bool white = start.standard || start.white;
         std::string castling = start.standard ? "KQkq" : start.castling;
@@ -919,8 +942,10 @@ namespace psion {
         size_t i, j;
         int halfmoves = 0;
         std::vector<std::string> positions;
+        std::vector<std::string> boards;
         BoardAfter(start, moves, 0, b);
         positions.push_back(position_key(b, white, castling, ep_file));
+        boards.push_back(board_key(b, white));
         for (i = 0; i < moves.size(); i++) {
             const std::string &m = moves[i];
             if (!legal_move(b, white, castling, ep_file, m)) {
@@ -954,6 +979,17 @@ namespace psion {
             make_move(b, m);
             white = !white;
             positions.push_back(position_key(b, white, castling, ep_file));
+            if (halfmoves == 0) {
+                boards.clear();
+            }
+            boards.push_back(board_key(b, white));
+        }
+        if (tail) {
+            memcpy(tail->board, b, sizeof(Board));
+            tail->white = white;
+            tail->castling = castling;
+            tail->ep_file = ep_file;
+            tail->boards = boards;
         }
         if (over) {
             *over = has_legal_move(b, white, castling, ep_file) ? ""
@@ -981,6 +1017,31 @@ namespace psion {
                         const std::vector<std::string> &moves) {
         std::string error, over;
         return check_game(start, moves, error, &over, true) ? over : "";
+    }
+
+    bool AllMovesRepeat(const StartPosition &start,
+                        const std::vector<std::string> &moves) {
+        std::string error;
+        GameTail tail;
+        if (!check_game(start, moves, error, NULL, false, &tail)) {
+            return false;
+        }
+        std::vector<std::string> legal =
+            legal_moves(tail.board, tail.white, tail.castling, tail.ep_file);
+        if (legal.empty()) {
+            return false;
+        }
+        for (size_t i = 0; i < legal.size(); i++) {
+            Board after;
+            memcpy(after, tail.board, sizeof(after));
+            make_move(after, legal[i]);
+            if (std::find(tail.boards.begin(), tail.boards.end(),
+                          board_key(after, !tail.white)) ==
+                tail.boards.end()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     PositionRequest ParsePosition(const std::vector<std::string> &tokens) {
