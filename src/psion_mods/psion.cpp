@@ -539,6 +539,8 @@ namespace psion {
     const unsigned int MEM_SIDE = 0x725B;  // 00 White, FF Black to move
     const unsigned int MEM_PLY = 0x7260;   // word, counts the ponder move
     const unsigned int MEM_MODE = 0x7262;  // 80 in 2-player mode, else 00
+    const unsigned int MEM_LEVEL = 0x725A; // 0B level 11, 0D Infinite
+    const unsigned char LEVEL_11 = 0x0B, LEVEL_INFINITE = 0x0D;
     const unsigned int MEM_SEARCH_BOARD = 0x5B00; // 0x88 words, a8 first
 
     static bool read_state_at(unsigned int segment, PsionState &state) {
@@ -1020,28 +1022,24 @@ namespace psion {
         return two_player_flag() || two_player_mode();
     }
 
-    // The levels used. Infinite, so that Psion only moves when told to
+    // The level used: Infinite, so that Psion only moves when told to
     // (MOVE-NOW), or at a mate or a single legal move. At that level,
-    // though, Psion never reads the keyboard again once every legal move
-    // repeats a position (see AllMovesRepeat()), so such a position is
-    // searched at level 11 (4 minutes per move), at which Psion moves
-    // after its last iteration, at once there.
-    enum Level { LEVEL_NONE, LEVEL_11, LEVEL_INFINITE };
-
-    // "LEVEL Infinite" or "LEVEL 11  4 Min", with "E " after "LEVEL " in
-    // easy mode.
-    static Level level_shown() {
+    // though, a search that never reaches Psion's keyboard poll runs for
+    // ever (when the moves of the first two plies repeat positions, see
+    // docs/search-internals.md, "Repetitions in the search"). So MOVE-NOW
+    // also sets the level in memory to 11, at which Psion moves after its
+    // current iteration, and each search starts at Infinite again.
+    // "LEVEL Infinite", or "LEVEL E Infinite" in easy mode.
+    static bool level_ok() {
         const std::string &r = screen_rows[22];
-        if (r.compare(0, 6, "LEVEL ") != 0) {
-            return LEVEL_NONE;
+        return r.compare(0, 6, "LEVEL ") == 0 &&
+               r.find(" Infinite ") != std::string::npos;
+    }
+
+    static void set_level(unsigned char level) {
+        if (have_known) {
+            mem_writeb(known.segment * 16 + MEM_LEVEL, level);
         }
-        if (r.find(" 11  4 Min") != std::string::npos) {
-            return LEVEL_11;
-        }
-        if (r.find(" Infinite ") != std::string::npos) {
-            return LEVEL_INFINITE;
-        }
-        return LEVEL_NONE;
     }
 
     // In easy mode Psion does not ponder. (While pondering, it can hang
@@ -1315,6 +1313,7 @@ namespace psion {
         unsigned short below_alpha;  // Nodes_BelowWindow()), and the
         int below_depth;             // depth of that iteration
         std::string held_move; // found before "stop" in infinite mode
+        bool last_info_sent;   // ... with its last info line at once
         unsigned int last_action;
         bool action_done;        // its effect seen: no need to wait
         bool two_player_pending; // '2' pressed after the engine moved
@@ -1326,13 +1325,9 @@ namespace psion {
         size_t inflight_size;
         unsigned int inflight_since;
         int retries;
-        Level level;               // the level Psion is known to have
+        bool level_set;
         std::string level_row;     // the level shown before a level key
         bool level_pending;        // ... until the screen changes
-        bool repeats_known;        // AllMovesRepeat() for ...
-        bool all_repeat;
-        StartPosition repeats_start; // ... this position
-        std::vector<std::string> repeats_moves;
         int two_player_presses;    // '2' pressed without effect
         int easy_presses;          // 'e' pressed without effect
         std::string info_move;     // first move of the last info pv
@@ -1416,8 +1411,9 @@ namespace psion {
     }
 
     // A book move or a forced move counts fewer nodes than this (the board
-    // set-up, and a few dozen moves made in some book positions).
-    const unsigned long BOOK_MOVE_NODES = 100;
+    // set-up, and a few dozen moves made in some book positions: 73 to 131
+    // in the opening).
+    const unsigned long BOOK_MOVE_NODES = 200;
 
     // Ends the search: Psion plays the best move found so far. Whether
     // that move was below the window is kept from now, as Psion copies its
@@ -1427,10 +1423,12 @@ namespace psion {
         uci.below_window = Nodes_BelowWindow(uci.below_alpha);
         uci.below_depth = IterationDepth(Nodes_Iteration());
         press(KBD_m);
+        set_level(LEVEL_11);
         uci.movenow_sent = true;
         uci.movenow_ticks = now;
     }
 
+    static void send_last_info(const std::string &move);
     static void send_bestmove(const std::string &move);
 
     static void finish_search(const std::string &move) {
@@ -1446,8 +1444,8 @@ namespace psion {
         uci.early_move.clear();
     }
 
-    // The last line of the search and bestmove.
-    static void send_bestmove(const std::string &move) {
+    // The last line of the search, for the move Psion played.
+    static void send_last_info(const std::string &move) {
         int alpha_cp;
         if (!uci.info_move.empty() && move != uci.info_move && move != "0000") {
             std::string info = info_head(uci.info_mate, uci.info_score);
@@ -1510,6 +1508,14 @@ namespace psion {
             uci_send("info depth 1 time %u nodes %lu pv %s\n", time_ms, nodes,
                      move.c_str());
         }
+    }
+
+    // The last line of the search (unless sent already) and bestmove.
+    static void send_bestmove(const std::string &move) {
+        if (!uci.last_info_sent) {
+            send_last_info(move);
+        }
+        uci.last_info_sent = false;
         if (move == uci.info_move && !uci.info_ponder.empty()) {
             uci_send("bestmove %s ponder %s\n", move.c_str(),
                      uci.info_ponder.c_str());
@@ -1520,8 +1526,13 @@ namespace psion {
 
     static void report_move(const std::string move) {
         if (uci.infinite && !uci.stop_received) {
+            // The move is known: its line now, with the time and nodes it
+            // took (a book move has none of its own), bestmove after "stop"
+            // or "ponderhit".
             uci.held_move = move;
             uci.search = SEARCH_HOLDING;
+            send_last_info(move);
+            uci.last_info_sent = true;
         } else {
             finish_search(move);
         }
@@ -1853,50 +1864,21 @@ namespace psion {
         }
     }
 
-    // The level for the position the GUI wants (see Level).
-    static Level wanted_level() {
-        if (!uci.has_target || uci.unsupported) {
-            return LEVEL_INFINITE;
-        }
-        if (!uci.repeats_known || uci.repeats_moves != uci.target ||
-            !SameStart(uci.repeats_start, uci.target_start)) {
-            uci.repeats_known = true;
-            uci.repeats_start = uci.target_start;
-            uci.repeats_moves = uci.target;
-            uci.all_repeat = AllMovesRepeat(uci.target_start, uci.target);
-        }
-        return uci.all_repeat ? LEVEL_11 : LEVEL_INFINITE;
-    }
-
-    // Sets the level (see Level): 'l' raises it, ^L lowers it, from 11
-    // over "Equal time" to Infinite. Returns true once that is done.
+    // Sets the level (see level_ok()), with 'l'.
+    // Returns true once that is done.
     static bool level_set_check() {
-        Level want = wanted_level();
-        if (uci.level == want) {
+        if (uci.level_set) {
             return true;
         }
-        Level shown = level_shown();
-        if (shown == want) {
-            if (want == LEVEL_11) {
-                uci_send("info string Every move repeats a position: level 11, "
-                         "as Psion would hang at level Infinite\n");
-            } else {
-                say("Level Infinite\n");
-            }
-            uci.level = want;
+        if (level_ok()) {
+            say("Level Infinite\n");
+            uci.level_set = true;
             return true;
         }
-        uci.level = LEVEL_NONE;
         const std::string &r = screen_rows[22];
-        if (r.find("LEVEL") == std::string::npos) {
-            return false;
-        }
-        uci.level_row = r;
-        uci.level_pending = true;
-        if (want == LEVEL_11 && (shown == LEVEL_INFINITE ||
-                                 r.find("Equal time") != std::string::npos)) {
-            press(KBD_leftctrl, KBD_l);
-        } else {
+        if (r.find("LEVEL") != std::string::npos) {
+            uci.level_row = r;
+            uci.level_pending = true;
             press(KBD_l);
         }
         return false;
@@ -2411,11 +2393,13 @@ namespace psion {
         if (uci.go_pending) {
             uci.go_pending = false;
             search_speed(true);
+            set_level(LEVEL_INFINITE);
             press(KBD_c);
             search_started();
             uci.thinking_start = GetTicks();
             game_state.thinking = true;
             uci.search = SEARCH_RUNNING;
+            uci.last_info_sent = false;
             Nodes_ClearPv(); // lines from an earlier search
             uci.info_move.clear();
             uci.info_ponder.clear();

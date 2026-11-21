@@ -1583,7 +1583,9 @@ instead of 79 ms at `go movetime 0`.
 
 ## Repetitions in the search
 
-**At the root** (`1276`) Psion calls `41B5` after making each root move:
+**At the root and the ply below it** (`1276`) Psion calls `41B5` after
+making each root move, and each reply to one (seen with a hook on
+`1279`, with `[7076]` 2 and 4):
 it walks back through the move list from the current ply, up to the
 first move with one of the flag bits `1111` (see below), and follows the
 squares each piece moved between (up to four pieces at a time). Once all
@@ -1606,10 +1608,22 @@ takeback, a new game). This happened in the locked pawn ending of
 king could only go to b7, a7 or b6, each of which it had stood on before
 with White's king on d2. The same position set up from a FEN, without
 that history, is searched normally, as are locked endings in general (a
-node below the root runs out of moves there all the time). At any other
-level the loop ends after `1B` and Psion moves; the adapter switches to
-level 11 for such a position (see implementation.md, "Controlling
-Psion").
+node below the root runs out of moves there all the time).
+
+The same happens one ply deeper. In a match game
+(`test_repetition_after_reply`) Black, in check by a rook on b8, could
+play Kf7 or Ke7. Kf7 repeated a
+position and was scored a draw; after Ke7 the first reply searched, Rb7+,
+repeated one too, and its draw score refuted Ke7 at once. Every
+iteration made the same three moves (a hook counted no call of `13EB`),
+and Psion hung at level *Infinite* as above.
+
+At any other level the loop ends after `1B` and Psion moves. So with
+MOVE-NOW the adapter also writes `0B` (level 11) to `725A`: Psion then
+ends the search after its current iteration and moves, within about
+15 ms in both games (see implementation.md, "Controlling Psion"). That
+covers any such position, whatever the order in which Psion tries the
+replies, without predicting it.
 
 **Below the root** Psion's only repetition test is in make
 (`1DE0`..`1E89`), and it compares moves, not positions:

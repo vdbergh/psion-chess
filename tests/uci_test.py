@@ -479,6 +479,26 @@ class UciTest(unittest.TestCase):
         move = bestmove(e, 2)
         self.assertTrue(Board(moves).plausible(move), move)
 
+    def test_infinite_book_move(self):
+        """A move Psion plays at once (here from its book) during go
+        infinite: its line comes at once, with the time it took, the
+        bestmove only after stop."""
+        e = self.engine
+        moves = ['e2e4', 'e7e5', 'g1f3', 'b8c6', 'f1c4', 'g8f6']
+        e.send('position startpos moves ' + ' '.join(moves))
+        e.send('go infinite')
+        lines = e.silent(2)
+        self.assertEqual(len(lines), 1, lines)
+        info = lines[0].split()
+        self.assertEqual(info[:2], ['info', 'depth'], lines)
+        self.assertLess(int(info[info.index('time') + 1]), 1000, lines)
+        move = info[info.index('pv') + 1]
+        self.assertTrue(Board(moves).plausible(move), move)
+        e.send('stop')
+        line, before = e.expect('bestmove', 2)
+        self.assertEqual(before, [])
+        self.assertEqual(line, 'bestmove ' + move)
+
     def test_stop_for_waiting_go(self):
         """A "stop" after a waiting "go" stops that search, not the one
         before it."""
@@ -669,9 +689,9 @@ class UciTest(unittest.TestCase):
                       ' '.join(l for l in before if l.startswith('info ')))
 
     def test_locked_pawn_ending(self):
-        """At level Infinite Psion hangs here: every move of Black's king
-        repeats a position, so Psion searches nothing below the root and
-        never reads the keyboard. The adapter switches to level 11."""
+        """Every move of Black's king repeats a position, so Psion searches
+        nothing below the root and never reads the keyboard: at level
+        Infinite it would not move. MOVE-NOW also sets level 11."""
         e = self.engine
         moves = (
         'e2e4 c7c6 d2d4 g7g6 b1c3 d7d5 h2h3 h7h5 g1f3 f8g7 c1f4 d5e4 c3e4 '
@@ -687,18 +707,34 @@ class UciTest(unittest.TestCase):
         e.send('ucinewgame')
         e.send('position startpos moves ' + ' '.join(moves))
         e.send('go movetime 100')
-        line, before = e.expect('bestmove', 150)
-        move = line.split()[1]
-        self.assertTrue(Board(moves).plausible(move), move)
-        self.assertIn('info string Every move repeats a position: level 11,'
-                      ' as Psion would hang at level Infinite', before)
-        # A move earlier White's king has new squares: back to Infinite.
-        e.send('position startpos moves ' + ' '.join(moves[:-1]))
-        e.send('go movetime 100')
         line, before = e.expect('bestmove', 30)
         move = line.split()[1]
-        self.assertTrue(Board(moves[:-1]).plausible(move), move)
-        self.assertNotIn('info string', ' '.join(before))
+        self.assertTrue(Board(moves).plausible(move), move)
+
+    def test_repetition_after_reply(self):
+        """From a match: Black, in check, can play Kf7, which repeats a
+        position, or Ke7, after which Rb7+ does. Psion scores Kf7 a draw,
+        and Ke7 too after Rb7+ alone, so it again searches nothing deeper
+        and, at level Infinite, would not move."""
+        e = self.engine
+        moves = (
+        'd2d4 f7f5 b1c3 d7d5 c1f4 c7c6 e2e3 g8f6 g1f3 e7e6 f1d3 f8e7 h2h3 '
+        'e8g8 c3e2 b7b6 c2c3 f6e4 e1g1 c8b7 d1c2 b8d7 c3c4 a8c8 e2c3 h7h6 '
+        'a2a3 f8f7 f1e1 a7a5 a1c1 d8f8 f3e5 d7e5 f4e5 e7d6 e1d1 d6e5 d4e5 '
+        'f8e7 d3e2 e7h4 c3e4 f5e4 e2g4 c8e8 d1d2 h6h5 g4d1 e8f8 b2b3 c6c5 '
+        'c4d5 e6d5 b3b4 a5b4 a3b4 c5c4 c1a1 h4g5 c2b2 b6b5 a1a5 b7c6 a5a6 '
+        'f7c7 d1c2 f8e8 a6c6 c7c6 d2d5 c6e6 b2d4 e6e5 d4e4 g5f6 e4h7 g8f7 '
+        'd5d4 f7e6 d4f4 f6h6 h7h6 g7h6 g2g4 h5g4 h3g4 e5g5 f2f3 e8d8 c2f5 '
+        'e6f6 f5d7 f6e7 d7f5 d8d1 g1f2 d1d2 f2e1 d2b2 f4e4 e7f7 f3f4 g5g7 '
+        'e4e6 h6h5 g4g5 b2b4 e6h6 b4b2 h6h5 b5b4 h5h6 c4c3 h6b6 f7e8 b6b8 '
+        'e8e7 b8b7 e7f8 b7b8 f8f7 f5e4 f7e6 b8b6 e6e7 b6b7 e7f8 b7b8 f8f7 '
+        'b8b7 f7f8 b7b8 ').split()
+        e.send('ucinewgame')
+        e.send('position startpos moves ' + ' '.join(moves))
+        e.send('go wtime 2716 btime 2894 winc 100 binc 100')
+        line, before = e.expect('bestmove', 30)
+        move = line.split()[1]
+        self.assertIn(move, ('f8f7', 'f8e7'))
 
     def test_fen_castling_rights(self):
         # Castling with the right, and refused without.

@@ -57,7 +57,10 @@ writes to Psion's ply counter at `7076`. The time (also for
 think, so without entering the opponent's move. The last `info` line is
 repeated before `bestmove` with the time and nodes of the whole search.
 When Psion showed no line, as for a book move, the last line is `info
-depth 1 time T nodes 1 pv` and the move.
+depth 1 time T nodes 1 pv` and the move. If Psion moves by itself during
+`go infinite` or `go ponder` (a book move, a mate, a single legal move),
+the last line comes at once, with the time and nodes up to then, and
+only the `bestmove` waits for `stop` or `ponderhit`.
 
 ## Psion's memory
 
@@ -126,7 +129,7 @@ contents, because some rows blink. The adapter uses the text for:
 | 6 | `PLAYER PLAYER` | 2-player mode is on (checked after each engine move, and before typing moves), when memory (`7262`) does not show it already. |
 | 20 | `SET-UP POSITION`, `WHITE`/`BLACK` | Set-up mode, and the colour being set up. |
 | 20 | `DRAW`, `CHECKMATE`, `STALEMATE` (instead of `YOUR MOVE`) | Psion considers the game over (only as long as the board is the one shown with the text, which stays a little after a takeback). |
-| 22 | `LEVEL Infinite`, `LEVEL 11  4 Min`, `LEVEL E` | The level is set (see below); easy mode (no pondering) is on. |
+| 22 | `LEVEL Infinite`, `LEVEL E` | The level is set (see below); easy mode (no pondering) is on. |
 | 24 | `PROMOTE TO` | When to type the piece of a promotion. |
 | 24 | `ILLEGAL MOVE`, `ILLEGAL POSITION` | A typed move was refused; the set-up failed. |
 
@@ -150,18 +153,19 @@ about 0.6%. Nearly all the time goes to emulating the CPU.
   by itself at a mate or a single legal move. Its iterations are then
   `03`, `07`, `0B`, ... (the variant d = 3 throughout; see
   [search-internals.md](search-internals.md#iterative-deepening-the-iteration-counter-5a67)).
-  At that level, though, Psion never reads the keyboard again once
-  every legal move repeats a position of the game: it then searches
-  nothing below the root (see
+  At that level, though, Psion never reads the keyboard again when
+  the moves of the first two plies end in repetitions: every root move
+  repeats a position, or is refuted by a first reply that does. It then
+  searches nothing deeper and repeats its last iteration for ever (see
   [search-internals.md](search-internals.md#repetitions-in-the-search)).
-  Before such a search (`AllMovesRepeat()`: every legal move leads to a
-  position that occurred since the last capture or pawn move, with the
-  same side to move), the adapter switches to level 11 (4 minutes per
-  move, `^L` twice; `info string Every move repeats a position: level
-  11, as Psion would hang at level Infinite`), at which Psion moves
-  after its last iteration, at once here, and back to *Infinite*
-  afterwards (`l` twice). The pause
-  after such a key ends as soon as the level shown changes. Up to v3.3
+  So when the adapter presses `m` it also writes `0B` (level 11) to the
+  level byte `DS:725A`, at which Psion moves after its current
+  iteration (within about 15 ms in those positions; otherwise it reads
+  the `m` and moves at once), and it writes `0D` (*Infinite*) back
+  before the next `c`. This works around a bug in Psion without
+  changing its code; predicting such positions turned out to be
+  unreliable. The level is set once, with `l`; the pause after each
+  key ends as soon as the level shown changes. Up to v3.3
   the adapter used level 11 throughout, at which Psion's own time
   management can end a search after 90 s or more (see
   [search-internals.md](search-internals.md#psions-own-time-management-the-levels)),
@@ -532,7 +536,8 @@ How the engine handles what the UCI protocol leaves open or forbids:
   after the search was started, it ignores the `c`, and the result it
   shows answers the `go` within about 300 ms (`c` and `m` do not count
   as keys that change the board). After `go infinite` or `go ponder` the
-  answer comes with `stop` or `ponderhit`, as for any move found early.
+  answer comes with `stop` or `ponderhit`, as for any move found early
+  (whose last `info` line comes at once).
 - A position with an illegal move is reported at once with `info string
   Illegal move a2a4` (with `(checkmate)` or `(stalemate)` if the game
   was already over before it), one that cannot be set up with `info
