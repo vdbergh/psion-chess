@@ -93,11 +93,6 @@ taken care of by `Move Overhead`.
 - Psion's depths are odd numbers: `go depth 6` searches to depth 7.
   Psion ends its search as soon as it
   has found a mate, so `go mate 2` can also give a mate in 3.
-- Psion's  level *Infinite* could not be used since it has a bug that causes
-  Psion to lock up once its search reaches the maximum depth,
-  which happens for example in locked pawn endings. Hence the adapter sets Psion
-  to level 11 (4 minutes per moves) which implies that longer `movetime` searches end before
-  the requested time.
 - The move counters of a FEN are ignored, so Psion's 50-move rule counts
   from the FEN (the GUI should still apply the correct rule itself).
 - Psion searches a position set up from a FEN differently from the same
