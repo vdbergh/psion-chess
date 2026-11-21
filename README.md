@@ -172,10 +172,15 @@ from pondering. The matches and rating lists are in
 
 ### Time allocation
 
-Psion itself has no time management to speak off. It simply searches for
-a fixed amount of time which is preset by the user.
-The adapter however tries to improve upon this by stopping Psion's
-search at an opportune time.
+Psion's own time management depends on the user selecting a
+level L representing the number of seconds per move. It plays
+at a fictituous time control of 20 moves per 20\*L seconds
+and then repeatedly 10 moves per 10*L seconds. Depending on how the
+searches go, individual
+moves will generally take take more or less than L seconds.
+
+The adapter's time management is more general since it has to support the entire range of UCI time controls
+but it is based on similar principles as Psion's own time management.
 The detail are discussed in  [Time
 management](docs/implementation.md#time-management).
 
