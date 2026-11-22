@@ -81,7 +81,10 @@ Against micro-Max, 48.5% of the moves pondered on were played.
 
   A line through the first three gives Elo = 1597 + 86 × log2(cycles /
   100,000), which `UCI_Elo` uses; the other two fit it within their
-  errors (`highest` is about 190,000 to 230,000 cycles here).
+  errors (`highest` is about 190,000 to 230,000 cycles here). The
+  options are offered only with `--elo-options`, until the scale is
+  calibrated again: Psion has become stronger since (level Infinite in
+  v3.4), and the CCRL scale is not very realistic at this level anyway.
 
   \* With four games at a time the i5-1135G7 could not keep up with
   187,000 cycles in long searches: the search depth reached corresponds

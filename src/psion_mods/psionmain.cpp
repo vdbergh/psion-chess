@@ -148,6 +148,7 @@ static void usage(FILE *f) {
                "  -c, --cycles N  run the emulated PC at N instructions per ms\n"
                "  --tm-options    offer the UCI options for tuning the time\n"
                "                  management\n"
+               "  --elo-options   offer UCI_LimitStrength and UCI_Elo\n"
                "  -d, --download  download and install Psion Chess (asks "
                "first)\n"
                "  -v, --version   print the version and exit\n"
@@ -173,6 +174,10 @@ int main(int argc, char *argv[]) {
         } else if (arg == "--tm-options") {
             // For matches: the "TM ..." options (docs/time-management.md).
             psion::SetTimeOptions(true);
+        } else if (arg == "--elo-options") {
+            // UCI_LimitStrength and UCI_Elo, whose scale needs to be
+            // calibrated again (docs/strength.md).
+            psion::SetEloOptions(true);
         } else if (arg == "-c" || arg == "--cycles") {
             // For tests: run the emulated PC at a fixed speed, in
             // instructions per millisecond, instead of as fast as possible.

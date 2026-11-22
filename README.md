@@ -43,6 +43,8 @@ install its files in a directory where the adapter can find them (see
    written to stderr. Equivalent to issuing the UCI command `debug on`.
 - `--tm-options`: expose the time management UCI options described in
   [docs/time-management.md](docs/time-management.md).
+- `--elo-options`: expose the UCI options `UCI_LimitStrength` and
+  `UCI_Elo`, whose scale needs to be calibrated again.
 - `-v`, `--version`: print the version of the adapter.
 - `-h`, `--help`: list these options and exit.
 
@@ -82,13 +84,7 @@ taken care of by `Move Overhead`.
   are executed at full speed.
 - `Speed` (1 to 100, default 100): with `Cycles` at `highest`, Psion
   searches at this percentage of the highest speed (the emulated clock
-  runs that much slower). It has no effect with a fixed `Cycles` or with
-  `UCI_LimitStrength`.
-- `UCI_LimitStrength` (default false) and `UCI_Elo` (1150 to 1650,
-  default 1400): play at a given strength on the CCRL Blitz scale, by
-  running the emulated PC at reduced speed. This overrides `Cycles`.
-  The scale was calibrated at the CCRL blitz time control 2'+1".
-  A host that is too slow for the requested speed will play weaker.
+  runs that much slower). It has no effect with a fixed `Cycles`.
 
 ### Limitations
 

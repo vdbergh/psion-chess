@@ -444,9 +444,18 @@ class UciTest(unittest.TestCase):
             e.close()
 
     def test_uci_elo(self):
-        """UCI_LimitStrength with UCI_Elo sets a fixed speed; switched off,
-        the speed of the Cycles option applies again."""
-        e = Engine()
+        """UCI_LimitStrength with UCI_Elo (with --elo-options) sets a fixed
+        speed; switched off, the speed of the Cycles option applies again.
+        Without --elo-options there are no such options."""
+        e = self.engine
+        e.send('uci')
+        _, before = e.expect('uciok', 10)
+        self.assertFalse(any('UCI_' in l for l in before))
+        # ignored, as an unknown option
+        e.send('setoption name UCI_Elo value 1')
+        self.assertFalse(any(l.startswith('info string')
+                             for l in e.silent(0.5)))
+        e = Engine(args=('--elo-options',))
         try:
             e.send('uci')
             _, before = e.expect('uciok', 10)

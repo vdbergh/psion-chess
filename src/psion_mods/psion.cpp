@@ -94,6 +94,14 @@ namespace psion {
         time_options = on;
     }
 
+    // Whether UCI_LimitStrength and UCI_Elo are listed and accepted
+    // (--elo-options): their scale needs to be calibrated again.
+    static bool elo_options = false;
+
+    void SetEloOptions(bool on) {
+        elo_options = on;
+    }
+
     // Writes complete lines only, each with a single write, so that a GUI
     // that merges stderr with stdout never splits a line of either.
     void WriteLines(FILE *out, std::string &pending, const char *text) {
@@ -1721,9 +1729,12 @@ namespace psion {
             // empty default.
             uci_send("option name Cycles type string default highest\n");
             uci_send("option name Speed type spin default 100 min 1 max 100\n");
-            uci_send("option name UCI_LimitStrength type check default false\n");
-            uci_send("option name UCI_Elo type spin default %d min %d max %d\n",
-                     DEFAULT_ELO, MIN_ELO, MAX_ELO);
+            if (elo_options) {
+                uci_send("option name UCI_LimitStrength type check default "
+                         "false\n");
+                uci_send("option name UCI_Elo type spin default %d min %d "
+                         "max %d\n", DEFAULT_ELO, MIN_ELO, MAX_ELO);
+            }
             TimeParams defaults = DefaultTimeParams();
             for (int i = 0; time_options && i < TIME_OPTION_COUNT; i++) {
                 const TimeOption &o = TIME_OPTIONS[i];
@@ -1853,7 +1864,8 @@ namespace psion {
                                  "unless Cycles is highest\n");
                     }
                 }
-            } else if (SameOptionName(name, "UCI_LimitStrength")) {
+            } else if (elo_options &&
+                       SameOptionName(name, "UCI_LimitStrength")) {
                 if (SameOptionName(value, "true") ||
                     SameOptionName(value, "false")) {
                     limit_strength = SameOptionName(value, "true");
@@ -1871,7 +1883,7 @@ namespace psion {
                 } else {
                     time_params.*o->field = (int)v;
                 }
-            } else if (SameOptionName(name, "UCI_Elo")) {
+            } else if (elo_options && SameOptionName(name, "UCI_Elo")) {
                 char *end;
                 long v = strtol(value.c_str(), &end, 10);
                 if (value.empty() || *end || v < MIN_ELO || v > MAX_ELO) {
