@@ -903,7 +903,8 @@ horizon and in the pre-sort depth (`5A66` / 2 is h − 1 for d = 1 and
 h − 3 for d = 3). How the routines of d = 3 differ is not decoded.
 
 **The steps** (`0F72`..`0FD6`). The first iteration is `05`, or `03`
-when the byte at `725A` (`0B` in our runs) is 0, 1 or `0D`. After that
+when the byte at `725A` (the level: `0B` in the adapter up to v3.3,
+`0D` since) is 0, 1 or `0D`. After that
 `5A67` normally goes up by 4: the same variant, two plies deeper. With
 t = `5A7C` + `713C` (the time used, in Psion's seconds) and T = `5A78`
 (the time allotted, set at `0F00`; `F2` and `114` in the runs below; see
@@ -971,6 +972,43 @@ Never more than 4: past ply h the table holds only `186D 175A 186D
 1796`, and `1796` at h + 4 always stops. In the searches of 15 s above,
 the middlegame showed +4 in every line (3/7, 5/9, 7/11), the opening and
 the pawn ending 0.
+
+**The two variants in play.** At level 11 (the adapter up to v3.3) the
+iterations are `05`, `09`, `0D`, ... (d = 1); at level *Infinite* they
+are `03`, `07`, `0B`, ... (d = 3), the steps of + 4 keeping the
+variant. In a match of the two at 10+0.1 on pl (2026-11-22, the adapter
+at `0684795` against v3.3; the engine logs of the first 3,600 games,
+searches of at least 50 ms, so no book or forced moves), the last info
+line of each search showed:
+
+| | v3.3 (level 11, d = 1) | Infinite (d = 3) |
+|---|---|---|
+| Searches | 254,844 | 254,683 |
+| Time per move | 209 ms | 208 ms |
+| Nodes per move | 35,089 | 31,947 |
+| Nodes per second | 167,000 | 153,000 |
+| Mean `depth` (h) | 6.09 | 7.17 |
+| Mean `seldepth` | 8.05 | 8.76 |
+| h = 3 / 5 / 7 / 9 / 11+ | 0.9 / 50.2 / 43.1 / 5.2 / 0.6% | 0.5 / 12.4 / 67.6 / 17.3 / 2.1% |
+
+With the same time and fewer nodes, d = 3 ends about 1.1 plies deeper
+on average, a step of two plies in about half the searches; the
+difference is about the
+same for searches of 50 to 200 ms (6.28 against 7.28) as for those of
+0.8 to 2 s (7.15 against 7.89). Its iterations are evidently cheaper:
+probably through the other routines in the four plies before the
+horizon and the shallower pre-sort (h − 3), though neither is decoded,
+so a d = 3 search of depth h is likely a lighter one than a d = 1
+search of the same h. In play the trade pays: the Infinite version led
+by +35 ± 10 Elo after those 3,600 games (95%, from the per-opening
+pairs). Before, d = 3 came only in short stretches, after a step of 2
+from Psion's own time management. On a PC of 1985, some 250 to 350
+times slower than the emulation now, a search of this many nodes took a
+minute or two, and the steps of 2 from `09` on (see "The steps") then
+usually took Psion's long searches to d = 3 for their last iterations:
+the pure d = 1 of the adapter up to v3.3, which never gets near Psion's
+own time limits, was a side effect of the speed-up rather than a choice
+of Psion's authors.
 
 ## Psion's own time management: the levels
 
