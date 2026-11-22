@@ -999,9 +999,9 @@ same for searches of 50 to 200 ms (6.28 against 7.28) as for those of
 probably through the other routines in the four plies before the
 horizon and the shallower pre-sort (h − 3), though neither is decoded,
 so a d = 3 search of depth h is likely a lighter one than a d = 1
-search of the same h. In play the trade pays: the Infinite version led
-by +35 ± 10 Elo after those 3,600 games (95%, from the per-opening
-pairs). Before, d = 3 came only in short stretches, after a step of 2
+search of the same h. In play the trade pays: over the whole match of
+8,000 games the Infinite version beat v3.3 by +41 ± 6 Elo (95%, from
+the per-opening pairs). Before, d = 3 came only in short stretches, after a step of 2
 from Psion's own time management. On a PC of 1985, some 250 to 350
 times slower than the emulation now, a search of this many nodes took a
 minute or two, and the steps of 2 from `09` on (see "The steps") then
