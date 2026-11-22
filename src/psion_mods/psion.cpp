@@ -1187,7 +1187,16 @@ namespace psion {
     static bool search_speed_on = false;
     static Bit32s auto_cycles = 0; // where the auto-adjust was
 
-    static void dosbox_cycles(unsigned int cycles) {
+    // The "Speed" option: with the cycles at "highest", a search runs at
+    // this percentage of that speed, by running the emulated clock slower.
+    // (Fewer cycles per emulated millisecond would not do: the screen and
+    // the timers cost the host the same time per emulated millisecond
+    // whatever the cycles, so half the cycles gives more than half the
+    // speed.)
+    static unsigned int speed_percent = 100;
+
+    static void dosbox_cycles(unsigned int cycles, unsigned int percent) {
+        DOSBOX_SetSpeed(cycles == 0 ? percent : 100);
         CPU_CycleLimit = -1;
         if (cycles == 0) {
             if (!CPU_CycleAutoAdjust && auto_cycles > 0) {
@@ -1214,7 +1223,7 @@ namespace psion {
     static void search_speed(bool on) {
         if (on != search_speed_on) {
             search_speed_on = on;
-            dosbox_cycles(on ? search_cycles : 0);
+            dosbox_cycles(on ? search_cycles : 0, on ? speed_percent : 100);
             say("Speed switch to %s at %d cycles (%s)\n",
                 on ? "search" : "full", (int)CPU_CycleMax,
                 CPU_CycleAutoAdjust ? "auto" : "fixed");
@@ -1233,7 +1242,7 @@ namespace psion {
         base_cycles = CPU_CycleAutoAdjust ? 0 : (unsigned int)CPU_CycleMax;
         search_cycles = base_cycles;
         search_speed_on = false;
-        dosbox_cycles(0);
+        dosbox_cycles(0, 100);
     }
 
     static void apply_speed() {
@@ -1243,11 +1252,13 @@ namespace psion {
         }
         if (search_cycles) {
             say("Cycles: %u per ms while searching\n", search_cycles);
+        } else if (speed_percent < 100) {
+            say("Cycles: highest, at Speed %u%%\n", speed_percent);
         } else {
             say("Cycles: highest\n");
         }
         if (search_speed_on) {
-            dosbox_cycles(search_cycles);
+            dosbox_cycles(search_cycles, speed_percent);
         }
     }
     // Pause after a key action before the screen is consulted again.
@@ -1709,6 +1720,7 @@ namespace psion {
             // Not "max", a keyword of the option command: GUIs would read an
             // empty default.
             uci_send("option name Cycles type string default highest\n");
+            uci_send("option name Speed type spin default 100 min 1 max 100\n");
             uci_send("option name UCI_LimitStrength type check default false\n");
             uci_send("option name UCI_Elo type spin default %d min %d max %d\n",
                      DEFAULT_ELO, MIN_ELO, MAX_ELO);
@@ -1825,6 +1837,21 @@ namespace psion {
                 } else {
                     base_cycles = (unsigned int)v;
                     apply_speed();
+                }
+            } else if (SameOptionName(name, "Speed")) {
+                char *end;
+                long v = strtol(value.c_str(), &end, 10);
+                if (value.empty() || *end || v < 1 || v > 100) {
+                    uci_send("info string Speed must be 1 to 100\n");
+                } else {
+                    // Kept all the same: it applies once Cycles is
+                    // highest again.
+                    speed_percent = (unsigned int)v;
+                    apply_speed();
+                    if (base_cycles) {
+                        uci_send("info string The value of Speed is ignored "
+                                 "unless Cycles is highest\n");
+                    }
                 }
             } else if (SameOptionName(name, "UCI_LimitStrength")) {
                 if (SameOptionName(value, "true") ||

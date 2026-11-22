@@ -401,6 +401,48 @@ class UciTest(unittest.TestCase):
         finally:
             e.close()
 
+    def test_speed(self):
+        """The Speed option runs a search at a percentage of the highest
+        speed, and still keeps to the time."""
+        e = Engine()
+        try:
+            e.send('uci')
+            _, before = e.expect('uciok', 10)
+            self.assertIn('option name Speed type spin default 100 min 1 '
+                          'max 100', before)
+            for bad in ('0', '101', 'half'):
+                e.send('setoption name Speed value ' + bad)
+                line, _ = e.expect('info string', 5)
+                self.assertIn('Speed must be 1 to 100', line)
+            moves = ['a2a3', 'h7h6', 'h2h3', 'a7a6']   # out of book
+
+            def nodes(speed, movetime=1000):
+                e.send('setoption name Speed value %d' % speed)
+                e.send('position startpos moves ' + ' '.join(moves))
+                e.ready()
+                start = time.time()
+                e.send('go movetime %d' % movetime)
+                line, before = e.expect('bestmove', 15)
+                self.assertLess(time.time() - start, movetime / 1000 + 0.6)
+                self.assertTrue(Board(moves).plausible(line.split()[1]), line)
+                infos = [l.split() for l in before if l.startswith('info depth ')]
+                return int(infos[-1][infos[-1].index('nodes') + 1]) if infos else 0
+
+            e.send('setoption name Cycles value 3000')
+            e.send('setoption name Speed value 50')
+            line, _ = e.expect('info string', 5)
+            self.assertIn('The value of Speed is ignored unless Cycles is highest',
+                          line)
+            e.send('setoption name Cycles value highest')
+            full = nodes(100)
+            tenth = nodes(10)
+            # "Highest" itself varies (DOSBox adjusts it), by up to a factor
+            # of 2 over a few searches.
+            self.assertLess(tenth, full / 2)
+            nodes(1)
+        finally:
+            e.close()
+
     def test_uci_elo(self):
         """UCI_LimitStrength with UCI_Elo sets a fixed speed; switched off,
         the speed of the Cycles option applies again."""

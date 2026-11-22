@@ -80,6 +80,10 @@ taken care of by `Move Overhead`.
   result in maximum emulator speed. The `Cycles` option applies only while Psion searches:
   other actions such as setting up the position and entering moves
   are executed at full speed.
+- `Speed` (1 to 100, default 100): with `Cycles` at `highest`, Psion
+  searches at this percentage of the highest speed (the emulated clock
+  runs that much slower). It has no effect with a fixed `Cycles` or with
+  `UCI_LimitStrength`.
 - `UCI_LimitStrength` (default false) and `UCI_Elo` (1150 to 1650,
   default 1400): play at a given strength on the CCRL Blitz scale, by
   running the emulated PC at reduced speed. This overrides `Cycles`.

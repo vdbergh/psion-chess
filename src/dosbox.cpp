@@ -127,6 +127,9 @@ static Bit32u ticksLast;
 static Bit32u ticksAdded;
 Bit32s ticksDone;
 Bit32u ticksScheduled;
+/* Psion: the speed of the emulated clock, see DOSBOX_SetSpeed. */
+static Bit32u speedPercent = 100;
+static Bit32u speedCarry = 0;
 bool ticksLocked;
 
 static Bitu Normal_Loop(void) {
@@ -167,6 +170,11 @@ increaseticks:
 			ticksRemain = ticksNew-ticksLast;
 			ticksLast = ticksNew;
 			ticksDone += ticksRemain;
+			if (speedPercent < 100) {
+				speedCarry += ticksRemain * speedPercent;
+				ticksRemain = speedCarry / 100;
+				speedCarry %= 100;
+			}
 			if ( ticksRemain > 20 ) {
 				ticksRemain = 20;
 			}
@@ -234,6 +242,9 @@ increaseticks:
 			ticksDone -= GetTicks() - ticksNew;
 			if (ticksDone < 0)
 				ticksDone = 0;
+			/* Psion: the events are otherwise handled once per emulated
+			   millisecond, which at a low speed can be many real ones. */
+			if (speedPercent < 100) GFX_Events();
 		}
 	}
 	return 0;
@@ -256,6 +267,16 @@ void DOSBOX_ResetTicks(void) {
 	ticksAdded = 0;
 	ticksDone = 0;
 	ticksScheduled = 0;
+}
+
+/* Psion: run the emulated clock at this percentage of real time, with the
+   same cycles per emulated millisecond: the emulated PC is then that much
+   slower, overheads per emulated millisecond (such as drawing the screen)
+   included. The auto-adjustment of the cycles is not affected: it aims at
+   the same use of the host per emulated millisecond. */
+void DOSBOX_SetSpeed(Bitu percent) {
+	speedPercent = (Bit32u)percent;
+	speedCarry = 0;
 }
 
 void DOSBOX_RunMachine(void){
