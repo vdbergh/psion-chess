@@ -1203,6 +1203,10 @@ namespace psion {
     // speed.)
     static unsigned int speed_percent = 100;
 
+    void SetSpeed(unsigned int percent) {
+        speed_percent = percent;
+    }
+
     static void dosbox_cycles(unsigned int cycles, unsigned int percent) {
         DOSBOX_SetSpeed(cycles == 0 ? percent : 100);
         CPU_CycleLimit = -1;

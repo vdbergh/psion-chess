@@ -46,6 +46,8 @@ namespace psion {
     void SetTimeOptions(bool on);
     // The UCI_LimitStrength and UCI_Elo options (--elo-options).
     void SetEloOptions(bool on);
+    // The initial value of the "Speed" UCI option (--speed), 1 to 100.
+    void SetSpeed(unsigned int percent);
     // Appends text to pending and writes the complete lines in it to out.
     void WriteLines(FILE *out, std::string &pending, const char *text);
 

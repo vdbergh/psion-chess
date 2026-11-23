@@ -443,6 +443,27 @@ class UciTest(unittest.TestCase):
         finally:
             e.close()
 
+    def test_speed_option(self):
+        """--speed sets the initial value of the Speed option."""
+        moves = ['a2a3', 'h7h6', 'h2h3', 'a7a6']   # out of book
+
+        def nodes(*args):
+            e = Engine(args=args)
+            try:
+                e.send('uci')
+                e.expect('uciok', 10)
+                e.send('position startpos moves ' + ' '.join(moves))
+                e.send('go movetime 1000')
+                line, before = e.expect('bestmove', 15)
+                self.assertTrue(Board(moves).plausible(line.split()[1]), line)
+                infos = [l.split() for l in before
+                         if l.startswith('info depth ')]
+                return int(infos[-1][infos[-1].index('nodes') + 1])
+            finally:
+                e.close()
+
+        self.assertLess(nodes('--speed', '10'), nodes() / 2)
+
     def test_uci_elo(self):
         """UCI_LimitStrength with UCI_Elo (with --elo-options) sets a fixed
         speed; switched off, the speed of the Cycles option applies again.
@@ -1171,12 +1192,13 @@ class QuitTest(unittest.TestCase):
         for option in ('--help', '-h'):
             out = self.run_options(option)
             self.assertEqual(out.returncode, 0)
-            for name in ('--verbose', '--cycles', '--tm-options', '--version',
-                         '--help'):
+            for name in ('--verbose', '--cycles', '--speed', '--tm-options',
+                         '--version', '--help'):
                 self.assertIn(name, out.stdout.decode())
 
     def test_invalid_option(self):
-        for args in (('-x',), ('--cycles',), ('-c', '0')):
+        for args in (('-x',), ('--cycles',), ('-c', '0'), ('--speed',),
+                     ('-s', '0'), ('-s', '101'), ('--speed', '50%')):
             out = self.run_options(*args)
             self.assertEqual(out.returncode, 2)
             self.assertIn('psion: ', out.stderr.decode())

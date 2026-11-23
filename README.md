@@ -39,6 +39,9 @@ install its files in a directory where the adapter can find them (see
   instructions per millisecond (see
   [Speed](#speed)), e.g. `-c 300` to emulate the original IBM PC.
   Equivalent to setting the `Cycles` UCI option.
+- `-s P`, `--speed P`: search at P percent (1 to 100) of the highest
+  speed. Equivalent to setting the `Speed` UCI option, and likewise
+  ignored with `--cycles`.
 - `-V`, `--verbose`: augment the UCI output with lots of diagnostics
    written to stderr. Equivalent to issuing the UCI command `debug on`.
 - `--tm-options`: expose the time management UCI options described in

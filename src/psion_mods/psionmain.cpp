@@ -146,6 +146,7 @@ static void usage(FILE *f) {
                "\n"
                "  -V, --verbose   write diagnostics to stderr\n"
                "  -c, --cycles N  run the emulated PC at N instructions per ms\n"
+               "  -s, --speed P   search at P percent of the highest speed\n"
                "  --tm-options    offer the UCI options for tuning the time\n"
                "                  management\n"
                "  --elo-options   offer UCI_LimitStrength and UCI_Elo\n"
@@ -189,6 +190,16 @@ int main(int argc, char *argv[]) {
                 return 2;
             }
             cycles = (int)n;
+        } else if (arg == "-s" || arg == "--speed") {
+            // The initial value of the "Speed" UCI option.
+            char *end;
+            long n = i + 1 < argc ? strtol(argv[++i], &end, 10) : 0;
+            if (n <= 0 || *end || n > 100) {
+                fprintf(stderr, "psion: %s needs a percentage from 1 to "
+                                "100\n", arg.c_str());
+                return 2;
+            }
+            psion::SetSpeed((unsigned int)n);
         } else {
             fprintf(stderr, "psion: invalid option: %s\n\n", argv[i]);
             usage(stderr);
