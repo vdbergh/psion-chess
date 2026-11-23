@@ -6,8 +6,8 @@
 
 Psion Chess (Richard Lang, 1985) was one of the strongest chess programs
 of its time. This project runs the MS-DOS version in
-a stripped-down, headless DOSBox and adds an adapter that speaks the UCI
-protocol, so that it can be used from any chess GUI or match runner.
+a headless DOSBox and adds an adapter that speaks the UCI
+protocol, so that it can be used in any modern chess GUI.
 
 The adapter does not modify the chess program. It reads the game from the
 emulated machine's memory and plays moves by pressing keys, as a user would.
