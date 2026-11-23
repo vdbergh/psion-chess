@@ -523,10 +523,10 @@ How the engine handles what the UCI protocol leaves open or forbids:
   other commands wait, unless a `go` waits: then they apply to the
   search of that `go`. `quit` always takes effect at once, and `isready`
   during a search is answered at once (unless commands wait before it).
-- `go` while a `go infinite` or `go ponder` still waits for its `stop`
-  is against the protocol and ignored, with an `info string`: waiting,
-  it would take the `stop` meant for the running search, which would
-  then never end.
+- `go` during a search, before its `bestmove` or a `stop`, is against
+  the protocol and ignored, with an `info string`: waiting, it would
+  take the `stop` meant for the running search, which would then not
+  end (a `go infinite` never). The same for a second `go` after `stop`.
 - `stop` before the search has started (the position is still being set
   up): after `go ponder` the answer is `bestmove 0000` at once; otherwise
   Psion searches briefly once it can.

@@ -571,9 +571,9 @@ class UciTest(unittest.TestCase):
         self.assertTrue(Board(second).plausible(move), move)
 
     def test_go_without_stop(self):
-        """A "go" while a "go infinite" waits for "stop" is against the
-        protocol and ignored (with a "position" before it, which waits):
-        the "stop" after it ends the running search."""
+        """A "go" during a search, before its bestmove or a "stop", is
+        against the protocol and ignored (with a "position" before it,
+        which waits): the "stop" after it ends the running search."""
         e = self.engine
         first = ['a2a4', 'h7h5', 'h2h4', 'a7a5']
         e.send('position startpos moves ' + ' '.join(first))
@@ -582,10 +582,36 @@ class UciTest(unittest.TestCase):
         e.send('position startpos moves ' + ' '.join(first + ['b2b3']))
         e.send('go infinite')
         line, _ = e.expect('info string', 2)
-        self.assertIn('go ignored: the search waits for stop', line)
+        self.assertIn('go ignored: a search is running', line)
         e.send('stop')
         move = bestmove(e, 5)
         self.assertTrue(Board(first).plausible(move), move)
+        self.assertEqual([l for l in e.silent(2) if not l.startswith('info ')],
+                         [])
+        # The same for a search with a limit.
+        e.send('position startpos moves ' + ' '.join(first))
+        e.send('go movetime 100000')
+        e.silent(2)
+        e.send('go movetime 100000')
+        line, _ = e.expect('info string', 2)
+        self.assertIn('go ignored: a search is running', line)
+        start = time.time()
+        e.send('stop')
+        move = bestmove(e, 5)
+        self.assertLess(time.time() - start, 2)
+        self.assertTrue(Board(first).plausible(move), move)
+        # A second "go" after "stop": the first waits, the second is
+        # ignored, and the next "stop" is for the first.
+        e.send('go infinite')
+        e.silent(1)
+        e.send('stop')
+        e.send('go infinite')
+        e.send('go infinite')
+        line, _ = e.expect('info string go ignored', 5)
+        bestmove(e, 5)
+        e.silent(1)
+        e.send('stop')
+        bestmove(e, 5)
         self.assertEqual([l for l in e.silent(2) if not l.startswith('info ')],
                          [])
 

@@ -1706,12 +1706,14 @@ namespace psion {
         const std::string &cmd = tokens[0];
         bool for_search = (cmd == "stop" || cmd == "ponderhit") &&
                           !go_deferred();
-        // A "go" while the search waits for "stop" (infinite, or ponder)
-        // is against the protocol: deferred, it would take the "stop"
-        // meant for that search, which would then never end.
+        // A "go" during a search, before its bestmove or a "stop", is
+        // against the protocol: deferred, it would take the "stop" meant
+        // for the running search, which would then not end (a "go
+        // infinite" never). The same for a second "go" after "stop".
         if (!from_queue && cmd == "go" && must_wait(tokens) &&
-            (uci.infinite || uci.ponder) && !uci.stop_received) {
-            uci_send("info string go ignored: the search waits for stop\n");
+            uci.early_move.empty() &&
+            (!uci.stop_received || go_deferred())) {
+            uci_send("info string go ignored: a search is running\n");
             return;
         }
         if (!from_queue && cmd != "quit" && !for_search &&
