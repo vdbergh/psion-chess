@@ -82,9 +82,9 @@ taken care of by `Move Overhead`.
   result in maximum emulator speed. The `Cycles` option applies only while Psion searches:
   other actions such as setting up the position and entering moves
   are executed at full speed.
-- `Speed` (1 to 100, default 100): with `Cycles` at `highest`, Psion
-  searches at this percentage of the highest speed (the emulated clock
-  runs that much slower). It has no effect with a fixed `Cycles`.
+- `Speed` (1 to 100, default 100): reduce the emulator speed to this
+  percentage of the maximum. The value is ignored when `Cycles` is not
+  set to `highest`.
 
 ### Limitations
 
