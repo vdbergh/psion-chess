@@ -570,6 +570,25 @@ class UciTest(unittest.TestCase):
         move = bestmove(e, 10)
         self.assertTrue(Board(second).plausible(move), move)
 
+    def test_go_without_stop(self):
+        """A "go" while a "go infinite" waits for "stop" is against the
+        protocol and ignored (with a "position" before it, which waits):
+        the "stop" after it ends the running search."""
+        e = self.engine
+        first = ['a2a4', 'h7h5', 'h2h4', 'a7a5']
+        e.send('position startpos moves ' + ' '.join(first))
+        e.send('go infinite')
+        e.silent(2)
+        e.send('position startpos moves ' + ' '.join(first + ['b2b3']))
+        e.send('go infinite')
+        line, _ = e.expect('info string', 2)
+        self.assertIn('go ignored: the search waits for stop', line)
+        e.send('stop')
+        move = bestmove(e, 5)
+        self.assertTrue(Board(first).plausible(move), move)
+        self.assertEqual([l for l in e.silent(2) if not l.startswith('info ')],
+                         [])
+
     def test_ponder(self):
         e = self.engine
         moves = ['a2a4', 'h7h5', 'h2h4', 'a7a5', 'b1c3']
