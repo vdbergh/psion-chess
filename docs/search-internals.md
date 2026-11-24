@@ -910,16 +910,40 @@ t = `5A7C` + `713C` (the time used, in Psion's seconds) and T = `5A78`
 (the time allotted, set at `0F00`; `F2` and `114` in the runs below; see
 [Psion's own time management](#psions-own-time-management-the-levels)):
 
-- t < 3T/32: + 4 (but + 2 from `09` once t ≥ 3T/64);
+- t < 3T/32: + 4 (but + 2 from `09` once t ≥ 3T/64, which the runs
+  below did not confirm);
 - 3T/32 ≤ t < T/2: + 2;
 - t ≥ T/2: stop if bit `80` of `5A6B` is set, otherwise + 2 (and
   `5A6C` = 2).
 
 A step of 2 goes from d = 1 to d = 3 two plies deeper (`09` → `0B`), or
-from d = 3 to d = 1 at the same depth (`0B` → `0D`). The value is capped at
+from d = 3 to d = 1 at the same depth (`0B` → `0D`). So once the steps
+are 2, each nominal depth is searched twice, first with d = 3 and then
+with d = 1. The value is capped at
 `1B`, and the loop stops after the iteration at `1B` (`10BC`) unless
 `725A` is `0D`. So Psion never searches more than 15 plies nominally.
 With the extensions, `seldepth` could reach 19 (h + 4, see below).
+
+**The steps in practice.** A probe build logged every change of `5A67`
+with `5A78` and `5A7C` (experiment not kept), in searches with the
+adapter's level set to 11 or left at *Infinite*. In the Lucena position
+(`1K1k4/1P6/8/8/8/8/r7/2R5 w`) with `go movetime 150000`:
+
+| Level | T | `5A67` (start, in Psion's seconds) |
+|---|---|---|
+| 11 | 268 | `09` (0), `0D` (0), `11` (0), `15` (2), `17` (30), `19` (121) |
+| *Infinite* | 288 | `03` (0), `07` (0), `0B` (0), `0F` (0), `13` (0), `17` (11), `1B` (113) |
+
+At level 11 the steps became 2 once t had passed 3T/32 = 25: `17` is
+d = 3 at h = 13, and `19` is d = 1 at the same h = 13. At *Infinite*
+every step was 4, also at t = 113, past 3T/32 = 27; in the Philidor
+position (`4k3/8/3K4/4P3/8/8/r7/7R w`), `17` → `1B` came at t = 24. So
+at *Infinite* the time does not change the steps, and the search keeps
+d = 3 throughout (how `0F46` skips the rules at level `0D` is not
+decoded). At level 11 in the Philidor position, `15` → `19` came at
+t = 12, which is 3T/64, still with a step of 4: either the comparison is
+strict or the rule for t ≥ 3T/64 is read wrong. No step between 13 and
+24 has been seen to settle it.
 
 In a locked pawn ending such as Fine 70 (`8/k7/3p4/p2P1p2/P2P1P2/8/8/K7
 w`) Psion therefore runs through all its iterations at once and moves,
@@ -976,7 +1000,8 @@ the pawn ending 0.
 **The two variants in play.** At level 11 (the adapter up to v3.3) the
 iterations are `05`, `09`, `0D`, ... (d = 1); at level *Infinite* they
 are `03`, `07`, `0B`, ... (d = 3), the steps of + 4 keeping the
-variant. In a match of the two at 10+0.1 on pl (2026-11-22, the adapter
+variant (at level 11 only while t < 3T/32, about 25 s there; see "The
+steps in practice"). In a match of the two at 10+0.1 on pl (2026-11-22, the adapter
 at `0684795` against v3.3; the engine logs of the first 3,600 games,
 searches of at least 50 ms, so no book or forced moves), the last info
 line of each search showed:
@@ -1004,11 +1029,12 @@ search of the same h. In play the trade pays: over the whole match of
 the per-opening pairs). Before, d = 3 came only in short stretches, after a step of 2
 from Psion's own time management. On a PC of 1985, some 250 to 350
 times slower than the emulation now, a search of this many nodes took a
-minute or two, and the steps of 2 from `09` on (see "The steps") then
-usually took Psion's long searches to d = 3 for their last iterations:
-the pure d = 1 of the adapter up to v3.3, which never gets near Psion's
-own time limits, was a side effect of the speed-up rather than a choice
-of Psion's authors.
+minute or two, and the steps of 2 (see "The steps") then usually made
+Psion's long searches alternate between d = 3 and d = 1 for their last
+iterations, each new depth first with d = 3. The pure d = 1 of the
+adapter up to v3.3, whose searches rarely took the 25 s or so that the
+steps of 2 needed at level 11, was a side effect of the speed-up rather
+than a choice of Psion's authors.
 
 ## Psion's own time management: the levels
 
@@ -1097,7 +1123,8 @@ pondered on the move before the opponent played it, see below) and S:
 
 - **Between iterations** (`0F46`, see "The steps" above): no new iteration
   once t ≥ S/2; before that, the step depends on t against 3S/32 and
-  3S/64.
+  3S/64. At *Infinite* the steps stay 4 whatever the time (see "The
+  steps in practice").
 - **At each root move** (`127B`..`12C8`, when a new root move is started
   at ply 2): once `5A7C` ≥ S + 3·⌊S/8⌋ (about 1.375 S), the search ends,
   with the best move so far, unless the iteration's best score
