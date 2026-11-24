@@ -960,6 +960,37 @@ shortest level and for the unlimited one, and d = 1 for levels 2 to 11;
 on a PC of 1985 that probably gave level 1 a usable depth quickly (a
 guess, not decoded).
 
+**The two variants on test positions.** A guess is that the timed levels
+were tuned in games and *Infinite* on test positions, then scored by the
+time to solve them. To see how d = 3 fares there, the 300 positions of
+Win at Chess (the revised `wacnew.epd` of fsmosca/chess-artist) were
+searched for 5 s each at *Infinite* and, with a temporary build that
+sets level 11, at level 11 (pure d = 1, as its steps of 2 come only
+after about 25 s), the two side by side on the same machine
+(2026-11-24). A position counts as solved at the time of the info line
+from which on the first move of the PV stayed a solution, if the move
+played was one:
+
+| Solved within | Level 11 (d = 1) | *Infinite* (d = 3) | Only d = 1 | Only d = 3 | z |
+|---|---|---|---|---|---|
+| 0.25 s | 148 | 165 | 23 | 40 | +2.1 |
+| 0.5 s | 174 | 184 | 20 | 30 | +1.4 |
+| 1 s | 199 | 208 | 11 | 20 | +1.6 |
+| 2 s | 214 | 228 | 9 | 23 | +2.5 |
+| 3 s | 220 | 234 | 7 | 21 | +2.7 |
+| 5 s | 234 | 238 | 6 | 10 | +1.0 |
+
+(z from McNemar's test on the positions only one variant solved.) Of the
+228 positions both solved, d = 3 was faster in 162 and d = 1 in 61
+(median 0.10 s against 0.16 s), and it ended deeper with fewer nodes
+(mean `depth` 7.89 against 7.43, 345,000 nodes against 395,000). So on
+test positions d = 3 is better, above all in the time to solve; 0.25 s
+now is about 1 to 1.5 minutes on a PC of 1985. That fits the guess, but
+does not single out test positions: d = 3 also wins in games today
+against pure d = 1. Neither test pits it against the mix of d = 1 and
+d = 3 of a timed level on a PC of 1985 (steps of 2 once t ≥ 3T/32),
+which is not tested.
+
 In a locked pawn ending such as Fine 70 (`8/k7/3p4/p2P1p2/P2P1P2/8/8/K7
 w`) Psion therefore runs through all its iterations at once and moves,
 whatever the time left: with `go movetime 60000` it showed depth 15
