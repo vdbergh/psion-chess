@@ -945,6 +945,21 @@ t = 12, which is 3T/64, still with a step of 4: either the comparison is
 strict or the rule for t ≥ 3T/64 is read wrong. No step between 13 and
 24 has been seen to settle it.
 
+**Infinite is not the limit of the timed levels.** As L grows, t never
+reaches 3T/32, so a timed level tends to `05`, `09`, `0D`, ... with steps
+of 4: pure d = 1, stopping after `1B` (level 11 at today's speed, as in
+the adapter up to v3.3). *Infinite* starts at `03`, skips the time
+rules and repeats `1B` until MOVE-NOW: pure d = 3. The two share no
+iteration. The evaluation, the move generator and the search code are
+the same; what differs is the routines of the four plies before the
+horizon and the depth of the pre-sort. Still, the difference in play is
+that of another engine: about 1.1 plies more in the same time and
++41 Elo (see "The two variants in play"). The first iteration is also
+`03` at levels 0 and 1 ("2 Sec"), so Psion's authors chose d = 3 for the
+shortest level and for the unlimited one, and d = 1 for levels 2 to 11;
+on a PC of 1985 that probably gave level 1 a usable depth quickly (a
+guess, not decoded).
+
 In a locked pawn ending such as Fine 70 (`8/k7/3p4/p2P1p2/P2P1P2/8/8/K7
 w`) Psion therefore runs through all its iterations at once and moves,
 whatever the time left: with `go movetime 60000` it showed depth 15
