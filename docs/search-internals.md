@@ -900,7 +900,32 @@ odd:
 
 The two variants with the same h differ in the four plies before the
 horizon and in the pre-sort depth (`5A66` / 2 is h − 1 for d = 1 and
-h − 3 for d = 3). How the routines of d = 3 differ is not decoded.
+h − 3 for d = 3). How the routines of d = 3 differ is not decoded, but
+their effect shows in the nodes per ply. A probe build counted the
+nodes entered at each ply per completed iteration (2026-11-25, searches
+of 8 s, experiment not kept; ply 1 is the root, and the moves made at
+ply h are evaluated there without a node at ply h + 1):
+
+| Iteration | 1.a4 h5: nodes at ply 1, 2, ... | Middlegame: nodes at ply 1, 2, ... |
+|---|---|---|
+| `09` (d = 1, h = 5) | 1 21 63 579 830 | 1 32 61 652 318 / 78 173 42 59 |
+| `0B` (d = 3, h = 7) | 1 21 41 536 603 / 290 714 | 1 32 68 1154 2098 / 1745 2002 / 47 52 21 26 |
+| `0D` (d = 1, h = 7) | 1 21 41 451 830 8584 6746 | 1 32 68 824 1685 12445 9498 / 98 89 26 23 |
+| `0F` (d = 3, h = 9) | 1 21 41 509 970 12108 14131 / 4051 11470 | |
+
+(Middlegame: `r1bq1rk1/pp2bppp/2n1pn2/3p4/2PP4/2N2N2/PP2BPPP/R2QKB1R w
+KQ`. A slash marks ply h − 2 of d = 3, or ply h, after which only
+extended lines go on.)
+
+With d = 1 the plies grow up to h by a factor of 5 to 10 every other
+ply, as alpha-beta does at full width. With d = 3 the plies up to h − 2
+look like those of d = 1 at h − 2, but ply h − 1 has fewer nodes than
+ply h − 2 (290 against 603, 1745 against 2098, 4051 against 14131): most
+moves at ply h − 2 end there, and only some go on for the last two
+plies. So d = 3 at h is not a full-width search of h − 1 plies, but one
+of h − 2 plies (as d = 1 at h − 2) with a selective tail of two plies,
+probably after the moves that `1821` (at ply h − 2) does not let end.
+Its quiet lines end at the same odd ply as those of d = 1 at h − 2.
 
 **The steps** (`0F72`..`0FD6`). The first iteration is `05`, or `03`
 when the byte at `725A` (the level: `0B` in the adapter up to v3.3,
@@ -1081,6 +1106,36 @@ iterations, each new depth first with d = 3. The pure d = 1 of the
 adapter up to v3.3, whose searches rarely took the 25 s or so that the
 steps of 2 needed at level 11, was a side effect of the speed-up rather
 than a choice of Psion's authors.
+
+**The cost of the iterations.** A probe build logged the node count at
+each change of `5A67` (2026-11-25, experiment not kept), in 39
+positions after the openings of 8moves_v3 (one more was answered from
+the book), searched for 5 s each with three schedules: pure d = 1
+(level 11 with a huge S), pure d = 3 (*Infinite*) and the mix with steps
+of 2 throughout (S = 1, with `5A6B` kept at 0 so that Psion neither
+stops at S/2 nor at a root move nor at H). The geometric means over the
+positions of the nodes of each completed iteration:
+
+| | h = 3 | h = 5 | h = 7 |
+|---|---|---|---|
+| Pure d = 1 | 438 | 10,092 | 196,713 |
+| Pure d = 3 | 274 | 2,602 | 42,536 |
+| Mix | 437 (d = 1) | 2,435 (d = 3), 9,056 (d = 1) | 41,364 (d = 3), 181,121 (d = 1) |
+
+Two plies deeper with the same variant cost about 20 times as much with
+d = 1 (23 at h = 5, 19 at h = 7) and 10 to 16 times with d = 3. In the
+mix the d = 3 search sits about halfway, on a log scale, between d = 1
+two plies shallower and d = 1 at the same depth: d = 3 (h) costs 5.6
+(h = 5) and 4.6 (h = 7) times d = 1 (h − 2), and d = 1 (h) 3.7 and 4.4
+times d = 3 (h) (geometric means of the ratios per position). So with
+steps of 2 each iteration costs about 4 to 6 times the one before
+instead of 10 to 20. Little is carried over from one iteration to the
+next (the root move order, the killers, the window): in the mix the
+iterations cost only 3 to 10% fewer nodes than the same ones in the pure
+schedules. The extra iterations cost about 15%: finishing d = 1 at
+h = 7 takes about 234,000 nodes in the mix against 207,000 with pure
+d = 1, and finishing d = 3 at h = 7 about 53,000 against 45,000 with
+pure d = 3.
 
 ## Psion's own time management: the levels
 
