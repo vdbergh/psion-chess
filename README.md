@@ -46,6 +46,12 @@ install its files in a directory where the adapter can find them (see
    written to stderr. Equivalent to issuing the UCI command `debug on`.
 - `--tm-options`: expose the time management UCI options described in
   [docs/time-management.md](docs/time-management.md).
+- `--authentic-tm` (experimental): with a clock, let Psion decide by
+  itself when to start an iteration and when to move, using its own
+  rules from 1985. The adapter only supplies the target time and a hard
+  limit, and Psion's clock runs 300 times faster than the wall clock
+  (`--clock-factor K` changes that factor). See
+  [docs/proposal-own-search-steps.md](docs/proposal-own-search-steps.md).
 - `--elo-options`: expose the UCI options `UCI_LimitStrength` and
   `UCI_Elo`, whose scale needs to be calibrated again.
 - `-v`, `--version`: print the version of the adapter.
