@@ -1196,7 +1196,11 @@ otherwise). If the opponent plays the move Psion pondered on (`06D0`),
 the time pondered goes from `5A7C` to `713C`, `5A7C` starts again at 0,
 and `5A6B` becomes `80`. So the pondered time counts for the decision to
 start an iteration, but not for the root-move check, the hard limit or
-the account.
+the account. S and H are not computed again: `0EB1` is called only at
+`107B`, at the start of a search, so they stay those of the start of
+the ponder search. (Checked in the code: t = `5A7C` + `713C` is formed
+only at `0F8A`; the root-move check at `129E`..`12AD` and the hard limit
+at `0B96` read `5A7C` alone.)
 
 **With the adapter up to v3.3** (level 11, L = 230, easy mode on; now
 only in the positions of "At the root" in "Repetitions in the search",

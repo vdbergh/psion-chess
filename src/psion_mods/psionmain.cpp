@@ -148,6 +148,9 @@ static void usage(FILE *f) {
                "  -V, --verbose   write diagnostics to stderr\n"
                "  -c, --cycles N  run the emulated PC at N instructions per ms\n"
                "  -s, --speed P   search at P percent of the highest speed\n"
+               "  --authentic-tm  let Psion manage its time with a clock "
+               "itself\n"
+               "                  (experimental)\n"
                "  --clock-factor K\n"
                "                  run the emulated PC's clock K times faster "
                "than\n"
@@ -165,6 +168,8 @@ int main(int argc, char *argv[]) {
     // DOSBox's own command line parsing ignores case, so -v and -V would be
     // the same: the options are parsed here, and DOSBox gets none.
     int cycles = 0;
+    bool authentic_tm = false;
+    double clock_factor = 0;
     for (int i = 1; i < argc; i++) {
         std::string arg(argv[i]);
         if (arg == "-h" || arg == "--help") {
@@ -184,6 +189,10 @@ int main(int argc, char *argv[]) {
             // UCI_LimitStrength and UCI_Elo, whose scale needs to be
             // calibrated again (docs/strength.md).
             psion::SetEloOptions(true);
+        } else if (arg == "--authentic-tm") {
+            // Psion's own time management, for a comparison with the
+            // adapter's (docs/proposal-own-search-steps.md).
+            authentic_tm = true;
         } else if (arg == "-c" || arg == "--cycles") {
             // For tests: run the emulated PC at a fixed speed, in
             // instructions per millisecond, instead of as fast as possible.
@@ -216,12 +225,19 @@ int main(int argc, char *argv[]) {
                                 "1000\n", arg.c_str());
                 return 2;
             }
-            TIMER_SetClockFactor(k);
+            clock_factor = k;
         } else {
             fprintf(stderr, "psion: invalid option: %s\n\n", argv[i]);
             usage(stderr);
             return 2;
         }
+    }
+    if (authentic_tm) {
+        // By default the speed-up of the emulation over a PC of 1985, so
+        // that Psion's clock counts about as it did then.
+        psion::SetAuthenticTm(clock_factor ? clock_factor : 300);
+    } else if (clock_factor) {
+        TIMER_SetClockFactor(clock_factor);
     }
     CommandLine com_line(1, argv);
     Config myconf(&com_line);

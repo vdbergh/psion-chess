@@ -64,13 +64,17 @@ static bool gate2;
 // many times faster than a real PIT, so that the emulated PC's clock runs
 // that much faster than the wall clock (see TIMER_SetClockFactor).
 static double clock_factor = 1.0;
+static bool clock_factor_changed = false;
 
 static double pit_rate(Bitu counter) {
 	return counter == 0 ? PIT_TICK_RATE * clock_factor : PIT_TICK_RATE;
 }
 
 void TIMER_SetClockFactor(double factor) {
-	clock_factor = factor;
+	if (factor != clock_factor) {
+		clock_factor = factor;
+		clock_factor_changed = true;
+	}
 }
 
 static Bit8u latched_timerstatus;
@@ -83,9 +87,10 @@ static void PIT0_Event(Bitu /*val*/) {
 	if (pit[0].mode != 0) {
 		pit[0].start += pit[0].delay;
 
-		if (GCC_UNLIKELY(pit[0].update_count)) {
+		if (GCC_UNLIKELY(pit[0].update_count || clock_factor_changed)) {
 			pit[0].delay=(1000.0f/((float)pit_rate(0)/(float)pit[0].cntr));
 			pit[0].update_count=false;
+			clock_factor_changed=false;
 		}
 		PIC_AddEvent(PIT0_Event,pit[0].delay);
 	}

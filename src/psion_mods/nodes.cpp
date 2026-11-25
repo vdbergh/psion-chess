@@ -22,6 +22,10 @@
  * (DS:713A, set to 0 by a fail low), and the copies of its board to the
  * game board (DS:28AC). The root node is ply 1: when the ply counter goes
  * to ply 2, a root move has been made, and DS:5A6E holds it.
+ *
+ * For Psion's own time management (--authentic-tm), it also replaces the
+ * target and the hard limit that Psion computes at the start of a search
+ * (DS:5A78 and 5A7A, written once each) with the adapter's.
  */
 
 namespace psion {
@@ -35,6 +39,8 @@ namespace psion {
     static const unsigned int PLY_OFFSET = 0x7076; // ply * 2
     static const unsigned int ALPHA_OFFSET = 0x713A; // root alpha
     static const unsigned int MOVE_OFFSET = 0x5A6E;  // move made last
+    static const unsigned int TARGET_OFFSET = 0x5A78; // Psion's seconds
+    static const unsigned int LIMIT_OFFSET = 0x5A7A;  // ... both words
     static const unsigned int GAME_OFFSET = 0x28AC;
     static const unsigned int GAME_SIZE = 64;
 
@@ -42,6 +48,11 @@ namespace psion {
     static unsigned int pv_base = 0, pv_last = 0;    // linear
     static unsigned int iteration_addr = 0, ply_addr = 0; // linear
     static unsigned int alpha_addr = 0, move_addr = 0;    // linear
+    static unsigned int target_addr = 0, limit_addr = 0;  // linear
+    // The target and the hard limit to write instead of Psion's own at
+    // the next start of a search, until each has been written.
+    static bool target_armed = false, limit_armed = false;
+    static unsigned short armed_target = 0, armed_limit = 0;
     static unsigned int max_ply = 0, ply = 0;
     static unsigned char iteration = 0;
     // For time management: the score of the last line (units, from the
@@ -158,6 +169,14 @@ namespace psion {
                 max_ply = ply;
             }
         }
+        if (target_armed && addr == target_addr && size == 2) {
+            host_writew(MemBase + target_addr, armed_target);
+            target_armed = false;
+        }
+        if (limit_armed && addr == limit_addr && size == 2) {
+            host_writew(MemBase + limit_addr, armed_limit);
+            limit_armed = false;
+        }
         if (addr < game_hi && addr + size > game_lo) {
             game_copying = addr + size < game_hi;
         }
@@ -201,6 +220,10 @@ namespace psion {
         ply_addr = data_segment * 16 + PLY_OFFSET;
         alpha_addr = data_segment * 16 + ALPHA_OFFSET;
         move_addr = data_segment * 16 + MOVE_OFFSET;
+        target_addr = data_segment * 16 + TARGET_OFFSET;
+        limit_addr = data_segment * 16 + LIMIT_OFFSET;
+        MEM_SetPageHandler(target_addr / MEM_PAGESIZE, 1, &board_handler);
+        MEM_SetPageHandler(limit_addr / MEM_PAGESIZE, 1, &board_handler);
         MEM_SetPageHandler(alpha_addr / MEM_PAGESIZE, 1, &board_handler);
         MEM_SetPageHandler(ply_addr / MEM_PAGESIZE, 1, &board_handler);
         MEM_SetPageHandler(iteration_addr / MEM_PAGESIZE, 1, &board_handler);
@@ -238,6 +261,16 @@ namespace psion {
         line_seen = false;
         window_alpha = 0;
         window_iteration = 0;
+    }
+
+    void Nodes_SetSearchTimes(unsigned short target, unsigned short limit) {
+        target_armed = limit_armed = true;
+        armed_target = target;
+        armed_limit = limit;
+    }
+
+    void Nodes_ClearSearchTimes() {
+        target_armed = limit_armed = false;
     }
 
     bool Nodes_FirstLineDrop(int &d) {

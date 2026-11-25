@@ -102,6 +102,21 @@ namespace psion {
         elo_options = on;
     }
 
+    // Psion's own time management with a clock (--authentic-tm, see
+    // docs/proposal-own-search-steps.md): the adapter gives Psion a target
+    // and a hard limit, and Psion decides by itself when to start an
+    // iteration and when to move, with MOVE-NOW only as a fallback. Its
+    // clock then runs this many times faster than the wall clock
+    // (--clock-factor), less for long searches.
+    static bool authentic_tm = false;
+    static double authentic_clock_factor = 1;
+
+    void SetAuthenticTm(double clock_factor) {
+        authentic_tm = true;
+        authentic_clock_factor = clock_factor;
+        TIMER_SetClockFactor(clock_factor);
+    }
+
     // Writes complete lines only, each with a single write, so that a GUI
     // that merges stderr with stdout never splits a line of either.
     void WriteLines(FILE *out, std::string &pending, const char *text) {
@@ -550,6 +565,12 @@ namespace psion {
     const unsigned int MEM_LEVEL = 0x725A; // 0B level 11, 0D Infinite
     const unsigned char LEVEL_11 = 0x0B, LEVEL_INFINITE = 0x0D;
     const unsigned int MEM_SEARCH_BOARD = 0x5B00; // 0x88 words, a8 first
+    // Psion's own time management, in its seconds (search-internals.md,
+    // "Psion's own time management").
+    const unsigned int MEM_TARGET = 0x5A78;    // word, S
+    const unsigned int MEM_HARD_LIMIT = 0x5A7A; // word, H
+    const unsigned int MEM_SEARCH_TIME = 0x5A7C; // word, this search
+    const unsigned int MEM_PONDER_TIME = 0x713C; // word, before ponderhit
 
     static bool read_state_at(unsigned int segment, PsionState &state) {
         unsigned int base = segment * 16;
@@ -1327,6 +1348,8 @@ namespace psion {
         bool target_reached;         // the target, from "go" or "ponderhit"
         bool min_moves_wait;         // then going on for "TM Min Moves"
         unsigned char wait_iteration; // in this iteration
+        bool own_tm;                 // Psion's own time management
+        unsigned int own_tm_fallback; // ... and MOVE-NOW after this
         unsigned int search_start;   // when "go" was received
         unsigned int thinking_start; // when Psion started to think
         bool movenow_sent;
@@ -1562,6 +1585,7 @@ namespace psion {
     }
 
     static void UciAnalysis();
+    static void own_tm_ponderhit(unsigned int now);
 
     // Called when Psion plays a move during a search.
     static void UciEngineMoved(const std::string &move) {
@@ -1798,6 +1822,9 @@ namespace psion {
             uci.min_moves_wait = false;
             if (uci.search == SEARCH_HOLDING) {
                 finish_search(uci.held_move);
+            } else if (uci.search == SEARCH_RUNNING && authentic_tm &&
+                       uci.clock_search && !uci.movenow_sent) {
+                own_tm_ponderhit(uci.search_start);
             }
         } else if (cmd == "stop") {
             uci.stop_received = true;
@@ -2097,9 +2124,92 @@ namespace psion {
     // the window or after a fail low, up to the maximum; or an iteration
     // has started after soft_stop of S (it would most likely not change
     // the move). See docs/implementation.md.
+    // Psion's own time management (--authentic-tm). The target is T, as
+    // for the adapter's, and the hard limit 3 T, as Psion's own (at most
+    // 3 S + 1), within the same shares of the remaining time as the
+    // adapter's maximum. MOVE-NOW comes as a fallback a little later.
+    const int OWN_TM_MAX = 300;
+    const unsigned int OWN_TM_SLACK_MS = 30;
+    // Psion's second: 19 ticks of the timer (search-internals.md, "The
+    // clock"), at a clock factor of 1.
+    const double PSION_SECOND_MS = 19 * 65536 * 1000.0 / PIT_TICK_RATE;
+    // The longest hard limit, in Psion's seconds: its sums such as
+    // S + 3 S/8, 3 S, and the time pondered plus the search time must
+    // fit in a signed word.
+    const double OWN_TM_MAX_SECONDS = 20000;
+
+    struct OwnTimes {
+        unsigned short target, limit; // in Psion's seconds
+        double seconds_per_ms;        // Psion's seconds per real ms
+        unsigned int fallback_ms;     // MOVE-NOW, after "go"/"ponderhit"
+    };
+
+    // Psion starts to think setup ms after "go" (or "ponderhit"); the
+    // times count from then, as in MoveNowTime(). Sets the clock factor.
+    static OwnTimes own_tm_times(unsigned int setup) {
+        TimeParams tp = time_params;
+        tp.max = OWN_TM_MAX;
+        unsigned int t = ScaledThinkTime(uci.allocated_ms, uci.remaining_ms,
+                                         move_overhead_ms, tp, 100);
+        unsigned int h = MaxThinkTime(uci.allocated_ms, uci.remaining_ms,
+                                      move_overhead_ms, tp);
+        unsigned int charged = std::min(setup, MAX_SETUP_MS);
+        double t0 = t > charged ? t - charged : 1;
+        double h0 = h > charged ? h - charged : 1;
+        // At a lower "Speed" the emulated clock runs slower than the
+        // wall clock.
+        double emulated = search_cycles == 0 ? speed_percent / 100.0 : 1;
+        double k = std::max(
+            std::min(authentic_clock_factor,
+                     OWN_TM_MAX_SECONDS * PSION_SECOND_MS / (h0 * emulated)),
+            1.0);
+        TIMER_SetClockFactor(k);
+        OwnTimes o;
+        o.seconds_per_ms = k * emulated / PSION_SECOND_MS;
+        o.target = (unsigned short)std::min(
+            std::max(t0 * o.seconds_per_ms, 1.0), OWN_TM_MAX_SECONDS);
+        o.limit = (unsigned short)std::min(
+            std::max(h0 * o.seconds_per_ms, 1.0), OWN_TM_MAX_SECONDS);
+        o.fallback_ms = MoveNowTime(h, setup) + OWN_TM_SLACK_MS;
+        say("Psion's time management: target %u ms, limit %u ms (%u and "
+            "%u of its seconds at a clock factor of %.0f)\n",
+            t, h, o.target, o.limit, k);
+        return o;
+    }
+
+    // "ponderhit" in a search with a clock: Psion has been searching at
+    // Infinite, and goes on at a timed level with the target and the hard
+    // limit from now on, as after its own ponderhit: the time pondered
+    // counts only for starting an iteration.
+    static void own_tm_ponderhit(unsigned int now) {
+        if (!have_known) {
+            return;
+        }
+        OwnTimes o = own_tm_times(0);
+        unsigned int base = known.segment * 16;
+        double pondered = (double)(now - uci.thinking_start) * o.seconds_per_ms;
+        mem_writew(base + MEM_TARGET, o.target);
+        mem_writew(base + MEM_HARD_LIMIT, o.limit);
+        mem_writew(base + MEM_PONDER_TIME,
+                   (Bit16u)std::min(pondered, (double)o.target));
+        mem_writew(base + MEM_SEARCH_TIME, 0);
+        set_level(LEVEL_11);
+        uci.own_tm = true;
+        uci.own_tm_fallback = o.fallback_ms;
+    }
+
     static bool time_up(unsigned int now) {
         if (!uci.think_ms) {
             return false; // pondering, or no limit in time
+        }
+        if (uci.own_tm) {
+            // Psion moves by itself; MOVE-NOW only if it has not by then.
+            if (now - uci.search_start >= uci.own_tm_fallback) {
+                say("Time up after %u ms: fallback of Psion's own time "
+                    "management\n", now - uci.search_start);
+                return true;
+            }
+            return false;
         }
         // Not before Psion has completed its first iteration (depth 3), so
         // started the next one, or MIN_THINK_MS should that take longer.
@@ -2446,7 +2556,15 @@ namespace psion {
         if (uci.go_pending) {
             uci.go_pending = false;
             search_speed(true);
-            set_level(LEVEL_INFINITE);
+            uci.own_tm = authentic_tm && uci.clock_search && !uci.infinite;
+            if (uci.own_tm) {
+                OwnTimes t = own_tm_times(GetTicks() - uci.search_start);
+                Nodes_SetSearchTimes(t.target, t.limit);
+                uci.own_tm_fallback = t.fallback_ms;
+            } else {
+                Nodes_ClearSearchTimes();
+            }
+            set_level(uci.own_tm ? LEVEL_11 : LEVEL_INFINITE);
             press(KBD_c);
             search_started();
             uci.thinking_start = GetTicks();

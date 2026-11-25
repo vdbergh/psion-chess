@@ -87,6 +87,56 @@ default.
 This is experiment 2 below. Experiment 1 can still separate the effect
 of the d = 3 / d = 1 mix from that of the stopping rules, if needed.
 
+## Implementation: `--authentic-tm`
+
+With `--authentic-tm`, a search with a clock (not `go movetime`,
+`go infinite` or a ponder search before `ponderhit`) runs this way:
+
+- **The times.** S is T, the adapter's target. H is 3T, as Psion's own
+  hard limit is at most 3S + 1, within the same caps as the adapter's
+  maximum: 75% of the remaining time and the remaining time less
+  `Clock Buffer`. Both count from Psion's start, as the adapter's do
+  (the setup time up to 30 ms is charged to them).
+- **The clock.** Psion's clock runs K times faster than the wall clock,
+  K = 300 by default (`--clock-factor` sets it). For a long search K is
+  lowered, so that H stays at most 20,000 of Psion's seconds and its sums
+  (S + 3S/8, 3S, the time pondered plus the search time) fit in a signed
+  word. At a lower `Speed` the emulated clock runs slower, which is taken
+  into account.
+- **Into Psion.** The adapter sets level 11 instead of *Infinite*, and
+  the memory handler that watches Psion's search (nodes.cpp) replaces
+  Psion's own writes of S (`5A78`, at `0F00`) and H (`5A7A`, at `0F17`)
+  with the adapter's values: the first write of each in a search. When
+  Psion then lowers S by a quarter (S − S/4 + 1 at `0F34`..`0F40`, step 6
+  of "The time for a move"), that second write is kept, so the reduction
+  applies to the adapter's S.
+- **Fallback.** MOVE-NOW is pressed only if Psion has not moved 30 ms
+  after H.
+- **Ponderhit.** The ponder search runs at *Infinite*, so it is pure
+  d = 3. At `ponderhit` the adapter does what Psion's own ponderhit does:
+  it writes S and H, sets `713C` to the time pondered (at most S),
+  restarts `5A7C` at 0 and sets level 11.
+
+**First checks** (2026-11-25, 40 plies of self-play at 10+0.1). Out of
+book, Psion moved after 160 to 597 ms with S of about 300 to 415 ms: it
+started no iteration after S/2, stopped at a root move after 1.375 S,
+and the fallback was never needed. With the fallback moved to 100 ms by
+a temporary build, MOVE-NOW came in time.
+
+After `ponderhit` Psion can use much more time than with the adapter's
+time management. In a test position with 3 s of pondering, the
+iteration running at the ponderhit had started 2.7 s before, and its
+first root move took more than 5 s. Psion checks the stop at 1.375 S only
+when it starts a root move, so it went on to H = 3T (2.4 s after the
+ponderhit, against 0.8 s with the adapter's time management). Psion's own
+ponderhit works the same way. What differs is the ponder search before
+it: at *Infinite* all steps are 4, so after a few seconds of pondering
+Psion is usually in one long iteration, each iteration costing about 15
+times the one before. Psion's own ponder search ran at its timed level,
+where the steps become 2 once t ≥ 3S/32, so its iterations would grow
+less from one to the next. How Psion ponders with `5A6B` = `FF` (whether
+it starts no iteration after S/2 then) is not decoded.
+
 ## Experiments
 
 They would run in this order and only after a go-ahead, each first on
@@ -108,9 +158,7 @@ default, or an option ("authentic" against the current behaviour).
 
 ## Open questions
 
-- How to choose S from a UCI clock, and is H needed besides the
-  adapter's own limit?
-- What k to use for the clock, and does it have to follow the speed of
-  the machine (the `Speed` option)?
+- Should the time after `ponderhit` be capped lower than 3T (see
+  above)?
 - Is the rule for t ≥ 3S/64 read right? (The probe could not confirm
   it; see "The steps in practice".)

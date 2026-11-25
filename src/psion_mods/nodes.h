@@ -59,6 +59,13 @@ namespace psion {
     // with the bias 8000), an upper bound of that move's score.
     bool Nodes_BelowWindow(unsigned short &alpha);
 
+    // For Psion's own time management: at the start of the next search,
+    // replace the target and the hard limit Psion computes (DS:5A78 and
+    // 5A7A, in its seconds) with these. Nodes_ClearSearchTimes() leaves
+    // Psion's own values.
+    void Nodes_SetSearchTimes(unsigned short target, unsigned short limit);
+    void Nodes_ClearSearchTimes();
+
     // Whether Psion is copying its board to the game board (DS:28AC, 64
     // bytes, copied whole when a move is played): a word of it has been
     // written, but not yet the last one.

@@ -39,7 +39,8 @@ void TIMER_DelTickHandler(TIMER_TickHandler handler);
 void TIMER_AddTick(void);
 
 /* psion: make the PIT's counter 0, and so the emulated PC's clock, run
-   factor times faster than the wall clock (1 by default) */
+   factor times faster than the wall clock (1 by default); a change takes
+   effect from the next timer interrupt */
 void TIMER_SetClockFactor(double factor);
 
 #endif
