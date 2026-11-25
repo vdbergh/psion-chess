@@ -60,6 +60,19 @@ struct PIT_Block {
 static PIT_Block pit[3];
 static bool gate2;
 
+// psion: counter 0 (IRQ 0, the BIOS tick count and int 1Ch) counts this
+// many times faster than a real PIT, so that the emulated PC's clock runs
+// that much faster than the wall clock (see TIMER_SetClockFactor).
+static double clock_factor = 1.0;
+
+static double pit_rate(Bitu counter) {
+	return counter == 0 ? PIT_TICK_RATE * clock_factor : PIT_TICK_RATE;
+}
+
+void TIMER_SetClockFactor(double factor) {
+	clock_factor = factor;
+}
+
 static Bit8u latched_timerstatus;
 // the timer status can not be overwritten until it is read or the timer was 
 // reprogrammed.
@@ -71,7 +84,7 @@ static void PIT0_Event(Bitu /*val*/) {
 		pit[0].start += pit[0].delay;
 
 		if (GCC_UNLIKELY(pit[0].update_count)) {
-			pit[0].delay=(1000.0f/((float)PIT_TICK_RATE/(float)pit[0].cntr));
+			pit[0].delay=(1000.0f/((float)pit_rate(0)/(float)pit[0].cntr));
 			pit[0].update_count=false;
 		}
 		PIC_AddEvent(PIT0_Event,pit[0].delay);
@@ -134,13 +147,14 @@ static void status_latch(Bitu counter) {
 static void counter_latch(Bitu counter) {
 	/* Fill the read_latch of the selected counter with current count */
 	PIT_Block * p=&pit[counter];
+	double rate=pit_rate(counter);
 	p->go_read_latch=false;
 
 	//If gate2 is disabled don't update the read_latch
 	if (counter == 2 && !gate2 && p->mode !=1) return;
 	if (GCC_UNLIKELY(p->new_mode)) {
 		double passed_time = PIC_FullIndex() - p->start;
-		Bitu ticks_since_then = (Bitu)(passed_time / (1000.0/PIT_TICK_RATE));
+		Bitu ticks_since_then = (Bitu)(passed_time / (1000.0/rate));
 		//if (p->mode==3) ticks_since_then /= 2; // TODO figure this out on real hardware
 		p->read_latch -= ticks_since_then;
 		return;
@@ -153,14 +167,14 @@ static void counter_latch(Bitu counter) {
 		if (index>p->delay) {
 			index-=p->delay;
 			if(p->bcd) {
-				index = fmod(index,(1000.0/PIT_TICK_RATE)*10000.0);
-				p->read_latch = (Bit16u)(9999-index*(PIT_TICK_RATE/1000.0));
+				index = fmod(index,(1000.0/rate)*10000.0);
+				p->read_latch = (Bit16u)(9999-index*(rate/1000.0));
 			} else {
-				index = fmod(index,(1000.0/PIT_TICK_RATE)*(double)0x10000);
-				p->read_latch = (Bit16u)(0xffff-index*(PIT_TICK_RATE/1000.0));
+				index = fmod(index,(1000.0/rate)*(double)0x10000);
+				p->read_latch = (Bit16u)(0xffff-index*(rate/1000.0));
 			}
 		} else {
-			p->read_latch=(Bit16u)(p->cntr-index*(PIT_TICK_RATE/1000.0));
+			p->read_latch=(Bit16u)(p->cntr-index*(rate/1000.0));
 		}
 		break;
 	case 1: // countdown
@@ -168,7 +182,7 @@ static void counter_latch(Bitu counter) {
 			if (index>p->delay) { // has timed out
 				p->read_latch = 0xffff; //unconfirmed
 			} else {
-				p->read_latch=(Bit16u)(p->cntr-index*(PIT_TICK_RATE/1000.0));
+				p->read_latch=(Bit16u)(p->cntr-index*(rate/1000.0));
 			}
 		}
 		break;
@@ -231,7 +245,7 @@ static void write_latch(Bitu port,Bitu val,Bitu /*iolen*/) {
 			return;
 		}
 		p->start=PIC_FullIndex();
-		p->delay=(1000.0f/((float)PIT_TICK_RATE/(float)p->cntr));
+		p->delay=(1000.0f/((float)pit_rate(counter)/(float)p->cntr));
 
 		switch (counter) {
 		case 0x00:			/* Timer hooked to IRQ 0 */
@@ -444,7 +458,7 @@ public:
 		pit[2].counterstatus_set = false;
 		pit[2].counting = false;
 	
-		pit[0].delay=(1000.0f/((float)PIT_TICK_RATE/(float)pit[0].cntr));
+		pit[0].delay=(1000.0f/((float)pit_rate(0)/(float)pit[0].cntr));
 		pit[1].delay=(1000.0f/((float)PIT_TICK_RATE/(float)pit[1].cntr));
 		pit[2].delay=(1000.0f/((float)PIT_TICK_RATE/(float)pit[2].cntr));
 

@@ -38,4 +38,8 @@ void TIMER_DelTickHandler(TIMER_TickHandler handler);
 /* This will add 1 milliscond to all timers */
 void TIMER_AddTick(void);
 
+/* psion: make the PIT's counter 0, and so the emulated PC's clock, run
+   factor times faster than the wall clock (1 by default) */
+void TIMER_SetClockFactor(double factor);
+
 #endif

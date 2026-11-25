@@ -32,6 +32,7 @@
 #include "mapper.h"
 #include "control.h"
 #include "psion.h"
+#include "timer.h"
 #include "version.h"
 
 // Stubs for what the SDL front end (sdl_main.cpp, sdl_mapper.cpp) provides.
@@ -147,6 +148,10 @@ static void usage(FILE *f) {
                "  -V, --verbose   write diagnostics to stderr\n"
                "  -c, --cycles N  run the emulated PC at N instructions per ms\n"
                "  -s, --speed P   search at P percent of the highest speed\n"
+               "  --clock-factor K\n"
+               "                  run the emulated PC's clock K times faster "
+               "than\n"
+               "                  the wall clock\n"
                "  --tm-options    offer the UCI options for tuning the time\n"
                "                  management\n"
                "  --elo-options   offer UCI_LimitStrength and UCI_Elo\n"
@@ -200,6 +205,18 @@ int main(int argc, char *argv[]) {
                 return 2;
             }
             psion::SetSpeed((unsigned int)n);
+        } else if (arg == "--clock-factor") {
+            // For experiments: the timer interrupt, and so Psion's clock,
+            // runs K times faster than the wall clock (in 1985 a search
+            // took some 250 to 300 times longer than now).
+            char *end;
+            double k = i + 1 < argc ? strtod(argv[++i], &end) : 0;
+            if (!(k >= 1 && k <= 1000) || *end) {
+                fprintf(stderr, "psion: %s needs a factor from 1 to "
+                                "1000\n", arg.c_str());
+                return 2;
+            }
+            TIMER_SetClockFactor(k);
         } else {
             fprintf(stderr, "psion: invalid option: %s\n\n", argv[i]);
             usage(stderr);
