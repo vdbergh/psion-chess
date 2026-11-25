@@ -910,8 +910,8 @@ t = `5A7C` + `713C` (the time used, in Psion's seconds) and T = `5A78`
 (the time allotted, set at `0F00`; `F2` and `114` in the runs below; see
 [Psion's own time management](#psions-own-time-management-the-levels)):
 
-- t < 3T/32: + 4 (but + 2 from `09` once t ≥ 3T/64, which the runs
-  below did not confirm);
+- t < 3T/32: + 4 (but + 2 from `09` once t ≥ 3T/64: only at `09`,
+  the comparison at `0FB5`);
 - 3T/32 ≤ t < T/2: + 2;
 - t ≥ T/2: stop if bit `80` of `5A6B` is set, otherwise + 2 (and
   `5A6C` = 2).
@@ -939,11 +939,11 @@ d = 3 at h = 13, and `19` is d = 1 at the same h = 13. At *Infinite*
 every step was 4, also at t = 113, past 3T/32 = 27; in the Philidor
 position (`4k3/8/3K4/4P3/8/8/r7/7R w`), `17` → `1B` came at t = 24. So
 at *Infinite* the time does not change the steps, and the search keeps
-d = 3 throughout (how `0F46` skips the rules at level `0D` is not
-decoded). At level 11 in the Philidor position, `15` → `19` came at
-t = 12, which is 3T/64, still with a step of 4: either the comparison is
-strict or the rule for t ≥ 3T/64 is read wrong. No step between 13 and
-24 has been seen to settle it.
+d = 3 throughout: at level `0D` the step is 4 before any of the time
+rules (`0F86`). At level 11 in the Philidor position, `15` → `19` came
+at t = 12, which is 3T/64, still with a step of 4. That fits the code
+(`0F84`..`0FC7`): the step of 2 for 3T/64 ≤ t < 3T/32 applies only at
+`09`, so not at `15`.
 
 **Infinite is not the limit of the timed levels.** As L grows, t never
 reaches 3T/32, so a timed level tends to `05`, `09`, `0D`, ... with steps

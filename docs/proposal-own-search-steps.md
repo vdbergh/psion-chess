@@ -160,5 +160,3 @@ default, or an option ("authentic" against the current behaviour).
 
 - Should the time after `ponderhit` be capped lower than 3T (see
   above)?
-- Is the rule for t ≥ 3S/64 read right? (The probe could not confirm
-  it; see "The steps in practice".)
