@@ -44,8 +44,8 @@ it runs by itself. So:
 Psion's code is not changed, but its memory is written, which the
 adapter has not done so far for the search: "the adapter only reads
 Psion's memory and decides when to press MOVE-NOW" (time-management.md).
-It is like choosing a level with a time of our own; whether that is
-acceptable is to be decided before starting.
+It is like choosing a level with a time of our own, and is accepted for
+this experiment (see "Plan").
 
 ## Problems
 
@@ -57,8 +57,11 @@ acceptable is to be decided before starting.
 - **Fix: a faster clock.** DOSBox could make the 1Ch timer, or only the
   count of ticks to Psion's second, k times faster. With k about 250 to
   300 (the speed-up over a PC of 1985), Psion sees the proportions of
-  1985 in nodes, which is what its rules were made for. It is
-  unclear what a fast 1Ch costs in emulation.
+  1985 in nodes, which is what its rules were made for. This is now
+  `--clock-factor K`, which runs counter 0 of the emulated PIT (IRQ 0,
+  the BIOS tick count and 1Ch) K times faster. In a 5 s search the BIOS
+  count went up by 91, 903 and 27,141 ticks at K = 1, 10 and 300
+  (90, 904 and 27,130 expected), and K = 300 cost about 2% in nodes.
 - **16-bit overflow.** With a fast clock, S, `5A7C`, the account and
   A·(n + 3)/4 become k times larger. That is one more reason to write S
   and H directly.
@@ -69,6 +72,20 @@ acceptable is to be decided before starting.
 - **The 15-ply limit.** At a timed level the loop stops after the
   iteration at `1B`. Psion then moves at once, as it does now in locked
   endings.
+
+## Plan (2026-11-25)
+
+The adapter computes T and its maximum as now (`Move Overhead`,
+`Clock Buffer`, the 75% cap and so on), writes them into Psion as S and
+H, and lets Psion run the search with its own rules, with MOVE-NOW only
+as a fallback. The two time managements are separate modules, so that
+the current one stays available. A match then pits Psion's time
+management against the current one. If Psion's costs too much Elo, it
+goes behind an option such as `--authentic-tm`; otherwise it becomes the
+default.
+
+This is experiment 2 below. Experiment 1 can still separate the effect
+of the d = 3 / d = 1 mix from that of the stopping rules, if needed.
 
 ## Experiments
 
@@ -91,8 +108,6 @@ default, or an option ("authentic" against the current behaviour).
 
 ## Open questions
 
-- Is writing `5A78`, `5A7A` and `5A6B` acceptable under the rule of not
-  patching Psion's search?
 - How to choose S from a UCI clock, and is H needed besides the
   adapter's own limit?
 - What k to use for the clock, and does it have to follow the speed of
