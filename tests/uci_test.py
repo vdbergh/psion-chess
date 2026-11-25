@@ -267,7 +267,8 @@ class UciTest(unittest.TestCase):
     def test_time_management_options(self):
         """The TM options of --tm-options (docs/time-management.md) apply
         with a clock, not with movetime. Without --tm-options there are
-        none."""
+        none. The searches use the adapter's time management (--alt-tm),
+        whose stops the options set."""
         e = self.engine
         e.send('uci')
         _, before = e.expect('uciok', 10)
@@ -276,7 +277,7 @@ class UciTest(unittest.TestCase):
         e.send('setoption name TM Max Share value 0')
         self.assertFalse(any(l.startswith('info string')
                              for l in e.silent(0.5)))
-        e = Engine(args=('--verbose', '--tm-options'))
+        e = Engine(args=('--verbose', '--tm-options', '--alt-tm'))
         try:
             e.send('uci')
             _, before = e.expect('uciok', 10)

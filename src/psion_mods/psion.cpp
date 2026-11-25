@@ -102,12 +102,12 @@ namespace psion {
         elo_options = on;
     }
 
-    // Psion's own time management with a clock (--authentic-tm, see
-    // docs/proposal-own-search-steps.md): the adapter gives Psion a target
-    // and a hard limit, and Psion decides by itself when to start an
-    // iteration and when to move, with MOVE-NOW only as a fallback. Its
-    // clock then runs this many times faster than the wall clock
-    // (--clock-factor), less for long searches.
+    // Psion's own time management with a clock (the default, not with
+    // --alt-tm; see docs/proposal-own-search-steps.md): the adapter gives
+    // Psion a target and a hard limit, and Psion decides by itself when to
+    // start an iteration and when to move, with MOVE-NOW only as a
+    // fallback. Its clock then runs this many times faster than the wall
+    // clock (--clock-factor), less for long searches.
     static bool authentic_tm = false;
     static double authentic_clock_factor = 1;
 
@@ -1822,8 +1822,8 @@ namespace psion {
             uci.min_moves_wait = false;
             if (uci.search == SEARCH_HOLDING) {
                 finish_search(uci.held_move);
-            } else if (uci.search == SEARCH_RUNNING && authentic_tm &&
-                       uci.clock_search && !uci.movenow_sent) {
+            } else if (uci.search == SEARCH_RUNNING && uci.own_tm &&
+                       !uci.movenow_sent) {
                 own_tm_ponderhit(uci.search_start);
             }
         } else if (cmd == "stop") {
@@ -2124,7 +2124,7 @@ namespace psion {
     // the window or after a fail low, up to the maximum; or an iteration
     // has started after soft_stop of S (it would most likely not change
     // the move). See docs/implementation.md.
-    // Psion's own time management (--authentic-tm). The target is T, as
+    // Psion's own time management (the default). The target is T, as
     // for the adapter's, and the hard limit 3 T, as Psion's own (at most
     // 3 S + 1), within the same shares of the remaining time as the
     // adapter's maximum. MOVE-NOW comes as a fallback a little later.
@@ -2177,11 +2177,11 @@ namespace psion {
         return o;
     }
 
-    // "ponderhit" in a search with a clock: Psion has been searching at
-    // Infinite, and goes on at a timed level with the target and the hard
-    // limit from now on, as after its own ponderhit: the time pondered
-    // counts only for starting an iteration.
+    // "ponderhit" in a search with a clock: Psion goes on with the target
+    // and the hard limit from now on, as after its own ponderhit: the time
+    // pondered counts only for starting an iteration.
     static void own_tm_ponderhit(unsigned int now) {
+        Nodes_ClearSearchTimeCap();
         if (!have_known) {
             return;
         }
@@ -2193,8 +2193,6 @@ namespace psion {
         mem_writew(base + MEM_PONDER_TIME,
                    (Bit16u)std::min(pondered, (double)o.target));
         mem_writew(base + MEM_SEARCH_TIME, 0);
-        set_level(LEVEL_11);
-        uci.own_tm = true;
         uci.own_tm_fallback = o.fallback_ms;
     }
 
@@ -2556,11 +2554,21 @@ namespace psion {
         if (uci.go_pending) {
             uci.go_pending = false;
             search_speed(true);
-            uci.own_tm = authentic_tm && uci.clock_search && !uci.infinite;
+            uci.own_tm = authentic_tm && uci.clock_search &&
+                         (!uci.infinite || uci.ponder);
+            Nodes_ClearSearchTimeCap();
             if (uci.own_tm) {
                 OwnTimes t = own_tm_times(GetTicks() - uci.search_start);
                 Nodes_SetSearchTimes(t.target, t.limit);
                 uci.own_tm_fallback = t.fallback_ms;
+                if (uci.ponder) {
+                    // Psion ponders by itself with the stops off (DS:5A6B
+                    // without bit 80): steps of 2 from 3 S/32 on, and no
+                    // move. Here the time of the search stays at most S/4,
+                    // which gives the same steps without reaching a stop;
+                    // the stops apply from "ponderhit" on.
+                    Nodes_CapSearchTime(t.target / 4);
+                }
             } else {
                 Nodes_ClearSearchTimes();
             }

@@ -65,6 +65,10 @@ namespace psion {
     // Psion's own values.
     void Nodes_SetSearchTimes(unsigned short target, unsigned short limit);
     void Nodes_ClearSearchTimes();
+    // While pondering: keep the time of the search (DS:5A7C, in Psion's
+    // seconds) at most cap, until Nodes_ClearSearchTimeCap().
+    void Nodes_CapSearchTime(unsigned short cap);
+    void Nodes_ClearSearchTimeCap();
 
     // Whether Psion is copying its board to the game board (DS:28AC, 64
     // bytes, copied whole when a move is played): a word of it has been

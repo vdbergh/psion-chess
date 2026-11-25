@@ -46,12 +46,11 @@ install its files in a directory where the adapter can find them (see
    written to stderr. Equivalent to issuing the UCI command `debug on`.
 - `--tm-options`: expose the time management UCI options described in
   [docs/time-management.md](docs/time-management.md).
-- `--authentic-tm` (experimental): with a clock, let Psion decide by
-  itself when to start an iteration and when to move, using its own
-  rules from 1985. The adapter only supplies the target time and a hard
-  limit, and Psion's clock runs 300 times faster than the wall clock
-  (`--clock-factor K` changes that factor). See
-  [docs/proposal-own-search-steps.md](docs/proposal-own-search-steps.md).
+- `--alt-tm`: use the adapter's time management of versions up to
+  3.5.2, which decides itself when Psion moves, instead of Psion's own
+  (see [Time allocation](#time-allocation)).
+- `--clock-factor K`: run Psion's clock K times faster than the wall
+  clock (default 300, or 1 with `--alt-tm`).
 - `--elo-options`: expose the UCI options `UCI_LimitStrength` and
   `UCI_Elo`, whose scale needs to be calibrated again.
 - `-v`, `--version`: print the version of the adapter.
@@ -183,9 +182,15 @@ and then repeatedly 10 moves per 10*L seconds. Depending on how the
 searches go, individual
 moves will generally take take more or less than L seconds.
 
-The adapter's time management is more general since it has to support the entire range of UCI time controls
-but it is based on similar principles as Psion's own time management.
-The detail are discussed in  [Time
+With a clock, the adapter lets Psion decide by itself when to start an
+iteration and when to move, using these rules from 1985. The adapter
+only supplies the target time and a hard limit, computed from the UCI
+time control, and Psion's clock runs 300 times faster than the wall
+clock, about as fast as the search runs compared with a PC of 1985. See
+[docs/proposal-own-search-steps.md](docs/proposal-own-search-steps.md).
+
+With `--alt-tm` the adapter instead decides itself when Psion moves,
+based on similar principles. The details are discussed in [Time
 management](docs/implementation.md#time-management).
 
 ### Environment variables

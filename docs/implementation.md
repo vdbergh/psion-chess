@@ -253,6 +253,13 @@ about 0.6%. Nearly all the time goes to emulating the CPU.
 
 ## Time management
 
+By default, with a clock, Psion manages its time itself with its rules
+from 1985: the adapter only computes the target T (below) and a hard
+limit of 3T and writes them into Psion's memory (see
+[proposal-own-search-steps.md](proposal-own-search-steps.md#implementation-psions-own-time-management)).
+The adapter's own time management, described in this section from
+"With a clock" on, applies with `--alt-tm`.
+
 The basic time allocation per move (T below) is either given by the
 `movetime` parameter of the `go` command or else by
 

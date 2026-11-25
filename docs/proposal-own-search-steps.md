@@ -87,10 +87,12 @@ default.
 This is experiment 2 below. Experiment 1 can still separate the effect
 of the d = 3 / d = 1 mix from that of the stopping rules, if needed.
 
-## Implementation: `--authentic-tm`
+## Implementation: Psion's own time management
 
-With `--authentic-tm`, a search with a clock (not `go movetime`,
-`go infinite` or a ponder search before `ponderhit`) runs this way:
+Psion's own time management is the default since 2026-11-25 (it was
+`--authentic-tm` at first; `--alt-tm` brings back the adapter's). A
+search with a clock, also a ponder search, but not `go movetime` or
+`go infinite`, runs this way:
 
 - **The times.** S is T, the adapter's target. H is 3T, as Psion's own
   hard limit is at most 3S + 1, within the same caps as the adapter's
@@ -112,10 +114,16 @@ With `--authentic-tm`, a search with a clock (not `go movetime`,
   applies to the adapter's S.
 - **Fallback.** MOVE-NOW is pressed only if Psion has not moved 30 ms
   after H.
-- **Ponderhit.** The ponder search runs at *Infinite*, so it is pure
-  d = 3. At `ponderhit` the adapter does what Psion's own ponderhit does:
-  it writes S and H, sets `713C` to the time pondered (at most S),
-  restarts `5A7C` at 0 and sets level 11.
+- **Pondering.** Psion's own ponder search (doc `2518`..`2521`) runs at
+  its timed level with `5A6B` = 1: bit `80` clear, so no stop, and from
+  t ≥ 3S/32 on steps of 2. The adapter's ponder search runs at level 11
+  with S and H as above, but `5A6B` is `FF` (clearing bit `80` would also
+  turn Psion's keys into move input, doc `0644`). Instead the memory
+  handler keeps `5A7C` at most S/4 while pondering: the steps are the
+  same (2 from 3S/32 on), and no stop is reached.
+- **Ponderhit.** The adapter does what Psion's own ponderhit does (doc
+  `06DD`..`06E6`): it lifts the cap, writes S and H, sets `713C` to the
+  time pondered (at most S) and restarts `5A7C` at 0.
 
 **First checks** (2026-11-25, 40 plies of self-play at 10+0.1). Out of
 book, Psion moved after 160 to 597 ms with S of about 300 to 415 ms: it
@@ -124,7 +132,8 @@ and the fallback was never needed. With the fallback moved to 100 ms by
 a temporary build, MOVE-NOW came in time.
 
 After `ponderhit` Psion can use much more time than with the adapter's
-time management. In a test position with 3 s of pondering, the
+time management. (Measured with the ponder search still at *Infinite*;
+see below for the timed level.) In a test position with 3 s of pondering, the
 iteration running at the ponderhit had started 2.7 s before, and its
 first root move took more than 5 s. Psion checks the stop at 1.375 S only
 when it starts a root move, so it went on to H = 3T (2.4 s after the
@@ -136,6 +145,20 @@ times the one before. Psion's own ponder search ran at its timed level,
 where the steps become 2 once t ≥ 3S/32, so its iterations would grow
 less from one to the next. How Psion ponders with `5A6B` = `FF` (whether
 it starts no iteration after S/2 then) is not decoded.
+
+With the ponder search at the timed level (2026-11-25, same position,
+20 s + 0.2 s, so T ≈ 0.8 s and H ≈ 2.4 s):
+
+| Ponderhit after | Bestmove after the ponderhit |
+|---|---|
+| 0.2 s | 0.28 s |
+| 1 s | 0.58 s |
+| 3 s | 2.4 s (H) |
+| 10 s | 0.56 s |
+
+At 3 s the iteration running at the ponderhit had started at 1.1 s
+(steps of 2 now), but it still ran to H: as with Psion's own ponderhit,
+the time pondered counts only for starting an iteration.
 
 ## Experiments
 

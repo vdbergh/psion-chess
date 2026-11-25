@@ -607,8 +607,9 @@ evaluation.
 
 Psion has a time management of its own for its levels (decoded later, see
 [search-internals.md](search-internals.md#psions-own-time-management-the-levels)),
-which the adapter does not use: it sets level *Infinite* and presses
-MOVE-NOW.
+which the adapter did not use: it set level *Infinite* and pressed
+MOVE-NOW. (Since 2026-11-25 Psion's own is the default, after a match in
+which it scored better; the adapter's applies with `--alt-tm`.)
 The rules found here turn out to be close to it in spirit:
 
 | Psion (its levels) | The adapter (defaults) |
