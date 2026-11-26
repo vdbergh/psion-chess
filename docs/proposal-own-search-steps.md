@@ -1,6 +1,7 @@
 # Proposal: let Psion organize its own search
 
-Status: a proposal (2026-11-25), nothing implemented or tested.
+Status: implemented as experiment 2 below, and the default since
+2026-11-25 (v3.6b), after the match in "The match" below.
 
 ## Why
 
@@ -159,6 +160,17 @@ With the ponder search at the timed level (2026-11-25, same position,
 At 3 s the iteration running at the ponderhit had started at 1.1 s
 (steps of 2 now), but it still ran to H: as with Psion's own ponderhit,
 the time pondered counts only for starting an iteration.
+
+## The match
+
+Psion's own time management (`--authentic-tm` at the time) against the
+adapter's, both from the same build, at 10+0.1 on pl with the 8moves_v3
+openings, without pondering (2026-11-25/26): **+28.8 ± 6.4 Elo** over
+8,000 games (54.1%, +3206 −2544 =2250, pentanomial [376, 719, 1402,
+873, 630]; 95%, from the per-opening pairs), with no time losses and no
+fallbacks. Both used about the same time per move (0.205 s against
+0.201 s on average, over all games), so the gain does not come from a
+longer search.
 
 ## Experiments
 

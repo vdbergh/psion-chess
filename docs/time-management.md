@@ -608,8 +608,11 @@ evaluation.
 Psion has a time management of its own for its levels (decoded later, see
 [search-internals.md](search-internals.md#psions-own-time-management-the-levels)),
 which the adapter did not use: it set level *Infinite* and pressed
-MOVE-NOW. (Since 2026-11-25 Psion's own is the default, after a match in
-which it scored better; the adapter's applies with `--alt-tm`.)
+MOVE-NOW. (Since 2026-11-25 Psion's own is the default, after it won a
+match against the adapter's at 10+0.1 by +28.8 ± 6.4 Elo over 8,000
+games, see
+[proposal-own-search-steps.md](proposal-own-search-steps.md#the-match);
+the adapter's applies with `--alt-tm`.)
 The rules found here turn out to be close to it in spirit:
 
 | Psion (its levels) | The adapter (defaults) |
