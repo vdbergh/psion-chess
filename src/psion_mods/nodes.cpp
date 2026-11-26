@@ -60,6 +60,7 @@ namespace psion {
     static unsigned short search_time_cap = 0;
     static unsigned int max_ply = 0, ply = 0;
     static unsigned char iteration = 0;
+    static unsigned char completed_iteration = 0; // the one before it
     // For time management: the score of the last line (units, from the
     // bias), the iteration it came in, the drop of the current
     // iteration's first line from the line before it, and whether a fail
@@ -142,6 +143,7 @@ namespace psion {
         if (addr <= iteration_addr && addr + size > iteration_addr) {
             unsigned char it = host_readb(MemBase + iteration_addr);
             if (it != iteration) {
+                completed_iteration = iteration;
                 drop_known = false;
                 fail_low_open = false;
                 fail_low_seen = false;
@@ -263,6 +265,7 @@ namespace psion {
         pv_size = 0;
         max_ply = 0;
         iteration = 0;
+        completed_iteration = 0;
         have_line = false;
         drop_known = false;
         line_iteration = 0;
@@ -325,6 +328,10 @@ namespace psion {
 
     unsigned char Nodes_Iteration() {
         return iteration;
+    }
+
+    unsigned char Nodes_CompletedIteration() {
+        return completed_iteration;
     }
 
     bool Nodes_BoardCopying() {

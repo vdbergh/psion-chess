@@ -2209,9 +2209,9 @@ namespace psion {
             }
             return false;
         }
-        // Not before Psion has completed its first iteration (depth 3), so
-        // started the next one, or MIN_THINK_MS should that take longer.
-        if (!DepthReached(3, Nodes_Iteration()) &&
+        // Not before Psion has completed its first iteration, or
+        // MIN_THINK_MS should that take longer.
+        if (Nodes_CompletedIteration() == 0 &&
             now - uci.thinking_start < MIN_THINK_MS) {
             return false;
         }
@@ -2305,7 +2305,7 @@ namespace psion {
             return false;
         }
         return (uci.depth_limit > 0 &&
-                DepthReached(uci.depth_limit, Nodes_Iteration())) ||
+                DepthReached(uci.depth_limit, Nodes_CompletedIteration())) ||
                (uci.nodes_limit > 0 && search_nodes() >= uci.nodes_limit) ||
                (uci.mate_limit != 0 && !uci.info_pv.empty() && uci.info_mate &&
                 (uci.mate_limit > 0

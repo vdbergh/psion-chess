@@ -47,11 +47,19 @@ back the move Psion has just played.
 
 Psion keeps no node count. The adapter counts the nodes itself, by
 counting the writes to the board Psion searches on (`nodes.cpp`, see
-[search-internals.md](search-internals.md#node-count)). The depth is the
-nominal depth of the iteration that found the line, from Psion's
-iteration counter at `5A67` when it copied the line (see
-[search-internals.md](search-internals.md#iterative-deepening-the-iteration-counter-5a67)),
-and the selective depth the deepest ply searched since `go`, from the
+[search-internals.md](search-internals.md#node-count)). The depth is
+that of the iteration that found the line, from Psion's iteration
+counter c at `5A67` when it copied the line: (c + 1) / 2, so 2, 3, 4,
+... up to 14 (see
+[search-internals.md](search-internals.md#iterative-deepening-the-iteration-counter-5a67)).
+That is the nominal depth h for the variant d = 1, but h − 1 for d = 3,
+which searches h − 2 plies at full width and two more selectively,
+and which costs about as much as a full-width search of h − 1 plies
+would (between d = 1 at h − 2 and at h). Reported nominally, every
+depth would come twice once the steps are 2 (d = 3 and then d = 1 at
+the same h); this way the depth goes up by one with each such
+iteration (by two with a step of 4, as before), and without a clock (only d = 3) the depths are even. The
+selective depth is the deepest ply searched since `go`, from the
 writes to Psion's ply counter at `7076`. The time (also for
 `nps`) is measured by the adapter itself: from when Psion started to
 think, so without entering the opponent's move. The last `info` line is
@@ -286,15 +294,16 @@ minimum below: the GUI asked for these limits, and Psion is searching
 once they are reached. For the depth the node counter's write handler watches
 Psion's iteration counter at `5A67` (see
 [search-internals.md](search-internals.md#iterative-deepening-the-iteration-counter-5a67)):
-once Psion starts an iteration deeper than the depth asked, rounded up
-to an odd depth of at least 3, the iteration that reached it is
-complete, and Psion plays its best move. Psion stops by itself after
-its iteration at depth 15. The nodes are compared with the node count
+once Psion has completed an iteration of at least the depth asked
+(it starts the next one: the value before the last change of `5A67`),
+Psion plays its best move. Without a clock Psion's depths are even, so
+an odd depth is rounded up. Psion stops by itself after its iteration
+at `1B` (depth 14). The nodes are compared with the node count
 every tick (10 ms), so the search goes on a little longer: 20,145 nodes
 for `go nodes 20000` and 200,179 for `go nodes 200000` on an i5-1135G7.
-`go depth 2` after 1.a4 h5 stops after 10 ms with depth 3 (with a
-50 ms minimum, as the adapter once had, it went on into depth 5, and
-played the move that depth preferred). `go mate n` is reached by a
+`go depth 2` after 1.a4 h5 stops after its first iteration, within
+about 10 ms (with a 50 ms minimum, as the adapter once had, it went on
+into the next iteration, and played the move that one preferred). `go mate n` is reached by a
 line of this search that mates in at most n moves (with n < 0: that is
 mated in at most -n moves; `go mate 0` counts as `go mate 1`). A depth or
 node count of 0 or less counts as 1, so it is still a limit, not the
@@ -302,7 +311,7 @@ node count of 0 or less counts as 1, so it is still a limit, not the
 search when it has found a mate, also a longer one: `go mate 2` in a
 position with a mate in 3 plays that mate (after 30 ms). Without a mate
 the search goes on, like Stockfish's, until another limit, or until
-Psion stops after its iteration at depth 15.
+Psion stops after its iteration at depth 14.
 
 There are several complications, however, that have to be dealt with:
 
@@ -322,7 +331,7 @@ There are several complications, however, that have to be dealt with:
   (0.6 to 0.9 s for a FEN on an i5-1135G7) and would otherwise leave
   Psion hardly any time to think.
 - The adapter makes sure that Psion completes its first iteration
-  (depth 3), for otherwise Psion plays very weak moves. It does so once
+  (depth 3, or 2 without a clock), for otherwise Psion plays very weak moves. It does so once
   Psion starts its next iteration (or plays a move itself), on average
   4.5 ms after it started to think (at most 17 ms in 200 positions from
   games), or after 50 ms at the latest, should that iteration take
@@ -338,7 +347,7 @@ The result is that after receiving `go`, Psion is told to move at
     setup_time + max(allocated_time - min(setup_time, 30 ms)
                      - move_overhead, 0)
 
-but not before Psion has completed depth 3, which takes it a time d
+but not before Psion has completed its first iteration, which takes it a time d
 (about 5 ms, but the adapter looks every tick of 10 ms). For a setup
 time of at most 30 ms, the usual case and the one assumed from here on,
 this can also be written more compactly as
@@ -395,7 +404,7 @@ adapter does not simply move at T but follows Psion's search. Not with
 only `depth`, `nodes` or `mate`; while pondering nothing changes. It
 uses two times, counted from `go` (or `ponderhit`), and both treated
 like `allocated_time` above (the setup time, `Move Overhead`, the
-minimum of depth 3):
+first iteration as a minimum):
 
 - the **target** S = T;
 - the **maximum** H = min(2 · T, 75% of the remaining time), which is
@@ -509,10 +518,10 @@ How the engine handles what the UCI protocol leaves open or forbids:
 
 - Values out of range in `go` are clamped rather than rejected. A
   negative clock (`wtime`, `btime`) or `movetime` counts as 0: the time
-  used up, so Psion moves after its first iteration (depth 3). Negative
+  used up, so Psion moves after its first iteration. Negative
   increments count as 0, and a `movestogo` of 0 or less as not given.
   A `depth` or `nodes` of 0 or less counts as 1, so it is still a limit
-  (`go depth -3` searches to Psion's smallest depth, 3). `go mate n`
+  (`go depth -3` searches Psion's first iteration, depth 2). `go mate n`
   keeps its sign: a negative n means being mated in at most -n moves,
   and `go mate 0` counts as `go mate 1`. Values beyond ±2147483647 count
   as ±2147483647, and a missing or non-numeric value as 0 (for `depth`,

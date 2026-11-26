@@ -30,6 +30,11 @@ namespace psion {
     // The iteration counter (5A67) as Psion last wrote it since
     // Nodes_ClearPv(); 0 before that.
     unsigned char Nodes_Iteration();
+    // The value of the iteration counter before its last change since
+    // Nodes_ClearPv(): the last iteration Psion completed (0 before the
+    // first one is complete). Psion repeats its last iteration (1B) at
+    // level Infinite without a change, so that one never counts here.
+    unsigned char Nodes_CompletedIteration();
 
     // For time management (docs/implementation.md). Once the current
     // iteration has shown its first line (the previous best move searched

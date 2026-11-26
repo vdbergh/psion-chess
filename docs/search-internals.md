@@ -927,6 +927,13 @@ of h − 2 plies (as d = 1 at h − 2) with a selective tail of two plies,
 probably after the moves that `1821` (at ply h − 2) does not let end.
 Its quiet lines end at the same odd ply as those of d = 1 at h − 2.
 
+The adapter reports the depth of an iteration as (`5A67` + 1) / 2: h
+for d = 1 and h − 1 for d = 3, which costs about as much as a
+full-width search of h − 1 plies would (the middlegame totals above:
+1,400 nodes for `09`, 7,200 for `0B`, 24,800 for `0D`). So `03`, `05`,
+`07`, ... `1B` are reported as depths 2, 3, 4, ... 14 (see
+[implementation.md](implementation.md)).
+
 **The steps** (`0F72`..`0FD6`). The first iteration is `05`, or `03`
 when the byte at `725A` (the level: `0B` in the adapter up to v3.3,
 `0D` since) is 0, 1 or `0D`. After that

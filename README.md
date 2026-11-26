@@ -98,7 +98,8 @@ taken care of by `Move Overhead`.
 
 - Chess960 is not supported.
 - `go searchmoves` is ignored.
-- Psion's depths are odd numbers: `go depth 6` searches to depth 7.
+- Without a clock Psion's depths are even (see below): `go depth 5`
+  searches to depth 6.
   Psion ends its search as soon as it
   has found a mate, so `go mate 2` can also give a mate in 3.
 - The move counters of a FEN are ignored, so Psion's 50-move rule counts
@@ -124,9 +125,16 @@ taken care of by `Move Overhead`.
   [docs/search-internals.md](docs/search-internals.md#iterative-deepening-the-iteration-counter-5a67)).
   So the same position can give other info lines and another move than
   in a game with a clock.
+- The depth in the info lines is not quite Psion's own. Of the two kinds
+  of iteration above, the one that ends in two extra plies of selective
+  search is reported one ply shallower than Psion's nominal depth, which
+  is closer to what it costs (otherwise the same depth would often be
+  reported twice). So with a clock the reported depth goes up by one or
+  two with each iteration, and without a clock the depths are even.
 - Psion does not use its opening book after a position set up from a FEN
   (other than the start position).
-- Psion searches to a fixed maximum depth (15 plies) and moves as soon as it is
+- Psion searches to a fixed maximum depth (15 plies nominally, reported
+  as depth 14) and moves as soon as it is
   reached, whatever the time left. So in a locked pawn ending, with few moves
   per ply (like Fine 70), Psion moves almost instantly, independently of the
   actual time control. This depth limit, which inherently limits Psion's

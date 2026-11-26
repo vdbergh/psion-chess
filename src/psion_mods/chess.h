@@ -235,15 +235,17 @@ namespace psion {
     // or false if it is a mate score.
     bool ScoreCentipawns(unsigned short score, int &cp);
 
-    // The nominal depth of an iteration from Psion's iteration counter
-    // (5A67): the ply at which it stops unless it extends (always odd, 15
-    // at most; see docs/search-internals.md, "Iterative deepening").
+    // The depth reported for an iteration, from Psion's iteration counter
+    // (5A67): its nominal depth h (the ply at which it stops unless it
+    // extends) for the variant d = 1, and h - 1 for d = 3, which searches
+    // h - 2 plies at full width and two more selectively (closer to what
+    // it costs). That is (counter + 1) / 2: 2 for 03, 3 for 05, ..., 14
+    // for 1B. See docs/search-internals.md, "Iterative deepening".
     int IterationDepth(unsigned char counter);
-    // Whether "go depth" depth is reached once Psion's iteration counter
-    // shows counter: Psion has started an iteration deeper than depth
-    // (rounded up to Psion's odd depths, at least 3), so the iteration
-    // that reached it is complete.
-    bool DepthReached(int depth, unsigned char counter);
+    // Whether "go depth" depth is reached once Psion has completed the
+    // iteration completed (Nodes_CompletedIteration(), 0 for none): one
+    // of at least that depth.
+    bool DepthReached(int depth, unsigned char completed);
 
     // Plays pv on board (white to move) to check it. False if a move is
     // not by a piece of the side to move, captures one of its own pieces,

@@ -743,9 +743,9 @@ class UciTest(unittest.TestCase):
             pv = info[9:]
             self.assertTrue(pv, info)
             self.assertTrue(Board(moves).plausible(pv[0]), info)
-            # the depth: that of Psion's iteration, odd and at most 15,
-            # and it only grows during a search
-            self.assertIn(int(info[2]), range(3, 16, 2), info)
+            # the depth: that of Psion's iteration, 2 to 14 (see
+            # IterationDepth), and it only grows during a search
+            self.assertIn(int(info[2]), range(2, 15), info)
             self.assertGreaterEqual(int(info[2]), depth, info)
             depth = int(info[2])
         self.assertTrue(Board(moves).plausible(line.split()[1]), line)
@@ -757,7 +757,7 @@ class UciTest(unittest.TestCase):
         bound = infos.pop()
         self.assertTrue(infos)
         last = infos[-1]
-        self.assertEqual(int(bound[2]), int(last[2]) + 2, bound)
+        self.assertIn(int(bound[2]) - int(last[2]), (1, 2), (last, bound))
         self.assertEqual(bound[6], 'cp', bound)
         self.assertIn(int(last[7]) - int(bound[7]), (83, 84), (last, bound))
         self.assertEqual(bound[8:10], ['upperbound', 'pv'], bound)
@@ -766,7 +766,7 @@ class UciTest(unittest.TestCase):
 
     def test_info_upperbound(self):
         """Stopped while the move played is below the window: here the
-        root fails low at depth 7 and the search again takes many
+        root fails low at depth 6 and the search again takes many
         thousands of nodes."""
         e = self.engine
         e.send('position fen 8/1k2Q3/6BP/6p1/2P5/6K1/4p2P/8 b - - 1 69')
@@ -802,7 +802,7 @@ class UciTest(unittest.TestCase):
         e.send('go movetime 2000')
         line, before = e.expect('bestmove', 30)
         self.assertEqual(line.split()[:2], ['bestmove', 'c4f7'])
-        self.assertIn('depth 3 seldepth',
+        self.assertIn('depth 2 seldepth 3',
                       ' '.join(l for l in before if l.startswith('info ')))
         self.assertIn('score mate 2 pv c4f7 e8e7 c3d5',
                       ' '.join(l for l in before if l.startswith('info ')))
@@ -1032,17 +1032,19 @@ class UciTest(unittest.TestCase):
             self.assertTrue(infos, before)
             self.assertTrue(Board(moves).plausible(line.split()[1]), line)
             return time.time() - start, infos[-1]
-        # depth 5: until Psion starts its iteration at depth 7
-        used, info = search('go depth 5')
-        self.assertIn(int(info[2]), (5, 7), info)
-        self.assertLess(used, 5, info)
-        # an even depth: Psion's next odd one
+        # without a clock Psion's depths are even (2, 4, 6, ...): depth 6
+        # until its iteration at depth 6 is complete (the next one may
+        # have shown a line by then)
         used, info = search('go depth 6')
-        self.assertIn(int(info[2]), (7, 9), info)
-        # depth 3 is done within a few ms: no 50 ms minimum to wait for,
-        # which would take Psion into its iteration at depth 5
+        self.assertIn(int(info[2]), (6, 8), info)
+        self.assertLess(used, 5, info)
+        # an odd depth: the next even one
+        used, info = search('go depth 5')
+        self.assertIn(int(info[2]), (6, 8), info)
+        # depth 2 is done within a few ms: no 50 ms minimum to wait for,
+        # which would take Psion into its iteration at depth 4
         used, info = search('go depth 2')
-        self.assertEqual(int(info[2]), 3, info)
+        self.assertEqual(int(info[2]), 2, info)
         # nodes: checked every 10 ms or so, so a little more
         used, info = search('go nodes 30000')
         nodes = int(info[info.index('nodes') + 1])

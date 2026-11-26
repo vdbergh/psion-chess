@@ -201,11 +201,11 @@ namespace psion {
     }
 
     int IterationDepth(unsigned char counter) {
-        return 2 * ((counter + 1) / 4) + 1;
+        return (counter + 1) / 2;
     }
 
-    bool DepthReached(int depth, unsigned char counter) {
-        return IterationDepth(counter) > std::max(depth | 1, 3);
+    bool DepthReached(int depth, unsigned char completed) {
+        return completed != 0 && IterationDepth(completed) >= depth;
     }
 
     bool MemoryAnalysis(unsigned short score, const unsigned short moves[8],

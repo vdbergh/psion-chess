@@ -574,24 +574,37 @@ static void test_game_end(){
     CHECK_EQ(GameEnd(req.start,req.moves),std::string(""));
 }
 
+static void test_iteration_depth(){
+    // d = 1: the nominal depth; d = 3: one ply less
+    CHECK_EQ(IterationDepth(0x03),2);
+    CHECK_EQ(IterationDepth(0x05),3);
+    CHECK_EQ(IterationDepth(0x07),4);
+    CHECK_EQ(IterationDepth(0x09),5);
+    CHECK_EQ(IterationDepth(0x0B),6);
+    CHECK_EQ(IterationDepth(0x0D),7);
+    CHECK_EQ(IterationDepth(0x11),9);
+    CHECK_EQ(IterationDepth(0x15),11);
+    CHECK_EQ(IterationDepth(0x19),13);
+    CHECK_EQ(IterationDepth(0x1B),14);
+}
+
 static void test_depth_reached(){
-    // the counter: 05 (3 plies), 09 (5), 0D (7), ...; 0 before the search
-    CHECK(!DepthReached(5,0x00));
-    CHECK(!DepthReached(5,0x05));
-    CHECK(!DepthReached(5,0x09));   // iteration 5 still under way
-    CHECK(DepthReached(5,0x0D));    // iteration 7 started: 5 is complete
-    // even depths and depths below 3: Psion's next (odd) depth
-    CHECK(!DepthReached(6,0x0D));
-    CHECK(DepthReached(6,0x11));
-    CHECK(!DepthReached(1,0x05));
-    CHECK(DepthReached(1,0x09));
-    // the other variant (03, 07, ...) and the time steps of 2
-    CHECK(DepthReached(5,0x0B));     // 09 -> 0B: 5 -> 7
+    // the last iteration completed: 03 (2), 07 (4), 0B (6), ... at
+    // Infinite, 05 (3), 09 (5), ... with steps of 2 later at the timed
+    // levels; 0 before the first is complete
+    CHECK(!DepthReached(1,0x00));
+    CHECK(DepthReached(1,0x03));
+    CHECK(DepthReached(2,0x03));
+    CHECK(!DepthReached(3,0x03));
+    CHECK(DepthReached(3,0x05));
+    CHECK(!DepthReached(5,0x07));
+    CHECK(DepthReached(5,0x0B));    // an odd depth: the next even one
+    CHECK(DepthReached(6,0x0B));
     CHECK(!DepthReached(7,0x0B));
-    CHECK(DepthReached(7,0x0F));
-    // beyond 15: never (Psion stops after its iteration at 1B)
+    CHECK(DepthReached(7,0x0D));
+    CHECK(DepthReached(14,0x1B));
+    // beyond 14: never (Psion stops after its iteration at 1B)
     CHECK(!DepthReached(15,0x1B));
-    CHECK(!DepthReached(20,0x1B));
 }
 
 static void test_move_now_time(){
@@ -1236,15 +1249,6 @@ static std::string memory_analysis(unsigned short score,
 }
 
 static void test_memory_analysis(){
-    // the iteration counter: 05, 09, ... or 03, 07, ... up to 1B
-    CHECK_EQ(IterationDepth(0x03),3);
-    CHECK_EQ(IterationDepth(0x05),3);
-    CHECK_EQ(IterationDepth(0x07),5);
-    CHECK_EQ(IterationDepth(0x09),5);
-    CHECK_EQ(IterationDepth(0x11),9);
-    CHECK_EQ(IterationDepth(0x15),11);
-    CHECK_EQ(IterationDepth(0x19),13);
-    CHECK_EQ(IterationDepth(0x1B),15);
     // seen in searches: from square in the high byte, to square in the
     // low one; bit 0 marks a double pawn move (from) and a capture (to)
     CHECK_EQ(memory_analysis(0x7FF9,{0xC988,0x2968,0xECAA,0x0C4A,0xC786,
@@ -1709,6 +1713,7 @@ int main(){
     test_window_max_time();
     test_extension_percent();
     test_move_now_time();
+    test_iteration_depth();
     test_depth_reached();
     test_game_over();
     test_game_end();
