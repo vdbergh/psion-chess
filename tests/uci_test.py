@@ -641,7 +641,8 @@ class UciTest(unittest.TestCase):
         e = self.engine
         moves = ['a2a4', 'h7h5', 'h2h4', 'a7a5', 'b1c3']
         clock = ' wtime 30000 btime 30000'
-        # ponderhit: then a search with the time for the move
+        # ponderhit: then a search with the time for the move, T = 1 s:
+        # Psion moves by its hard limit 3 T, counted from the ponderhit
         e.send('position startpos moves ' + ' '.join(moves))
         e.send('go ponder' + clock)
         self.assertEqual([l for l in e.silent(2) if not l.startswith('info ')],
@@ -650,7 +651,7 @@ class UciTest(unittest.TestCase):
         e.send('ponderhit')
         move = bestmove(e, 10)
         self.assertTrue(Board(moves).plausible(move), move)
-        self.assertLess(time.time() - start, 30000 / 30 / 1000 + 0.5)
+        self.assertLess(time.time() - start, 3 * 30000 / 30 / 1000 + 0.5)
         # stop (the opponent played another move), then that move
         e.send('position startpos moves ' + ' '.join(moves[:-1] + ['g1f3']))
         e.send('go ponder' + clock)
