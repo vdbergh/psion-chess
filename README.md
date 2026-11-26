@@ -114,6 +114,16 @@ taken care of by `Move Overhead`.
     within 0.5% of the true value.
   - Psion truncates the principal variation to 8 moves.
   - Psion's score has a resolution of about 4 centipawns.
+- Searches without a clock (`go movetime`, `go infinite`, or only
+  `depth`, `nodes` or `mate`) use a slightly different search algorithm.
+  Psion's search has two kinds of iteration: a plain one, and one that
+  ends in two extra plies of selective search. With a clock Psion mixes
+  them as at its timed levels, choosing by the time it has used. Without
+  a clock it searches at its level *Infinite*, which only uses the
+  second kind (see "The two variants in play" in
+  [docs/search-internals.md](docs/search-internals.md#iterative-deepening-the-iteration-counter-5a67)).
+  So the same position can give other info lines and another move than
+  in a game with a clock.
 - Psion does not use its opening book after a position set up from a FEN
   (other than the start position).
 - Psion searches to a fixed maximum depth (15 plies) and moves as soon as it is
