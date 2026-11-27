@@ -113,12 +113,6 @@ taken care of by `Move Overhead`.
   which influences move generation order; see
   [docs/search-internals.md](docs/search-internals.md#piece-indices-after-a-fen)).
   So it may generate different info lines and choose another move.
-- Limitations of `info` lines:
-  - The node count is obtained by counting Psion's board writes
-    (see [docs/search-internals.md](docs/search-internals.md)); it is
-    within 0.5% of the true value.
-  - Psion truncates the principal variation to 8 moves.
-  - Psion's score has a resolution of about 4 centipawns.
 - Searches without a clock (`go movetime`, `infinite`,
   `depth`, `nodes` or `mate`) use a slightly different algorithm
   which may lead to different `info` lines or a different `bestmove`.
@@ -129,8 +123,14 @@ taken care of by `Move Overhead`.
   a clock Psion searches at its level *Infinite*, which only uses the
   second kind (see "The two variants in play" in
   [docs/search-internals.md](docs/search-internals.md#iterative-deepening-the-iteration-counter-5a67)).
-- The adapter reports the searches of the second kind as even depth searches although this is
-  technically not quite correct. They are a shallower version of the search at one depth higher.
+- Limitations of `info` lines:
+  - The node count is obtained by counting Psion's board writes
+    (see [docs/search-internals.md](docs/search-internals.md)); it is
+    within 0.5% of the true value.
+  - Psion truncates the principal variation to 8 moves.
+  - Psion's score has a resolution of about 4 centipawns.
+  - The adapter reports the searches of the second kind as even depth searches although this is
+    technically not quite correct. They are a shallower version of the search at one depth higher.
 - Psion does not use its opening book after a position set up from a FEN
   (other than the start position).
 - Psion searches to a fixed maximum depth (15 plies nominally, reported
@@ -195,7 +195,7 @@ from pondering. The matches and rating lists are in
 
 Psion's own time management depends on the user selecting a
 level L representing the number of seconds per move. It plays
-at a fictituous time control of 20 moves per 20\*L seconds
+at a fictitous time control of 20 moves per 20\*L seconds
 and then repeatedly 10 moves per 10*L seconds. Depending on how the
 searches go, individual
 moves will generally take take more or less than L seconds.
