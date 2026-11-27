@@ -204,7 +204,7 @@ Psion's time management is not flexible enough for the adapter which
 has to support the full range of UCI time controls. Therefore,
 for every move, the adapter computes itself a nominal time and a cutoff time
 and injects this into Pson's memory. It then leaves it to Psion to decide
-when to stop the search.
+when to stop the search within these constraints.
 
 ### Environment variables
 
@@ -215,9 +215,16 @@ when to stop the search.
 
 ### Implementation
 
-How the adapter reads Psion's memory and screen, controls it with
-simulated keypresses and manages the time, and the tools for experiments,
-are described in [docs/implementation.md](docs/implementation.md).
+The adapter controls Psion by simulating key presses. In two limited cases it actually
+writes directly to Psion's memory:
+
+- to work around a bug that makes Psion hang when searching at level `Infinite`;
+- to set the nominal time and the cutoff time for a search.
+
+Usually the adapter reads Psion's responses directly from its memory. In a few
+cases it actually parses the screen to get the information it needs.
+
+See [docs/implementation.md](docs/implementation.md).
 
 ### Diagnostic mode
 
