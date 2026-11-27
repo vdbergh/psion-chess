@@ -200,16 +200,11 @@ and then repeatedly 10 moves per 10*L seconds. Depending on how the
 searches go, individual
 moves will generally take take more or less than L seconds.
 
-With a clock, the adapter lets Psion decide by itself when to start an
-iteration and when to move, using these rules from 1985. The adapter
-only supplies the target time and a hard limit, computed from the UCI
-time control, and Psion's clock runs 300 times faster than the wall
-clock, about as fast as the search runs compared with a PC of 1985. See
-[docs/proposal-own-search-steps.md](docs/proposal-own-search-steps.md).
-
-With `--alt-tm` the adapter instead decides itself when Psion moves,
-based on similar principles. The details are discussed in [Time
-management](docs/implementation.md#time-management).
+Psion's time management is not flexible enough for the adapter which
+has to support the full range of UCI time controls. Therefore,
+for every move, the adapter computes itself a nominal time and a cutoff time
+and injects this into Pson's memory. It then leaves it to Psion to decide
+when to stop the search.
 
 ### Environment variables
 
