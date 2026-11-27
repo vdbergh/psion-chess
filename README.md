@@ -44,17 +44,21 @@ install its files in a directory where the adapter can find them (see
   ignored with `--cycles`.
 - `-V`, `--verbose`: augment the UCI output with lots of diagnostics
    written to stderr. Equivalent to issuing the UCI command `debug on`.
-- `--tm-options`: expose the time management UCI options described in
-  [docs/time-management.md](docs/time-management.md).
-- `--alt-tm`: use the adapter's time management of versions up to
-  3.5.2, which decides itself when Psion moves, instead of Psion's own
+- `-v`, `--version`: print the version of the adapter.
+- `-h`, `--help`: list options and exit.
+
+Auxilliary options that should normally not be set by the user:
+
+- `--alt-tm`: let the adapter instead of Psion decide when to
+  stop a search; this was the default until version 3.5.2
   (see [Time allocation](#time-allocation)).
+- `--tm-options`: expose the time management UCI options described in
+  [docs/time-management.md](docs/time-management.md). Only meaningful
+  with `--alt-tm`.
 - `--clock-factor K`: run Psion's clock K times faster than the wall
   clock (default 300, or 1 with `--alt-tm`).
 - `--elo-options`: expose the UCI options `UCI_LimitStrength` and
   `UCI_Elo`, whose scale needs to be calibrated again.
-- `-v`, `--version`: print the version of the adapter.
-- `-h`, `--help`: list these options and exit.
 
 ### Supported UCI commands
 
