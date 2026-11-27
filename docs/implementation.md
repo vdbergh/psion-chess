@@ -58,7 +58,10 @@ and which costs about as much as a full-width search of h − 1 plies
 would (between d = 1 at h − 2 and at h). Reported nominally, every
 depth would come twice once the steps are 2 (d = 3 and then d = 1 at
 the same h); this way the depth goes up by one with each such
-iteration (by two with a step of 4, as before), and without a clock (only d = 3) the depths are even. The
+iteration (by two with a step of 4, as before), and without a clock (only d = 3) the depths are even. A line is
+shown again when a new iteration finds it (the d = 1 search often
+confirms the line of the d = 3 one before it), but not when Psion shows
+it again within the same iteration, as at the end of a search. The
 selective depth is the deepest ply searched since `go`, from the
 writes to Psion's ply counter at `7076`. The time (also for
 `nps`) is measured by the adapter itself: from when Psion started to

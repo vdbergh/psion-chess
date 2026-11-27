@@ -2016,9 +2016,11 @@ namespace psion {
                 say("Memory line not used: %04X ...\n", p.moves[0]);
                 continue;
             }
-            // The end of the search shows the last line again.
+            // The end of the search shows the last line again. The same
+            // line from a new iteration is shown: with steps of 2 the d = 1
+            // search often confirms the line of the d = 3 one before it.
             if (a.pv == uci.info_pv && a.mate == uci.info_mate &&
-                a.score == uci.info_score) {
+                a.score == uci.info_score && a.depth == uci.info_depth) {
                 continue;
             }
             send_analysis(a);
