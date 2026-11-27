@@ -129,12 +129,8 @@ taken care of by `Move Overhead`.
   a clock Psion searches at its level *Infinite*, which only uses the
   second kind (see "The two variants in play" in
   [docs/search-internals.md](docs/search-internals.md#iterative-deepening-the-iteration-counter-5a67)).
-- The depth in the info lines is not quite Psion's own. Of the two kinds
-  of iteration above, the one that ends in two extra plies of selective
-  search is reported one ply shallower than Psion's nominal depth, which
-  is closer to what it costs (otherwise the same depth would often be
-  reported twice). So with a clock the reported depth goes up by one or
-  two with each iteration, and without a clock the depths are even.
+- The adapter reports the searches of the second kind as even depth searches although this is
+  technically not quite correct. They are a shallower version of the search at one depth higher.
 - Psion does not use its opening book after a position set up from a FEN
   (other than the start position).
 - Psion searches to a fixed maximum depth (15 plies nominally, reported
